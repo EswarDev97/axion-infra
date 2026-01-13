@@ -1,0 +1,275 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # INFRASTRUCTURE SERVICES
+  # ============================================================================
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: axionpcs-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: axionpcs
+      POSTGRES_PASSWORD: axionpcs_secret
+      POSTGRES_DB: axionpcs_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U axionpcs -d axionpcs_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - axionpcs-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: axionpcs-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - axionpcs-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: axionpcs-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: axionpcs_minio
+      MINIO_ROOT_PASSWORD: axionpcs_minio_secret
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - axionpcs-network
+
+  # MinIO bucket initialization
+  minio-init:
+    image: minio/mc:latest
+    container_name: axionpcs-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 axionpcs_minio axionpcs_minio_secret;
+      mc mb myminio/axionpcs-documents --ignore-existing;
+      mc mb myminio/axionpcs-avatars --ignore-existing;
+      mc anonymous set download myminio/axionpcs-avatars;
+      exit 0;
+      "
+    networks:
+      - axionpcs-network
+
+  # ============================================================================
+  # APPLICATION SERVICES
+  # ============================================================================
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: axionpcs-api-gateway
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=postgresql://axionpcs:axionpcs_secret@postgres:5432/axionpcs_db?schema=public
+      - REDIS_URL=redis://redis:6379
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - AI_SERVICE_RESUME_PARSER_URL=http://ai-resume-parser:8001
+      - AI_SERVICE_DOCUMENT_CLASSIFIER_URL=http://ai-document-classifier:8002
+      - AI_SERVICE_HR_ANALYTICS_URL=http://ai-hr-analytics:8003
+    env_file:
+      - ./api-gateway/.env
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - axionpcs-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_BASE_URL=http://api-gateway:3001
+    container_name: axionpcs-frontend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
+    networks:
+      - axionpcs-network
+
+  # ============================================================================
+  # AI SERVICES
+  # ============================================================================
+
+  ai-resume-parser:
+    build:
+      context: ./ai-services/resume-parser
+      dockerfile: Dockerfile
+    container_name: axionpcs-ai-resume-parser
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=production
+      - PORT=8001
+      - REDIS_URL=redis://redis:6379
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=axionpcs_minio
+      - MINIO_SECRET_KEY=axionpcs_minio_secret
+    env_file:
+      - ./ai-services/.env
+    ports:
+      - "8001:8001"
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - axionpcs-network
+
+  ai-document-classifier:
+    build:
+      context: ./ai-services/document-classifier
+      dockerfile: Dockerfile
+    container_name: axionpcs-ai-document-classifier
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=production
+      - PORT=8002
+      - REDIS_URL=redis://redis:6379
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=axionpcs_minio
+      - MINIO_SECRET_KEY=axionpcs_minio_secret
+    env_file:
+      - ./ai-services/.env
+    ports:
+      - "8002:8002"
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - axionpcs-network
+
+  ai-hr-analytics:
+    build:
+      context: ./ai-services/hr-analytics
+      dockerfile: Dockerfile
+    container_name: axionpcs-ai-hr-analytics
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=production
+      - PORT=8003
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://axionpcs:axionpcs_secret@postgres:5432/axionpcs_db
+    env_file:
+      - ./ai-services/.env
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - axionpcs-network
+
+  # ============================================================================
+  # REVERSE PROXY
+  # ============================================================================
+
+  nginx:
+    image: nginx:alpine
+    container_name: axionpcs-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/logs:/var/log/nginx
+    depends_on:
+      - frontend
+      - api-gateway
+    networks:
+      - axionpcs-network
+
+# ============================================================================
+# VOLUMES
+# ============================================================================
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+
+# ============================================================================
+# NETWORKS
+# ============================================================================
+
+networks:
+  axionpcs-network:
+    driver: bridge
+    name: axionpcs-network

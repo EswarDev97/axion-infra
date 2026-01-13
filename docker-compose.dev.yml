@@ -1,0 +1,82 @@
+version: '3.8'
+
+# Development override - run with: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  minio:
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile.dev
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    volumes:
+      - ./api-gateway/src:/app/src:ro
+      - ./api-gateway/prisma:/app/prisma:ro
+    command: npm run dev
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
+    volumes:
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public:ro
+    command: npm run dev
+
+  ai-resume-parser:
+    build:
+      context: ./ai-services/resume-parser
+      dockerfile: Dockerfile.dev
+    environment:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./ai-services/resume-parser/app:/app/app:ro
+      - ./ai-services/shared:/app/shared:ro
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
+
+  ai-document-classifier:
+    build:
+      context: ./ai-services/document-classifier
+      dockerfile: Dockerfile.dev
+    environment:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./ai-services/document-classifier/app:/app/app:ro
+      - ./ai-services/shared:/app/shared:ro
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8002
+
+  ai-hr-analytics:
+    build:
+      context: ./ai-services/hr-analytics
+      dockerfile: Dockerfile.dev
+    environment:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./ai-services/hr-analytics/app:/app/app:ro
+      - ./ai-services/shared:/app/shared:ro
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8003
+
+  # Disable nginx in development - access services directly
+  nginx:
+    profiles:
+      - production
