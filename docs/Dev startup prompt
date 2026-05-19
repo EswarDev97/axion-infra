@@ -1,0 +1,7 @@
+Start MindFlow dev environment:
+
+1. Check Docker: docker info
+2. If Docker not running (WSL2): powershell.exe -Command "Start-Process 'C:\Program Files\Docker\Docker\Docker Desktop.exe'" && sleep 30
+3. Run: ./scripts/start.sh -d
+4. Run: ./scripts/status.sh
+5. Show service URLs
