@@ -69,7 +69,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 </span>
               )}
             </div>
-            {job.showSalary && job.salaryMin && (
+            {job.showSalary && job.salaryMin && job.salaryMax && (
               <p className="mt-4 text-lg font-medium text-primary-600">
                 ₹{formatSalary(job.salaryMin)} - ₹{formatSalary(job.salaryMax)} per year
               </p>
