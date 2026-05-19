@@ -25,12 +25,6 @@ export default function RolesPage({ searchParams }: RolesPageProps) {
           <h1 className="text-2xl font-bold">Roles & Permissions</h1>
           <p className="text-gray-600">Manage access control for your organization</p>
         </div>
-        <a
-          href="/dashboard/roles/new"
-          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition"
-        >
-          Create Role
-        </a>
       </div>
 
       {/* View Toggle */}
