@@ -1,0 +1,38 @@
+-- =============================================================================
+-- MindFlow Database Migration: Master Execution Script
+-- Date: 2026-01-25
+-- Purpose: Create all missing tables for services without migrations
+--
+-- EXECUTION ORDER (respects foreign key dependencies):
+-- 1. expense_tables      (5 tables)
+-- 2. approval_tables     (5 tables)
+-- 3. complaint_tables    (6 tables)
+-- 4. training_tables     (10 tables)
+-- 5. mindmap_tables      (4 tables)
+-- 6. notification_tables (2 tables)
+-- 7. report_tables       (3 tables)
+-- 8. storage_tables      (1 table)
+--
+-- TOTAL: 36 tables
+-- =============================================================================
+
+-- Run this in PostgreSQL:
+-- \i /path/to/scripts/sql/00_execute_all.sql
+
+-- Or execute individual files in order:
+-- \i 01_expense_tables.sql
+-- \i 02_approval_tables.sql
+-- \i 03_complaint_tables.sql
+-- \i 04_training_tables.sql
+-- \i 05_mindmap_tables.sql
+-- \i 06_notification_tables.sql
+-- \i 07_report_tables.sql
+-- \i 08_storage_tables.sql
+
+-- =============================================================================
+-- NOTES:
+-- - All tables use IF NOT EXISTS for idempotency
+-- - All tables have tenant_id for multi-tenant isolation
+-- - All tables follow MindFlow naming conventions
+-- - Foreign keys reference existing tables (tenants, users, employees, positions, tasks)
+-- =============================================================================
