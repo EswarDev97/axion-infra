@@ -1,0 +1,2 @@
+# HR Service specific dependencies
+# Most dependencies come from shared/requirements.txt

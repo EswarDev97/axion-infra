@@ -1,0 +1,7 @@
+# MindFlow Report Service Requirements
+
+# PDF Export
+reportlab>=4.0.0
+
+# Excel Export
+openpyxl>=3.1.0

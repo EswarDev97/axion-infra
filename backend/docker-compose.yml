@@ -1,0 +1,167 @@
+# MindFlow Backend - Docker Compose Configuration
+# Per TECH_STACK.md: PostgreSQL 16, Redis 7, MinIO
+
+services:
+  # ==========================================================================
+  # INFRASTRUCTURE SERVICES
+  # ==========================================================================
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: mindflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mindflow
+      POSTGRES_PASSWORD: mindflow_dev_password
+      POSTGRES_DB: mindflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mindflow -d mindflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mindflow-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: mindflow-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mindflow-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: mindflow-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - mindflow-network
+
+  # MinIO bucket initialization
+  minio-init:
+    image: minio/mc:latest
+    container_name: mindflow-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      mc mb myminio/mindflow --ignore-existing;
+      mc anonymous set download myminio/mindflow/public;
+      exit 0;
+      "
+    networks:
+      - mindflow-network
+
+  # ==========================================================================
+  # APPLICATION SERVICES (Development)
+  # ==========================================================================
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    container_name: mindflow-auth-service
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - DATABASE_URL=postgresql+asyncpg://mindflow:mindflow_dev_password@postgres:5432/mindflow
+      - REDIS_URL=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_SECURE=false
+      - JWT_SECRET_KEY=dev-secret-key-change-in-production
+      - CORS_ORIGINS=http://localhost:3002
+    ports:
+      - "8101:8101"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8101/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - mindflow-network
+    volumes:
+      - ./shared:/app/shared
+      - ./services/auth:/app/services/auth
+
+  storage-service:
+    build:
+      context: .
+      dockerfile: services/storage/Dockerfile
+    container_name: mindflow-storage-service
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - DATABASE_URL=postgresql+asyncpg://mindflow:mindflow_dev_password@postgres:5432/mindflow
+      - REDIS_URL=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_SECURE=false
+      - JWT_SECRET_KEY=dev-secret-key-change-in-production
+      - CORS_ORIGINS=http://localhost:3002
+    ports:
+      - "8110:8110"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8110/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - mindflow-network
+    volumes:
+      - ./shared:/app/shared
+      - ./services/storage:/app/services/storage
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  mindflow-network:
+    driver: bridge

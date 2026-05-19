@@ -1,0 +1,4 @@
+# Auth Service Dependencies
+# Inherits from shared/requirements.txt
+
+-r ../../shared/requirements.txt

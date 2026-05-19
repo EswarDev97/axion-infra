@@ -1,0 +1,36 @@
+# MindFlow Backend Coverage Configuration
+# Per SDLC Phase 7 - Testing & Quality Assurance
+
+[run]
+source =
+    services
+    shared
+branch = True
+parallel = True
+omit =
+    */tests/*
+    */__pycache__/*
+    */migrations/*
+    */.venv/*
+    */venv/*
+    */conftest.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if TYPE_CHECKING:
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    ...
+
+show_missing = True
+precision = 2
+fail_under = 80
+
+[html]
+directory = coverage/html
+
+[xml]
+output = coverage/coverage.xml
