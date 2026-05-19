@@ -9,6 +9,7 @@ import {
   useCallback,
 } from 'react';
 import { apiClient } from '@/lib/api/client';
+import { useAuthStore } from '@/stores/authStore';
 
 interface User {
   id: string;
@@ -54,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      const response = await apiClient.get('/api/v1/auth/me');
+      const response = await apiClient.get('/auth/me');
       setUser(response.data.data);
     } catch {
       setUser(null);
@@ -64,19 +65,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string, tenantSlug?: string) => {
-    const response = await apiClient.post('/api/v1/auth/login', {
+    const response = await apiClient.post('/auth/login', {
       email,
       password,
       tenantSlug,
     });
-    setUser(response.data.data.user);
+    const { user: userData, accessToken } = response.data.data;
+    setUser(userData);
+
+    // Sync to authStore for services that use it (e.g., taskService)
+    useAuthStore.getState().setUser(userData);
+    useAuthStore.getState().setAccessToken(accessToken);
   };
 
   const logout = async () => {
     try {
-      await apiClient.post('/api/v1/auth/logout');
+      await apiClient.post('/auth/logout');
     } finally {
       setUser(null);
+      // Clear authStore as well
+      useAuthStore.getState().clearAuth();
     }
   };
 
