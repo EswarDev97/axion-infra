@@ -1,5 +1,17 @@
-// AxionPCS HRMS Database Schema
+// =============================================================================
+// MindFlow HRMS Database Schema
 // Multi-tenant ready with tenant_id on all relevant tables
+// =============================================================================
+//
+// IMPORTANT: Prisma is READ-ONLY and NOT schema-authoritative.
+// - ALL schema changes MUST go through Alembic migrations
+// - DO NOT run `prisma migrate` or `prisma db push`
+// - Use `prisma generate` only to regenerate the client
+// - Use `prisma db pull` to sync schema from database (with caution)
+//
+// Migration Authority: backend/alembic/
+// Schema Source of Truth: PostgreSQL database
+// =============================================================================
 
 generator client {
   provider = "prisma-client-js"
@@ -173,13 +185,14 @@ model UserRole {
   id        String    @id @default(uuid())
   userId    String
   roleId    String
+  tenantId  String
   createdAt DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, roleId])
-  @@map("user_roles")
+  @@unique([userId, roleId, tenantId])
+  @@map("user_tenant_roles")
 }
 
 // ============================================================================
@@ -247,6 +260,9 @@ model Employee {
   // Bank & Tax Info
   bankDetails       Json?
   taxInfo           Json?
+
+  // Compensation
+  salary            Decimal?  @db.Decimal(12, 2)
 
   // Other
   notes             String?
@@ -330,15 +346,17 @@ model Attendance {
 
   @@unique([employeeId, date])
   @@index([tenantId, date])
-  @@map("attendances")
+  @@map("attendance_records")
 }
 
 enum AttendanceStatus {
   PRESENT
   ABSENT
+  LATE
   HALF_DAY
   ON_LEAVE
   HOLIDAY
+  WEEKLY_OFF
   WEEKEND
   WORK_FROM_HOME
 }
@@ -426,7 +444,7 @@ model Leave {
 
   @@index([tenantId, status])
   @@index([employeeId, startDate, endDate])
-  @@map("leaves")
+  @@map("leave_requests")
 }
 
 enum LeaveStatus {
@@ -763,6 +781,155 @@ enum InquiryStatus {
 }
 
 // ============================================================================
+// TASKS
+// ============================================================================
+
+model TaskStatus {
+  id                  String    @id @default(uuid())
+  tenantId            String
+  code                String
+  name                String
+  description         String?
+  color               String    @default("#6B7280")
+  sortOrder           Int       @default(0) @map("sort_order")
+  isDefault           Boolean   @default(false) @map("is_default")
+  isTerminal          Boolean   @default(false) @map("is_terminal")
+  allowedTransitions  Json      @default("[]") @map("allowed_transitions")
+  isActive            Boolean   @default(true) @map("is_active")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  createdBy           String?   @map("created_by")
+  updatedBy           String?   @map("updated_by")
+
+  // Relations
+  tasks Task[]
+
+  @@unique([tenantId, code])
+  @@map("task_statuses")
+}
+
+model Task {
+  id                      String    @id @default(uuid())
+  tenantId                String    @map("tenant_id")
+  title                   String
+  description             String?
+  statusId                String    @map("status_id")
+  priority                TaskPriority @default(MEDIUM)
+  parentTaskId            String?   @map("parent_task_id")
+  originType              String    @default("MANUAL") @map("origin_type")
+  originReferenceId       String?   @map("origin_reference_id")
+  expectedCompletionDate  DateTime? @db.Date @map("expected_completion_date")
+  actualCompletionDate    DateTime? @db.Date @map("actual_completion_date")
+  estimatedHours          Decimal?  @db.Decimal(6, 2) @map("estimated_hours")
+  actualHours             Decimal?  @db.Decimal(6, 2) @map("actual_hours")
+  tags                    Json      @default("[]")
+  isDeleted               Boolean   @default(false) @map("is_deleted")
+  deletedAt               DateTime? @map("deleted_at")
+  deletionReason          String?   @map("deletion_reason")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+  createdBy               String?   @map("created_by")
+  updatedBy               String?   @map("updated_by")
+
+  // Relations
+  status      TaskStatus    @relation(fields: [statusId], references: [id])
+  parentTask  Task?         @relation("TaskHierarchy", fields: [parentTaskId], references: [id])
+  subtasks    Task[]        @relation("TaskHierarchy")
+  assignees   TaskAssignee[]
+  comments    TaskComment[]
+  attachments TaskAttachment[]
+  dependenciesAsTask      TaskDependency[] @relation("TaskDependencies")
+  dependenciesAsDependsOn TaskDependency[] @relation("DependsOnTask")
+
+  @@index([tenantId, statusId])
+  @@index([tenantId, isDeleted])
+  @@map("tasks")
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model TaskAssignee {
+  id          String    @id @default(uuid())
+  tenantId    String    @map("tenant_id")
+  taskId      String    @map("task_id")
+  userId      String    @map("user_id")
+  assignedBy  String    @map("assigned_by")
+  assignedAt  DateTime  @default(now()) @map("assigned_at")
+  role        String    @default("ASSIGNEE")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@index([tenantId])
+  @@map("task_assignees")
+}
+
+model TaskComment {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  taskId        String    @map("task_id")
+  content       String
+  isInternal    Boolean   @default(false) @map("is_internal")
+  parentId      String?   @map("parent_id")
+  isDeleted     Boolean   @default(false) @map("is_deleted")
+  deletedAt     DateTime? @map("deleted_at")
+  deletionReason String?  @map("deletion_reason")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  createdBy     String    @map("created_by")
+  updatedBy     String    @map("updated_by")
+
+  // Relations
+  task        Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  parentComment TaskComment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies     TaskComment[] @relation("CommentReplies")
+
+  @@index([tenantId, taskId])
+  @@map("task_comments")
+}
+
+model TaskAttachment {
+  id          String    @id @default(uuid())
+  tenantId    String    @map("tenant_id")
+  taskId      String    @map("task_id")
+  fileId      String    @map("file_id")
+  attachedBy  String    @map("attached_by")
+  attachedAt  DateTime  @default(now()) @map("attached_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("task_attachments")
+}
+
+model TaskDependency {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  taskId          String    @map("task_id")
+  dependsOnTaskId String    @map("depends_on_task_id")
+  dependencyType  String    @default("BLOCKS") @map("dependency_type")
+  createdBy       String    @map("created_by")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  task          Task @relation("TaskDependencies", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOnTask Task @relation("DependsOnTask", fields: [dependsOnTaskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, dependsOnTaskId])
+  @@index([tenantId])
+  @@map("task_dependencies")
+}
+
+// ============================================================================
 // AUDIT & NOTIFICATIONS
 // ============================================================================
 
@@ -810,4 +977,1027 @@ enum NotificationType {
   WARNING
   ERROR
   REMINDER
+}
+
+// ============================================================================
+// EXPENSE SERVICE (5 tables)
+// ============================================================================
+
+model ExpenseCategory {
+  id          String    @id @default(uuid())
+  tenantId    String    @map("tenant_id")
+  code        String
+  name        String
+  description String?
+  parentId    String?   @map("parent_id")
+  glAccountCode String? @map("gl_account_code")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  createdBy   String    @map("created_by")
+  updatedBy   String    @map("updated_by")
+
+  // Relations
+  parent      ExpenseCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    ExpenseCategory[] @relation("CategoryHierarchy")
+  expenseItems ExpenseItem[]
+
+  @@unique([tenantId, code])
+  @@map("expense_categories")
+}
+
+model ExpenseRequest {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  requestNumber     String    @map("request_number")
+  employeeId        String    @map("employee_id")
+  title             String
+  description       String?
+  expenseDate       DateTime? @db.Date @map("expense_date")
+  dueDate           DateTime? @db.Date @map("due_date")
+  collectedBy       String?   @map("collected_by")
+  totalAmount       Decimal   @db.Decimal(12, 2) @map("total_amount")
+  currency          String    @default("USD")
+  status            String    @default("DRAFT")
+  submittedAt       DateTime? @map("submitted_at")
+  approvalInstanceId String?  @map("approval_instance_id")
+  reimbursementMethod String  @default("BANK_TRANSFER") @map("reimbursement_method")
+  paymentStatus     String    @default("PENDING") @map("payment_status")
+  paidAt            DateTime? @map("paid_at")
+  paymentReference  String?   @map("payment_reference")
+  notes             String?
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  createdBy         String    @map("created_by")
+  updatedBy         String    @map("updated_by")
+  isDeleted         Boolean   @default(false) @map("is_deleted")
+  deletedAt         DateTime? @map("deleted_at")
+  deletionReason    String?   @map("deletion_reason")
+
+  // Relations
+  items    ExpenseItem[]
+  receipts ExpenseReceipt[]
+  payments PaymentRecord[]
+
+  @@unique([tenantId, requestNumber])
+  @@map("expense_requests")
+}
+
+model ExpenseItem {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  expenseRequestId String   @map("expense_request_id")
+  categoryId      String    @map("category_id")
+  description     String
+  expenseDate     DateTime  @db.Date @map("expense_date")
+  amount          Decimal   @db.Decimal(12, 2)
+  currency        String    @default("USD")
+  quantity        Int       @default(1)
+  unitPrice       Decimal   @db.Decimal(12, 2) @map("unit_price")
+  taxAmount       Decimal?  @db.Decimal(12, 2) @map("tax_amount")
+  isBillable      Boolean   @default(false) @map("is_billable")
+  projectCode     String?   @map("project_code")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  expenseRequest ExpenseRequest  @relation(fields: [expenseRequestId], references: [id], onDelete: Cascade)
+  category       ExpenseCategory @relation(fields: [categoryId], references: [id])
+  receipts       ExpenseReceipt[]
+
+  @@map("expense_items")
+}
+
+model ExpenseReceipt {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  expenseRequestId String   @map("expense_request_id")
+  expenseItemId   String?   @map("expense_item_id")
+  fileId          String    @map("file_id")
+  originalFilename String   @map("original_filename")
+  receiptNumber   String?   @map("receipt_number")
+  receiptDate     DateTime? @db.Date @map("receipt_date")
+  vendorName      String?   @map("vendor_name")
+  ocrData         Json?     @map("ocr_data")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  uploadedBy      String    @map("uploaded_by")
+
+  // Relations
+  expenseRequest ExpenseRequest @relation(fields: [expenseRequestId], references: [id], onDelete: Cascade)
+  expenseItem    ExpenseItem?   @relation(fields: [expenseItemId], references: [id])
+
+  @@map("expense_receipts")
+}
+
+model PaymentRecord {
+  id               String    @id @default(uuid())
+  tenantId         String    @map("tenant_id")
+  expenseRequestId String    @map("expense_request_id")
+  paymentMethod    String    @map("payment_method")
+  amount           Decimal   @db.Decimal(12, 2)
+  currency         String    @default("USD")
+  paymentDate      DateTime  @db.Date @map("payment_date")
+  referenceNumber  String?   @map("reference_number")
+  transactionId    String?   @map("transaction_id")
+  status           String    @default("COMPLETED")
+  notes            String?
+  processedBy      String    @map("processed_by")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  expenseRequest ExpenseRequest @relation(fields: [expenseRequestId], references: [id], onDelete: Cascade)
+
+  @@map("payment_records")
+}
+
+// ============================================================================
+// APPROVAL SERVICE (5 tables)
+// ============================================================================
+
+model ApprovalWorkflow {
+  id          String    @id @default(uuid())
+  tenantId    String    @map("tenant_id")
+  code        String
+  name        String
+  description String?
+  entityType  String    @map("entity_type")
+  isActive    Boolean   @default(true) @map("is_active")
+  version     Int       @default(1)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  createdBy   String    @map("created_by")
+  updatedBy   String    @map("updated_by")
+
+  // Relations
+  steps     ApprovalStep[]
+  instances ApprovalInstance[]
+
+  @@unique([tenantId, code])
+  @@map("approval_workflows")
+}
+
+model ApprovalStep {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  workflowId        String    @map("workflow_id")
+  stepOrder         Int       @map("step_order")
+  name              String
+  approverType      String    @map("approver_type")
+  approverRoleId    String?   @map("approver_role_id")
+  approverUserId    String?   @map("approver_user_id")
+  approverPositionId String?  @map("approver_position_id")
+  escalationHours   Int?      @map("escalation_hours")
+  escalationAction  String?   @map("escalation_action")
+  isRequired        Boolean   @default(true) @map("is_required")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  workflow  ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  decisions ApprovalDecision[]
+
+  @@unique([workflowId, stepOrder])
+  @@map("approval_steps")
+}
+
+model ApprovalInstance {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  workflowId    String    @map("workflow_id")
+  entityType    String    @map("entity_type")
+  entityId      String    @map("entity_id")
+  requesterId   String    @map("requester_id")
+  currentStep   Int       @default(1) @map("current_step")
+  status        String    @default("PENDING")
+  startedAt     DateTime  @default(now()) @map("started_at")
+  completedAt   DateTime? @map("completed_at")
+  finalDecision String?   @map("final_decision")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  workflow  ApprovalWorkflow   @relation(fields: [workflowId], references: [id])
+  decisions ApprovalDecision[]
+
+  @@unique([entityType, entityId])
+  @@map("approval_instances")
+}
+
+model ApprovalDecision {
+  id          String    @id @default(uuid())
+  tenantId    String    @map("tenant_id")
+  instanceId  String    @map("instance_id")
+  stepId      String    @map("step_id")
+  approverId  String    @map("approver_id")
+  decision    String
+  comments    String?
+  decidedAt   DateTime  @default(now()) @map("decided_at")
+  delegatedFrom String? @map("delegated_from")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  instance ApprovalInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  step     ApprovalStep     @relation(fields: [stepId], references: [id])
+
+  @@map("approval_decisions")
+}
+
+model DelegationRule {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  delegatorId   String    @map("delegator_id")
+  delegateeId   String    @map("delegatee_id")
+  entityTypes   Json      @default("[]") @map("entity_types")
+  startDate     DateTime  @db.Date @map("start_date")
+  endDate       DateTime? @db.Date @map("end_date")
+  isActive      Boolean   @default(true) @map("is_active")
+  reason        String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  createdBy     String    @map("created_by")
+
+  @@map("delegation_rules")
+}
+
+// ============================================================================
+// COMPLAINT SERVICE (6 tables)
+// ============================================================================
+
+model ComplaintCategory {
+  id                  String    @id @default(uuid())
+  tenantId            String    @map("tenant_id")
+  code                String
+  name                String
+  description         String?
+  parentId            String?   @map("parent_id")
+  defaultPriority     String    @default("MEDIUM") @map("default_priority")
+  requiresInvestigation Boolean @default(false) @map("requires_investigation")
+  isActive            Boolean   @default(true) @map("is_active")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  createdBy           String    @map("created_by")
+  updatedBy           String    @map("updated_by")
+
+  // Relations
+  parent     ComplaintCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children   ComplaintCategory[] @relation("CategoryHierarchy")
+  complaints Complaint[]
+  slaConfigurations SlaConfiguration[]
+
+  @@unique([tenantId, code])
+  @@map("complaint_categories")
+}
+
+model SlaConfiguration {
+  id                  String    @id @default(uuid())
+  tenantId            String    @map("tenant_id")
+  categoryId          String?   @map("category_id")
+  priority            String
+  responseHours       Int       @map("response_hours")
+  resolutionHours     Int       @map("resolution_hours")
+  escalationEnabled   Boolean   @default(true) @map("escalation_enabled")
+  isActive            Boolean   @default(true) @map("is_active")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  category ComplaintCategory? @relation(fields: [categoryId], references: [id])
+
+  @@unique([tenantId, categoryId, priority])
+  @@map("sla_configurations")
+}
+
+model EscalationRule {
+  id                  String    @id @default(uuid())
+  tenantId            String    @map("tenant_id")
+  name                String
+  triggerType         String    @map("trigger_type")
+  triggerHours        Int       @map("trigger_hours")
+  escalateToRoleId    String?   @map("escalate_to_role_id")
+  escalateToUserId    String?   @map("escalate_to_user_id")
+  notifyOriginalAssignee Boolean @default(true) @map("notify_original_assignee")
+  notifyRequester     Boolean   @default(false) @map("notify_requester")
+  priority            String?
+  categoryId          String?   @map("category_id")
+  isActive            Boolean   @default(true) @map("is_active")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  createdBy           String    @map("created_by")
+
+  @@map("escalation_rules")
+}
+
+model Complaint {
+  id                  String    @id @default(uuid())
+  tenantId            String    @map("tenant_id")
+  complaintNumber     String    @map("complaint_number")
+  categoryId          String    @map("category_id")
+  reporterId          String    @map("reporter_id")
+  reporterType        String    @default("EMPLOYEE") @map("reporter_type")
+  subject             String
+  description         String
+  priority            String    @default("MEDIUM")
+  status              String    @default("OPEN")
+  assignedTo          String?   @map("assigned_to")
+  assignedAt          DateTime? @map("assigned_at")
+  involvedPartyIds    Json      @default("[]") @map("involved_party_ids")
+  isAnonymous         Boolean   @default(false) @map("is_anonymous")
+  isConfidential      Boolean   @default(false) @map("is_confidential")
+  slaResponseDue      DateTime? @map("sla_response_due")
+  slaResolutionDue    DateTime? @map("sla_resolution_due")
+  firstResponseAt     DateTime? @map("first_response_at")
+  resolvedAt          DateTime? @map("resolved_at")
+  resolution          String?
+  satisfactionRating  Int?      @map("satisfaction_rating")
+  satisfactionFeedback String?  @map("satisfaction_feedback")
+  escalationLevel     Int       @default(0) @map("escalation_level")
+  lastEscalatedAt     DateTime? @map("last_escalated_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  createdBy           String    @map("created_by")
+  updatedBy           String    @map("updated_by")
+  isDeleted           Boolean   @default(false) @map("is_deleted")
+  deletedAt           DateTime? @map("deleted_at")
+  deletionReason      String?   @map("deletion_reason")
+
+  // Relations
+  category    ComplaintCategory     @relation(fields: [categoryId], references: [id])
+  actions     ComplaintAction[]
+  attachments ComplaintAttachment[]
+
+  @@unique([tenantId, complaintNumber])
+  @@map("complaints")
+}
+
+model ComplaintAction {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  complaintId   String    @map("complaint_id")
+  actionType    String    @map("action_type")
+  description   String
+  performedBy   String    @map("performed_by")
+  performedAt   DateTime  @default(now()) @map("performed_at")
+  isInternal    Boolean   @default(false) @map("is_internal")
+  previousStatus String?  @map("previous_status")
+  newStatus     String?   @map("new_status")
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  @@map("complaint_actions")
+}
+
+model ComplaintAttachment {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  complaintId   String    @map("complaint_id")
+  fileId        String    @map("file_id")
+  originalFilename String @map("original_filename")
+  attachmentType String   @default("EVIDENCE") @map("attachment_type")
+  description   String?
+  isConfidential Boolean  @default(false) @map("is_confidential")
+  uploadedBy    String    @map("uploaded_by")
+  uploadedAt    DateTime  @default(now()) @map("uploaded_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  @@map("complaint_attachments")
+}
+
+// ============================================================================
+// TRAINING SERVICE (10 tables)
+// ============================================================================
+
+model Course {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  code              String
+  title             String
+  description       String?
+  category          String?
+  difficultyLevel   String    @default("BEGINNER") @map("difficulty_level")
+  durationMinutes   Int       @default(0) @map("duration_minutes")
+  isMandatory       Boolean   @default(false) @map("is_mandatory")
+  mandatoryForRoles Json      @default("[]") @map("mandatory_for_roles")
+  mandatoryForPositions Json  @default("[]") @map("mandatory_for_positions")
+  prerequisites     Json      @default("[]")
+  learningObjectives Json     @default("[]") @map("learning_objectives")
+  thumbnailFileId   String?   @map("thumbnail_file_id")
+  isPublished       Boolean   @default(false) @map("is_published")
+  publishedAt       DateTime? @map("published_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  createdBy         String    @map("created_by")
+  updatedBy         String    @map("updated_by")
+  isDeleted         Boolean   @default(false) @map("is_deleted")
+  deletedAt         DateTime? @map("deleted_at")
+  deletionReason    String?   @map("deletion_reason")
+
+  // Relations
+  content   TrainingContent[]
+  sessions  TrainingSession[]
+  exams     Exam[]
+
+  @@unique([tenantId, code])
+  @@map("courses")
+}
+
+model TrainingContent {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  courseId        String    @map("course_id")
+  contentType     String    @map("content_type")
+  title           String
+  description     String?
+  sortOrder       Int       @default(0) @map("sort_order")
+  fileId          String?   @map("file_id")
+  externalUrl     String?   @map("external_url")
+  durationMinutes Int?      @map("duration_minutes")
+  isRequired      Boolean   @default(true) @map("is_required")
+  passThreshold   Int?      @map("pass_threshold")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdBy       String    @map("created_by")
+  updatedBy       String    @map("updated_by")
+
+  // Relations
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("training_content")
+}
+
+model TrainingSession {
+  id                  String    @id @default(uuid())
+  tenantId            String    @map("tenant_id")
+  courseId            String    @map("course_id")
+  sessionCode         String    @map("session_code")
+  sessionType         String    @default("SELF_PACED") @map("session_type")
+  instructorId        String?   @map("instructor_id")
+  location            String?
+  meetingUrl          String?   @map("meeting_url")
+  startDateTime       DateTime? @map("start_date_time")
+  endDateTime         DateTime? @map("end_date_time")
+  maxParticipants     Int?      @map("max_participants")
+  registrationDeadline DateTime? @map("registration_deadline")
+  status              String    @default("SCHEDULED")
+  notes               String?
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  createdBy           String    @map("created_by")
+  updatedBy           String    @map("updated_by")
+
+  // Relations
+  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  enrollments Enrollment[]
+  attendance  TrainingAttendance[]
+
+  @@unique([tenantId, sessionCode])
+  @@map("training_sessions")
+}
+
+model Enrollment {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  sessionId       String    @map("session_id")
+  employeeId      String    @map("employee_id")
+  enrolledAt      DateTime  @default(now()) @map("enrolled_at")
+  enrolledBy      String    @map("enrolled_by")
+  status          String    @default("ENROLLED")
+  progress        Int       @default(0)
+  completedAt     DateTime? @map("completed_at")
+  score           Int?
+  certificateId   String?   @map("certificate_id")
+  feedbackRating  Int?      @map("feedback_rating")
+  feedbackComment String?   @map("feedback_comment")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  session     TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  certificate Certificate?    @relation(fields: [certificateId], references: [id])
+
+  @@unique([sessionId, employeeId])
+  @@map("enrollments")
+}
+
+model TrainingAttendance {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  sessionId     String    @map("session_id")
+  employeeId    String    @map("employee_id")
+  attendanceDate DateTime @db.Date @map("attendance_date")
+  checkInTime   DateTime? @map("check_in_time")
+  checkOutTime  DateTime? @map("check_out_time")
+  status        String    @default("PRESENT")
+  notes         String?
+  recordedBy    String    @map("recorded_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  session TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, employeeId, attendanceDate])
+  @@map("training_attendance")
+}
+
+model Exam {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  courseId        String    @map("course_id")
+  title           String
+  description     String?
+  examType        String    @default("FINAL") @map("exam_type")
+  timeLimit       Int?      @map("time_limit")
+  passingScore    Int       @default(70) @map("passing_score")
+  maxAttempts     Int       @default(3) @map("max_attempts")
+  shuffleQuestions Boolean  @default(true) @map("shuffle_questions")
+  showResults     Boolean   @default(true) @map("show_results")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdBy       String    @map("created_by")
+  updatedBy       String    @map("updated_by")
+
+  // Relations
+  course    Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions ExamQuestion[]
+  attempts  ExamAttempt[]
+
+  @@map("exams")
+}
+
+model ExamQuestion {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  examId        String    @map("exam_id")
+  questionType  String    @default("MULTIPLE_CHOICE") @map("question_type")
+  questionText  String    @map("question_text")
+  options       Json      @default("[]")
+  correctAnswer Json      @map("correct_answer")
+  explanation   String?
+  points        Int       @default(1)
+  sortOrder     Int       @default(0) @map("sort_order")
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  exam      Exam           @relation(fields: [examId], references: [id], onDelete: Cascade)
+  responses ExamResponse[]
+
+  @@map("exam_questions")
+}
+
+model ExamAttempt {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  examId        String    @map("exam_id")
+  employeeId    String    @map("employee_id")
+  attemptNumber Int       @map("attempt_number")
+  startedAt     DateTime  @default(now()) @map("started_at")
+  completedAt   DateTime? @map("completed_at")
+  score         Int?
+  percentage    Decimal?  @db.Decimal(5, 2)
+  passed        Boolean?
+  timeSpent     Int?      @map("time_spent")
+  status        String    @default("IN_PROGRESS")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  exam      Exam           @relation(fields: [examId], references: [id], onDelete: Cascade)
+  responses ExamResponse[]
+
+  @@unique([examId, employeeId, attemptNumber])
+  @@map("exam_attempts")
+}
+
+model ExamResponse {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  attemptId     String    @map("attempt_id")
+  questionId    String    @map("question_id")
+  answer        Json
+  isCorrect     Boolean?  @map("is_correct")
+  pointsEarned  Int?      @map("points_earned")
+  answeredAt    DateTime  @default(now()) @map("answered_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  attempt  ExamAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question ExamQuestion @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
+  @@map("exam_responses")
+}
+
+model Certificate {
+  id                  String    @id @default(uuid())
+  tenantId            String    @map("tenant_id")
+  certificateNumber   String    @map("certificate_number")
+  employeeId          String    @map("employee_id")
+  courseId            String    @map("course_id")
+  courseTitle         String    @map("course_title")
+  issueDate           DateTime  @db.Date @map("issue_date")
+  expiryDate          DateTime? @db.Date @map("expiry_date")
+  score               Int?
+  grade               String?
+  fileId              String?   @map("file_id")
+  verificationCode    String    @map("verification_code")
+  status              String    @default("ACTIVE")
+  revokedAt           DateTime? @map("revoked_at")
+  revocationReason    String?   @map("revocation_reason")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  issuedBy            String    @map("issued_by")
+
+  // Relations
+  enrollments Enrollment[]
+
+  @@unique([tenantId, certificateNumber])
+  @@unique([tenantId, verificationCode])
+  @@map("certificates")
+}
+
+// ============================================================================
+// MINDMAP SERVICE (4 tables)
+// ============================================================================
+
+model MindMapTemplate {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  name            String
+  description     String?
+  category        String?
+  templateData    Json      @default("{}") @map("template_data")
+  thumbnailFileId String?   @map("thumbnail_file_id")
+  isPublic        Boolean   @default(false) @map("is_public")
+  usageCount      Int       @default(0) @map("usage_count")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdBy       String    @map("created_by")
+  updatedBy       String    @map("updated_by")
+  isDeleted       Boolean   @default(false) @map("is_deleted")
+  deletedAt       DateTime? @map("deleted_at")
+
+  // Relations
+  mindMaps MindMap[]
+
+  @@map("mind_map_templates")
+}
+
+model MindMap {
+  id                  String    @id @default(uuid())
+  tenantId            String    @map("tenant_id")
+  title               String
+  description         String?
+  ownerId             String    @map("owner_id")
+  templateId          String?   @map("template_id")
+  originType          String    @default("MANUAL") @map("origin_type")
+  originReferenceId   String?   @map("origin_reference_id")
+  visibility          String    @default("PRIVATE")
+  collaboratorIds     Json      @default("[]") @map("collaborator_ids")
+  settings            Json      @default("{}") @map("settings")
+  thumbnailFileId     String?   @map("thumbnail_file_id")
+  lastAccessedAt      DateTime  @default(now()) @map("last_accessed_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  createdBy           String    @map("created_by")
+  updatedBy           String    @map("updated_by")
+  isDeleted           Boolean   @default(false) @map("is_deleted")
+  deletedAt           DateTime? @map("deleted_at")
+  deletionReason      String?   @map("deletion_reason")
+
+  // Relations
+  template MindMapTemplate? @relation(fields: [templateId], references: [id])
+  nodes    MindMapNode[]
+
+  @@map("mind_maps")
+}
+
+model MindMapNode {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  mindMapId       String    @map("mind_map_id")
+  parentId        String?   @map("parent_id")
+  nodeType        String    @default("TOPIC") @map("node_type")
+  title           String
+  content         String?
+  positionX       Decimal   @default(0) @db.Decimal(10, 2) @map("position_x")
+  positionY       Decimal   @default(0) @db.Decimal(10, 2) @map("position_y")
+  width           Decimal?  @db.Decimal(10, 2)
+  height          Decimal?  @db.Decimal(10, 2)
+  style           Json      @default("{}")
+  metadata        Json      @default("{}")
+  sortOrder       Int       @default(0) @map("sort_order")
+  isCollapsed     Boolean   @default(false) @map("is_collapsed")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdBy       String    @map("created_by")
+  updatedBy       String    @map("updated_by")
+
+  // Relations
+  mindMap     MindMap          @relation(fields: [mindMapId], references: [id], onDelete: Cascade)
+  parent      MindMapNode?     @relation("NodeHierarchy", fields: [parentId], references: [id])
+  children    MindMapNode[]    @relation("NodeHierarchy")
+  attachments NodeAttachment[]
+
+  @@map("mind_map_nodes")
+}
+
+model NodeAttachment {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  nodeId          String    @map("node_id")
+  attachmentType  String    @map("attachment_type")
+  fileId          String?   @map("file_id")
+  url             String?
+  title           String?
+  description     String?
+  metadata        Json      @default("{}")
+  sortOrder       Int       @default(0) @map("sort_order")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdBy       String    @map("created_by")
+
+  // Relations
+  node MindMapNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@map("node_attachments")
+}
+
+// ============================================================================
+// REPORT SERVICE (3 tables)
+// ============================================================================
+
+model Report {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  code            String
+  name            String
+  description     String?
+  category        String
+  reportType      String    @default("STANDARD") @map("report_type")
+  dataSource      String    @map("data_source")
+  queryTemplate   String    @map("query_template")
+  outputFormats   Json      @default("[\"PDF\", \"EXCEL\"]") @map("output_formats")
+  isSystem        Boolean   @default(false) @map("is_system")
+  isActive        Boolean   @default(true) @map("is_active")
+  allowedRoles    Json      @default("[]") @map("allowed_roles")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdBy       String    @map("created_by")
+  updatedBy       String    @map("updated_by")
+
+  // Relations
+  parameters  ReportParameter[]
+  executions  ReportExecution[]
+
+  @@unique([tenantId, code])
+  @@map("reports")
+}
+
+model ReportParameter {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  reportId        String    @map("report_id")
+  name            String
+  label           String
+  parameterType   String    @map("parameter_type")
+  isRequired      Boolean   @default(false) @map("is_required")
+  defaultValue    String?   @map("default_value")
+  validationRule  String?   @map("validation_rule")
+  options         Json?
+  sortOrder       Int       @default(0) @map("sort_order")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, name])
+  @@map("report_parameters")
+}
+
+model ReportExecution {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  reportId        String    @map("report_id")
+  executedBy      String    @map("executed_by")
+  parameters      Json      @default("{}")
+  status          String    @default("PENDING")
+  startedAt       DateTime? @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  outputFormat    String    @map("output_format")
+  outputFileId    String?   @map("output_file_id")
+  errorMessage    String?   @map("error_message")
+  rowCount        Int?      @map("row_count")
+  executionTime   Int?      @map("execution_time")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@map("report_executions")
+}
+
+// ============================================================================
+// STORAGE SERVICE (1 table)
+// ============================================================================
+
+model FileMetadata {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  originalFilename String   @map("original_filename")
+  storedFilename  String    @map("stored_filename")
+  contentType     String    @map("content_type")
+  fileSize        BigInt    @map("file_size")
+  bucketName      String    @map("bucket_name")
+  objectKey       String    @map("object_key")
+  module          String
+  entityType      String?   @map("entity_type")
+  entityId        String?   @map("entity_id")
+  description     String?
+  checksum        String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdBy       String    @map("created_by")
+  updatedBy       String    @map("updated_by")
+  isDeleted       Boolean   @default(false) @map("is_deleted")
+  deletedAt       DateTime? @map("deleted_at")
+  deletionReason  String?   @map("deletion_reason")
+
+  @@map("file_metadata")
+}
+
+// ============================================================================
+// NOTIFICATION PREFERENCES (additional table for notification service)
+// ============================================================================
+
+model NotificationPreference {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  userId            String    @map("user_id")
+  notificationType  String    @map("notification_type")
+  inAppEnabled      Boolean   @default(true) @map("in_app_enabled")
+  emailEnabled      Boolean   @default(false) @map("email_enabled")
+  pushEnabled       Boolean   @default(false) @map("push_enabled")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@unique([tenantId, userId, notificationType])
+  @@map("notification_preferences")
+}
+
+// ============================================================================
+// BILLING SERVICE (Quotes, Invoices, Exchange Rates)
+// Multi-currency support: INR, USD
+// ============================================================================
+
+model Quote {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  clientId        String    @map("client_id")
+  quoteNumber     String    @map("quote_number")
+  title           String
+  description     String?
+  currency        String    @default("INR") @db.VarChar(3)
+  subtotal        Decimal   @default(0) @db.Decimal(15, 2)
+  taxPercentage   Decimal   @default(0) @map("tax_percentage") @db.Decimal(5, 2)
+  taxAmount       Decimal   @default(0) @map("tax_amount") @db.Decimal(15, 2)
+  totalAmount     Decimal   @default(0) @map("total_amount") @db.Decimal(15, 2)
+  status          String    @default("DRAFT") @db.VarChar(30)
+  validUntil      DateTime? @map("valid_until") @db.Date
+  notes           String?
+  terms           String?
+  issuedAt        DateTime? @map("issued_at")
+  acceptedAt      DateTime? @map("accepted_at")
+  rejectedAt      DateTime? @map("rejected_at")
+  rejectionReason String?   @map("rejection_reason")
+  isDeleted       Boolean   @default(false) @map("is_deleted")
+  deletedAt       DateTime? @map("deleted_at")
+  deletionReason  String?   @map("deletion_reason")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdBy       String    @map("created_by")
+  updatedBy       String    @map("updated_by")
+
+  // Relations
+  items           QuoteItem[]
+  invoices        Invoice[]
+
+  @@unique([tenantId, quoteNumber])
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([status])
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  quoteId     String   @map("quote_id")
+  description String   @db.VarChar(255)
+  quantity    Decimal  @default(1) @db.Decimal(10, 2)
+  rate        Decimal  @db.Decimal(15, 2)
+  amount      Decimal  @db.Decimal(15, 2)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdBy   String   @map("created_by")
+  updatedBy   String   @map("updated_by")
+
+  // Relations
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([quoteId])
+  @@map("quote_items")
+}
+
+model Invoice {
+  id                 String    @id @default(uuid())
+  tenantId           String    @map("tenant_id")
+  clientId           String    @map("client_id")
+  quoteId            String?   @map("quote_id")
+  invoiceNumber      String    @map("invoice_number")
+  title              String
+  description        String?
+  currency           String    @default("INR") @db.VarChar(3)
+  subtotal           Decimal   @default(0) @db.Decimal(15, 2)
+  taxPercentage      Decimal   @default(0) @map("tax_percentage") @db.Decimal(5, 2)
+  taxAmount          Decimal   @default(0) @map("tax_amount") @db.Decimal(15, 2)
+  totalAmount        Decimal   @default(0) @map("total_amount") @db.Decimal(15, 2)
+  status             String    @default("DRAFT") @db.VarChar(30)
+  dueDate            DateTime? @map("due_date") @db.Date
+  notes              String?
+  terms              String?
+  issuedAt           DateTime? @map("issued_at")
+  paidAt             DateTime? @map("paid_at")
+  cancelledAt        DateTime? @map("cancelled_at")
+  cancellationReason String?   @map("cancellation_reason")
+  isDeleted          Boolean   @default(false) @map("is_deleted")
+  deletedAt          DateTime? @map("deleted_at")
+  deletionReason     String?   @map("deletion_reason")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  createdBy          String    @map("created_by")
+  updatedBy          String    @map("updated_by")
+
+  // Relations
+  quote  Quote?        @relation(fields: [quoteId], references: [id])
+  items  InvoiceItem[]
+
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([quoteId])
+  @@index([status])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  invoiceId   String   @map("invoice_id")
+  description String   @db.VarChar(255)
+  quantity    Decimal  @default(1) @db.Decimal(10, 2)
+  rate        Decimal  @db.Decimal(15, 2)
+  amount      Decimal  @db.Decimal(15, 2)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdBy   String   @map("created_by")
+  updatedBy   String   @map("updated_by")
+
+  // Relations
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+model ExchangeRate {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  fromCurrency   String   @map("from_currency") @db.VarChar(3)
+  toCurrency     String   @map("to_currency") @db.VarChar(3)
+  rate           Decimal  @db.Decimal(12, 6)
+  effectiveDate  DateTime @map("effective_date") @db.Date
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdBy      String   @map("created_by")
+  updatedBy      String   @map("updated_by")
+
+  @@index([tenantId])
+  @@index([fromCurrency, toCurrency])
+  @@map("exchange_rates")
 }
