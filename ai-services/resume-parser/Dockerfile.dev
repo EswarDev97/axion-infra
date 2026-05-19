@@ -1,4 +1,4 @@
-# Resume Parser AI Service
+# Resume Parser AI Service - Development
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -24,4 +24,5 @@ COPY . .
 
 EXPOSE 8001
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+# Development mode with hot reload
+CMD ["uvicorn", "app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8001"]

@@ -9,12 +9,12 @@ WORKDIR /app
 # Dependencies stage
 FROM base AS deps
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production
+RUN npm install --only=production
 
 # Build stage
 FROM base AS builder
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm install
 COPY . .
 RUN npx prisma generate
 RUN npm run build
@@ -24,6 +24,9 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+
+# Install curl for healthcheck
+RUN apk add --no-cache curl
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs
