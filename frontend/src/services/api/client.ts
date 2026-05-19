@@ -1,10 +1,12 @@
 /**
- * MindFlow - API Client (lib version)
- * Uses authStore for token management - consolidated auth system
+ * MindFlow - API Client
+ * Per FRONTEND_ARCHITECTURE.md Section 5.1
+ * Axios client with token refresh handling
  */
 
-import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/stores/authStore';
+import type { ApiResponse, ApiError } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api/v1';
 
@@ -33,15 +35,17 @@ function getAccessToken(): string | null {
   return cookieToken;
 }
 
+// Create axios instance
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Include cookies (refresh token)
 });
 
-// Request interceptor - Add auth token from authStore or cookie fallback
+// Request interceptor - Add access token and request ID
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const accessToken = getAccessToken();
@@ -55,12 +59,10 @@ apiClient.interceptors.request.use(
 
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor with token refresh
+// Response interceptor - Handle errors and token refresh
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;
@@ -83,12 +85,12 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Skip auth handling for login/logout endpoints
+    // Skip auth handling for login/logout/refresh endpoints
     const isAuthEndpoint = originalRequest.url?.includes('/auth/login') ||
                            originalRequest.url?.includes('/auth/logout') ||
                            originalRequest.url?.includes('/auth/token/refresh');
 
-    // If 401 and not a retry, and not an auth endpoint, try to refresh token
+    // Handle 401 Unauthorized
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       // Check if we have a token to refresh - if not, don't attempt refresh
       const accessToken = getAccessToken();
@@ -114,18 +116,18 @@ apiClient.interceptors.response.use(
         const response = await apiClient.post<ApiResponse<{ accessToken: string; expiresIn?: number }>>(
           '/auth/token/refresh'
         );
-        const { accessToken: newToken, expiresIn } = response.data.data;
-        useAuthStore.getState().setAccessToken(newToken);
+        const { accessToken, expiresIn } = response.data.data;
+        useAuthStore.getState().setAccessToken(accessToken);
 
         // Update accessToken cookie
         if (typeof document !== 'undefined') {
           const isSecure = window.location.protocol === 'https:';
           const maxAge = expiresIn || 900; // Default 15 min
-          document.cookie = `accessToken=${newToken}; path=/; max-age=${maxAge}; SameSite=Strict${isSecure ? '; Secure' : ''}`;
+          document.cookie = `accessToken=${accessToken}; path=/; max-age=${maxAge}; SameSite=Strict${isSecure ? '; Secure' : ''}`;
         }
 
-        processQueue(null, newToken);
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        processQueue(null, accessToken);
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError as Error, null);
@@ -134,8 +136,7 @@ apiClient.interceptors.response.use(
         if (typeof document !== 'undefined') {
           document.cookie = 'accessToken=; path=/; max-age=0; SameSite=Strict';
         }
-        // Only redirect if not already on login page
-        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        if (typeof window !== 'undefined') {
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);
@@ -144,33 +145,22 @@ apiClient.interceptors.response.use(
       }
     }
 
-    return Promise.reject(error);
+    // Transform error response to consistent format
+    const apiError: ApiError = {
+      status: error.response?.status || 500,
+      code: (error.response?.data as { error?: { code?: string } })?.error?.code || 'UNKNOWN_ERROR',
+      message:
+        (error.response?.data as { error?: { message?: string } })?.error?.message ||
+        'An unexpected error occurred',
+      details: (error.response?.data as { error?: { details?: [] } })?.error?.details || [],
+    };
+
+    return Promise.reject(apiError);
   }
 );
 
-// Helper types
-export interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  meta?: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
-export interface ApiError {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: unknown;
-  };
-}
-
 // Helper functions
-export async function get<T>(url: string, params?: Record<string, any>): Promise<T> {
+export async function get<T>(url: string, params?: object): Promise<T> {
   const response = await apiClient.get<ApiResponse<T>>(url, { params });
   return response.data.data;
 }
@@ -185,7 +175,14 @@ export async function put<T>(url: string, data?: unknown): Promise<T> {
   return response.data.data;
 }
 
+export async function patch<T>(url: string, data?: unknown): Promise<T> {
+  const response = await apiClient.patch<ApiResponse<T>>(url, data);
+  return response.data.data;
+}
+
 export async function del<T>(url: string): Promise<T> {
   const response = await apiClient.delete<ApiResponse<T>>(url);
   return response.data.data;
 }
+
+export { API_BASE_URL };

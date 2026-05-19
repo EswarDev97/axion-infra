@@ -1,4 +1,17 @@
-import { apiClient } from './client';
+/**
+ * MindFlow - Careers API
+ * Public endpoints for job postings and applications
+ */
+
+// Server-side uses internal Docker URL, client-side uses public URL
+const getApiBase = () => {
+  if (typeof window === 'undefined') {
+    // Server-side: use internal Docker network URL
+    return process.env.API_BASE_URL_INTERNAL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api/v1';
+  }
+  // Client-side: use public URL
+  return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api/v1';
+};
 
 export interface JobPosting {
   id: string;
@@ -23,10 +36,14 @@ export interface JobPosting {
   publishedAt: string;
 }
 
+/**
+ * Get all published job postings (server-side)
+ */
 export async function getJobPostings(): Promise<JobPosting[]> {
   try {
+    const API_BASE = getApiBase();
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/public/careers`,
+      `${API_BASE}/public/careers`,
       {
         next: { revalidate: 60 }, // Cache for 60 seconds
       }
@@ -44,10 +61,14 @@ export async function getJobPostings(): Promise<JobPosting[]> {
   }
 }
 
+/**
+ * Get a specific job posting by slug (server-side)
+ */
 export async function getJobPosting(slug: string): Promise<JobPosting | null> {
   try {
+    const API_BASE = getApiBase();
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/public/careers/${slug}`,
+      `${API_BASE}/public/careers/${slug}`,
       {
         next: { revalidate: 60 },
       }
@@ -65,13 +86,19 @@ export async function getJobPosting(slug: string): Promise<JobPosting | null> {
   }
 }
 
+/**
+ * Submit a job application (client-side)
+ * Uses public API URL since this is called from the browser
+ */
 export async function submitApplication(
   slug: string,
   formData: FormData
 ): Promise<{ success: boolean; message?: string }> {
   try {
+    // Always use client-side URL for form submissions
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api/v1';
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/public/careers/${slug}/apply`,
+      `${API_BASE}/public/careers/${slug}/apply`,
       {
         method: 'POST',
         body: formData,
