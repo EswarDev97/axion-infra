@@ -16,8 +16,18 @@ app.set('trust proxy', 1);
 
 // Security middleware
 app.use(helmet());
+
+// CORS - support multiple origins
+const allowedOrigins = config.corsOrigin.split(',').map(o => o.trim());
 app.use(cors({
-  origin: config.corsOrigin,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 }));
 
@@ -30,10 +40,44 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Cookie parser (before body parsing)
 app.use(cookieParser());
+
+// Body parsing - SKIP for all proxied routes to allow http-proxy-middleware to forward the raw body
+// When express.json() parses the body, it consumes the stream, making it unavailable for the proxy
+const skipBodyParserPaths = [
+  '/api/v1/auth',
+  '/api/v1/employees',
+  '/api/v1/departments',
+  '/api/v1/positions',
+  '/api/v1/attendance',
+  '/api/v1/leave',
+  '/api/v1/payroll',
+  '/api/v1/documents',
+  '/api/v1/roles',
+  '/api/v1/tasks',
+  '/api/v1/expenses',
+  '/api/v1/approvals',
+  '/api/v1/notifications',
+  '/api/v1/complaints',
+  '/api/v1/training',
+  '/api/v1/reports',
+  '/api/v1/mindmaps',
+  '/api/v1/billing',
+  '/api/v1/public',
+];
+app.use((req, res, next) => {
+  if (skipBodyParserPaths.some(path => req.path.startsWith(path))) {
+    return next();
+  }
+  express.json({ limit: '10mb' })(req, res, next);
+});
+app.use((req, res, next) => {
+  if (skipBodyParserPaths.some(path => req.path.startsWith(path))) {
+    return next();
+  }
+  express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
+});
 
 // Compression
 app.use(compression());

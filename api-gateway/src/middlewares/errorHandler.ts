@@ -41,13 +41,16 @@ export const errorHandler = (
 
   // Custom AppError
   if (err instanceof AppError) {
+    const errorResponse: { code: string; message: string; details?: unknown } = {
+      code: err.code,
+      message: err.message,
+    };
+    if (err.details) {
+      errorResponse.details = err.details;
+    }
     return res.status(err.statusCode).json({
       success: false,
-      error: {
-        code: err.code,
-        message: err.message,
-        ...(err.details && { details: err.details }),
-      },
+      error: errorResponse,
     });
   }
 
