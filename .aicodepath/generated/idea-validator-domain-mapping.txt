@@ -1,0 +1,7 @@
+// C15 — aicodepath-idea-validator DOMAIN_MAPPING entries
+"idea-validation": ["idea-validator"],
+"go-no-go": ["idea-validator"],
+"validate-idea": ["idea-validator"],
+"pressure-test": ["idea-validator"],
+"competitive-teardown": ["idea-validator"],
+"demand-verification": ["idea-validator"],

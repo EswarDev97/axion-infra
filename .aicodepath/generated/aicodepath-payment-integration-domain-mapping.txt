@@ -1,0 +1,9 @@
+# DOMAIN_MAPPING entries for aicodepath-payment-integration
+# Batch: D2 | Pack: specialists
+
+"stripe-integration": ["payment-integration"],
+"payment-gateway": ["payment-integration"],
+"webhook-handler": ["payment-integration"],
+"subscription-billing": ["payment-integration"],
+"3d-secure": ["payment-integration"],
+"payment-tokenization": ["payment-integration"],

@@ -1,0 +1,1 @@
+| Kotlin 2.x, coroutines, KMP, Jetpack Compose, Flow, sealed classes | `aicodepath-kotlin-expert` |

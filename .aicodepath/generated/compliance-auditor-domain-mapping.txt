@@ -1,0 +1,7 @@
+// C13 — aicodepath-compliance-auditor DOMAIN_MAPPING entries
+"gdpr": ["compliance-auditor"],
+"soc2": ["compliance-auditor"],
+"hipaa": ["compliance-auditor"],
+"pci-dss": ["compliance-auditor"],
+"compliance-audit": ["compliance-auditor"],
+"data-retention": ["compliance-auditor"],

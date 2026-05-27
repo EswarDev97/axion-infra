@@ -1,0 +1,2 @@
+// C14 — aicodepath-llm-architect row for using-aicodepath/SKILL.md Agents table
+| RAG pipeline design, LLM serving (vLLM/TGI), fine-tuning, vector store selection, embedding strategy, quantization | `aicodepath-llm-architect` |

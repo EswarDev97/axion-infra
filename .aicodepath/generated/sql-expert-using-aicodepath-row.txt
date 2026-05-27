@@ -1,0 +1,1 @@
+| SQL CTEs/window functions, keyset pagination, execution plan analysis, index design, EXPLAIN ANALYZE | `aicodepath-sql-expert` |

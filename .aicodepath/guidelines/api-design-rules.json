@@ -1,0 +1,131 @@
+{
+  "$schema": "AICodePath API Design Guidelines",
+  "version": "1.0.0",
+  "description": "API design rules for REST conventions, versioning, response formats, and authentication patterns",
+  "_classification": {
+    "component_types": ["api"],
+    "default_phase": ["code"],
+    "design_applies": true,
+    "design_signals": ["endpoint", "route", "api", "rest", "http", "controller", "request", "response", "auth", "cors", "url", "path", "resource"]
+  },
+  "categories": {
+    "naming": {
+      "description": "Endpoint and resource naming conventions",
+      "component_types": ["api"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "endpoint-kebab-case",
+          "description": "Endpoint paths must use kebab-case",
+          "pattern": "/[A-Z_]",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": ["*.yaml", "*.yml", "*.json", "*routes*", "*controller*"],
+          "message": "Use kebab-case for URL paths (e.g., /user-profiles not /userProfiles or /user_profiles)",
+          "component_types": ["api"],
+          "phase": ["design", "code"],
+          "design_check": "Do all proposed endpoint paths use kebab-case (e.g., /vehicle-listings, /market-valuations)? Flag any camelCase or snake_case path segments."
+        },
+        {
+          "id": "no-verbs-in-url",
+          "description": "Avoid verbs in URL paths - use HTTP methods instead",
+          "pattern": "/(get|create|update|delete|fetch|remove|add)[A-Z]",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": ["*routes*", "*controller*"],
+          "message": "Avoid verbs in URLs. Use HTTP methods: GET /users not GET /getUsers",
+          "component_types": ["api"],
+          "phase": ["design", "code"],
+          "design_check": "Do any proposed endpoint paths contain verbs (getUsers, createOrder, deleteItem)? Replace with noun-based resources and HTTP methods (GET /users, POST /orders, DELETE /items/{id}). BLOCK on verb-in-URL."
+        },
+        {
+          "id": "nested-resource-limit",
+          "description": "Limit nested resource depth to 2 levels",
+          "pattern": "/\\w+/:\\w+/\\w+/:\\w+/\\w+/",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": ["*routes*"],
+          "message": "Limit nested resources to 2 levels. Use query params or separate endpoints for deeper nesting",
+          "component_types": ["api"],
+          "phase": ["design", "code"],
+          "design_check": "Are any proposed API paths nested more than 2 levels deep (e.g., /tenants/{id}/vehicles/{id}/reports/{id}/items)? Flatten using query parameters or separate top-level endpoints."
+        }
+      ]
+    },
+    "responses": {
+      "description": "Response format and structure standards",
+      "component_types": ["api"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-sensitive-in-response",
+          "description": "Never include sensitive data in responses",
+          "pattern": "password|secret|token|apiKey|privateKey",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*response*", "*dto*", "*serializer*", "!**/hooks/**", "!**/__tests__/**", "!**/scripts/**"],
+          "message": "Never expose passwords, secrets, tokens, or API keys in responses",
+          "component_types": ["api"],
+          "phase": ["design", "code"],
+          "design_check": "Does the proposed response schema include any sensitive fields (password, secret, token, apiKey, privateKey)? Remove them. BLOCK on sensitive field exposure."
+        }
+      ]
+    },
+    "authentication": {
+      "description": "Authentication and authorization patterns",
+      "component_types": ["api", "service"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-auth-in-query",
+          "description": "Never pass auth tokens in query parameters",
+          "pattern": "\\?.*token=|\\?.*api_key=|\\?.*apiKey=",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*controller*", "*routes*", "*client*"],
+          "message": "Never pass authentication tokens in URL query parameters",
+          "component_types": ["api"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design pass authentication tokens or API keys in URL query parameters (e.g., ?token=xxx)? If so, use Authorization header instead. BLOCK."
+        }
+      ]
+    },
+    "cors": {
+      "description": "Cross-Origin Resource Sharing configuration",
+      "component_types": ["api"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-wildcard-cors",
+          "description": "Avoid wildcard CORS in production",
+          "pattern": "origin.*\\*|Access-Control-Allow-Origin.*\\*",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*cors*", "*config*", "*middleware*"],
+          "message": "Avoid wildcard (*) CORS origin in production - specify allowed origins",
+          "component_types": ["api"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design specify CORS configuration? Ensure it lists specific allowed origins rather than wildcard (*). BLOCK on wildcard CORS in production design."
+        }
+      ]
+    },
+    "error_semantics": {
+      "description": "Consistent error classification and behavior",
+      "component_types": ["api"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-200-for-errors",
+          "description": "Do not return HTTP 200 for error cases",
+          "pattern": "status\\(200\\).*error|success:\\s*false",
+          "severity": "error",
+          "file_patterns": ["*controller*", "*handler*"],
+          "message": "Do not return 200 OK for error scenarios",
+          "component_types": ["api"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design specify using HTTP 200 for error responses (e.g., success: false in body)? Replace with appropriate status codes (400, 401, 403, 404, 500). BLOCK."
+        }
+      ]
+    }
+  }
+}

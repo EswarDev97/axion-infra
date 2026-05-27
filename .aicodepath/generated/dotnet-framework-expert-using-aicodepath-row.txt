@@ -1,0 +1,1 @@
+| .NET Framework 4.8, WCF, MVC 5, EF6, strangler fig migration to .NET 8, characterization tests | `aicodepath-dotnet-framework-expert` |

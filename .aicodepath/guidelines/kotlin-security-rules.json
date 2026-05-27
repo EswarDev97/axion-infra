@@ -1,0 +1,56 @@
+{
+  "$schema": "AICodePath Kotlin Security Guidelines",
+  "version": "1.0.0",
+  "description": "Security rules for Kotlin files — prevents SQL injection, hardcoded secrets, and runBlocking in production",
+  "_classification": {
+    "component_types": ["security", "all"],
+    "default_phase": ["code"]
+  },
+  "categories": {
+    "injection": {
+      "description": "SQL injection prevention in Kotlin",
+      "component_types": ["security", "all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-sql-injection",
+          "description": "No SQL built with string interpolation — SQL injection risk",
+          "pattern": "\"(?:SELECT|INSERT|UPDATE|DELETE|WHERE)[^\"]*\\$\\{",
+          "severity": "error",
+          "file_patterns": ["*.kt", "*.kts"],
+          "message": "SQL built with string interpolation is vulnerable to injection — use parameterized queries"
+        }
+      ]
+    },
+    "coroutines": {
+      "description": "Coroutine usage safety in production",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-runblocking-prod",
+          "description": "Avoid runBlocking in production coroutine code — blocks thread",
+          "pattern": "\\brunBlocking\\s*\\{",
+          "severity": "warning",
+          "file_patterns": ["*.kt", "!*Test.kt", "!*Tests.kt", "!*Spec.kt"],
+          "message": "runBlocking blocks the calling thread — use suspend functions or coroutineScope instead"
+        }
+      ]
+    },
+    "secrets": {
+      "description": "No hardcoded secrets in Kotlin files",
+      "component_types": ["security", "all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-hardcoded-secrets",
+          "description": "No hardcoded API keys, tokens, or passwords",
+          "pattern": "(apiKey|api_key|password|secret|token|privateKey)\\s*=\\s*['\"][A-Za-z0-9+/=_\\-]{12,}['\"]",
+          "severity": "error",
+          "file_patterns": ["*.kt", "*.kts"],
+          "message": "Hardcoded secret detected — use System.getenv() or a secrets manager"
+        }
+      ]
+    }
+  }
+}

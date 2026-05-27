@@ -1,0 +1,7 @@
+// C16 — aicodepath-technical-writer DOMAIN_MAPPING entries
+"api-documentation": ["technical-writer"],
+"openapi-spec": ["technical-writer"],
+"runbook": ["technical-writer"],
+"adr-writing": ["technical-writer"],
+"changelog-writing": ["technical-writer"],
+"codemap-generation": ["technical-writer"],

@@ -1,0 +1,74 @@
+{
+  "skill_name": "aicodepath-web-design-intelligence",
+  "evals": [
+    {
+      "id": 0,
+      "name": "saas-landing-glassmorphism",
+      "prompt": "Build a SaaS landing page for a developer productivity tool in React + Tailwind. I want it to feel modern and professional.",
+      "expected_output": "A Design Brief recommending Glassmorphism or Bento Grid (modern SaaS defaults), a 10-role hex palette, a Google Fonts pairing with CSS import URL, motion/react animation patterns, and at least one working JSX code example.",
+      "files": [],
+      "expectations": [
+        "Output recommends Glassmorphism OR Bento Grid as primary style (source-canonical SaaS defaults)",
+        "Output contains at least 6 specific hex color codes",
+        "Output references fonts.google.com or includes a Google Fonts @import statement",
+        "Output imports from 'motion/react' (not deprecated 'framer-motion')",
+        "Output includes motion patterns: staggered entrances, hover lift, or scroll reveal",
+        "Output includes at least one working JSX/TSX code block",
+        "Output mentions prefers-reduced-motion handling",
+        "Output warns about at least 2 anti-patterns with severity labels"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "healthcare-portal-minimalism",
+      "prompt": "Create a healthcare patient portal homepage. WCAG AA required. Needs to feel calm and trustworthy.",
+      "expected_output": "A Design Brief recommending Minimalism (or Minimalism + Accessible & Ethical pairing), a calm palette (teal/cyan/navy, never red-primary), Plus Jakarta Sans or similar medical-professional typography, and explicit WCAG AA contrast guidance.",
+      "files": [],
+      "expectations": [
+        "Output recommends Minimalism, Accessible & Ethical, or Neumorphism+Accessible pairing",
+        "Primary color is NOT red (#DC*, #EF*, #FF0* ranges)",
+        "Output mentions WCAG AA (4.5:1) contrast requirement explicitly",
+        "Output warns against using red as primary in healthcare context",
+        "Output includes touch-target size guidance (44x44px or 48x48dp)",
+        "Output mentions focus indicators or keyboard navigation",
+        "Color palette contains calm hues (blues, teals, cyans, or greens as primary)",
+        "Typography choice is professional sans-serif (not playful, not brutalist)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "dev-portfolio-neubrutalism",
+      "prompt": "Make me a creative developer portfolio — something bold and brutalist, with hard shadows and chunky borders.",
+      "expected_output": "A Design Brief loading the Neubrutalism scaffold, using canonical colors (#FFEB3B yellow, #FF5252 red, #000 borders), 3px borders, 4px offset hard shadows (no blur), 0 border-radius, and snappy linear-timing animations.",
+      "files": [],
+      "expectations": [
+        "Output uses Neubrutalism as the primary style",
+        "Output includes canonical color #FFEB3B OR #FFDB58 OR #FF5252 (source-verified)",
+        "Output includes 'border: 3px solid' or equivalent Tailwind border-3",
+        "Output includes hard shadow pattern '4px 4px 0' or '5px 5px 0' or '6px 6px 0' (no blur)",
+        "Output uses border-radius: 0 OR rounded-none OR --radius: 0",
+        "Output uses motion/react with linear/duration:0 or spring with low stiffness (snappy, not smooth)",
+        "Output mentions bold/black font weight (700-900)",
+        "Output includes at least one working JSX/TSX code block using the Neubrutalism pattern"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "claymorphism-motor-showroom",
+      "prompt": "Improve the https://www.khivrajmotors.com/ website using Claymorphism design style. Review the existing pages and propose a redesign with specific code examples.",
+      "expected_output": "A Design Brief that (1) loads the Claymorphism scaffold, (2) warns about the domain mismatch (Claymorphism is for children's/education apps per source, not motor showrooms), (3) still delivers the requested Claymorphism redesign with canonical #F4F1FA background (never pure white), 3-4px borders, dual inset+outer shadows, bouncy spring physics, and specific code examples.",
+      "files": [],
+      "expectations": [
+        "Output uses Claymorphism as the primary style (honors explicit user preference)",
+        "Output warns about domain mismatch — Claymorphism is unusual for automotive/motor showrooms",
+        "Output uses canonical background #F4F1FA (NEVER pure white) per source row 82",
+        "Output includes 3-4px borders (source canonical)",
+        "Output includes dual shadow pattern: drop shadow + inset shadows",
+        "Output mentions cubic-bezier(0.34, 1.56) or bouncy spring physics",
+        "Output includes pastel palette (peach/blue/mint/lilac/violet per source)",
+        "Output attempts to analyze or reference the existing khivrajmotors.com site",
+        "Output includes at least one working JSX/TSX or HTML code block"
+      ]
+    }
+  ]
+}

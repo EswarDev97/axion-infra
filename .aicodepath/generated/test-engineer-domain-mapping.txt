@@ -1,0 +1,1 @@
+tdd, test-strategy, coverage-threshold, test-data-factory, mutation-testing, stryker

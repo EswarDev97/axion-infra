@@ -1,0 +1,15 @@
+{
+  "version": "2.0",
+  "description": "Project-specific preference rules (v2.0 schema)",
+  "repo": "",
+  "created_at": null,
+  "updated_at": null,
+  "rules": [],
+  "signalHistory": [],
+  "statistics": {
+    "totalRules": 0,
+    "totalSignals": 0,
+    "sessionsAnalyzed": 0,
+    "lastSessionId": null
+  }
+}

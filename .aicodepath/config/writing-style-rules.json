@@ -1,0 +1,419 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "2.0.0",
+  "description": "AI writing pattern detection rules based on Wikipedia's 'Signs of AI writing' guide",
+  "source": "https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing",
+  "categories": {
+    "content_patterns": {
+      "description": "Patterns related to content and meaning",
+      "patterns": [
+        {
+          "id": "inflated_significance",
+          "name": "Undue Emphasis on Significance/Legacy",
+          "severity": "high",
+          "description": "LLM writing puffs up importance by adding statements about how arbitrary aspects represent or contribute to broader topics",
+          "trigger_words": [
+            "stands as",
+            "serves as",
+            "is a testament",
+            "is a reminder",
+            "vital role",
+            "significant role",
+            "crucial role",
+            "pivotal role",
+            "key role",
+            "pivotal moment",
+            "key moment",
+            "underscores",
+            "highlights its importance",
+            "highlights its significance",
+            "reflects broader",
+            "symbolizing its ongoing",
+            "symbolizing its enduring",
+            "symbolizing its lasting",
+            "contributing to the",
+            "setting the stage for",
+            "marking the",
+            "shaping the",
+            "represents a shift",
+            "marks a shift",
+            "key turning point",
+            "evolving landscape",
+            "focal point",
+            "indelible mark",
+            "deeply rooted"
+          ],
+          "example_bad": "The Statistical Institute was officially established in 1989, marking a pivotal moment in the evolution of regional statistics.",
+          "example_good": "The Statistical Institute was established in 1989 to collect and publish regional statistics."
+        },
+        {
+          "id": "notability_emphasis",
+          "name": "Undue Emphasis on Notability/Media Coverage",
+          "severity": "medium",
+          "description": "LLMs hit readers over the head with claims of notability without context",
+          "trigger_words": [
+            "independent coverage",
+            "local media outlets",
+            "regional media outlets",
+            "national media outlets",
+            "written by a leading expert",
+            "active social media presence"
+          ],
+          "example_bad": "Her views have been cited in The New York Times, BBC, and Financial Times. She maintains an active social media presence.",
+          "example_good": "In a 2024 New York Times interview, she argued that AI regulation should focus on outcomes rather than methods."
+        },
+        {
+          "id": "superficial_ing_analyses",
+          "name": "Superficial Analyses with -ing Endings",
+          "severity": "high",
+          "description": "AI chatbots tack present participle (-ing) phrases onto sentences to add fake depth",
+          "trigger_words": [
+            "highlighting",
+            "underscoring",
+            "emphasizing",
+            "ensuring",
+            "reflecting",
+            "symbolizing",
+            "contributing to",
+            "cultivating",
+            "fostering",
+            "encompassing",
+            "showcasing"
+          ],
+          "example_bad": "The temple's color palette resonates with the region's natural beauty, symbolizing Texas bluebonnets, reflecting the community's deep connection to the land.",
+          "example_good": "The temple uses blue, green, and gold colors. The architect said these were chosen to reference local bluebonnets and the Gulf coast."
+        },
+        {
+          "id": "promotional_language",
+          "name": "Promotional/Advertisement-like Language",
+          "severity": "high",
+          "description": "LLMs have serious problems keeping a neutral tone, especially for cultural heritage topics",
+          "trigger_words": [
+            "boasts a",
+            "vibrant",
+            "rich cultural heritage",
+            "profound",
+            "enhancing its",
+            "showcasing",
+            "exemplifies",
+            "commitment to",
+            "natural beauty",
+            "nestled",
+            "in the heart of",
+            "groundbreaking",
+            "renowned",
+            "breathtaking",
+            "must-visit",
+            "stunning"
+          ],
+          "example_bad": "Nestled within the breathtaking region, the town stands as a vibrant place with a rich cultural heritage and stunning natural beauty.",
+          "example_good": "The town is known for its weekly market and 18th-century church."
+        },
+        {
+          "id": "vague_attributions",
+          "name": "Vague Attributions and Weasel Words",
+          "severity": "high",
+          "description": "AI chatbots attribute opinions to vague authorities without specific sources",
+          "trigger_words": [
+            "industry reports",
+            "observers have cited",
+            "experts argue",
+            "experts believe",
+            "some critics argue",
+            "several sources",
+            "several publications"
+          ],
+          "example_bad": "Experts believe it plays a crucial role in the regional ecosystem.",
+          "example_good": "The river supports several endemic fish species, according to a 2019 survey by the Chinese Academy of Sciences."
+        },
+        {
+          "id": "formulaic_sections",
+          "name": "Outline-like Challenges and Future Prospects Sections",
+          "severity": "medium",
+          "description": "Many LLM-generated articles include formulaic 'Challenges' sections",
+          "trigger_words": [
+            "despite its",
+            "faces several challenges",
+            "despite these challenges",
+            "challenges and legacy",
+            "future outlook"
+          ],
+          "example_bad": "Despite its industrial prosperity, the area faces challenges typical of urban areas. Despite these challenges, it continues to thrive.",
+          "example_good": "Traffic congestion increased after 2015 when three new IT parks opened. The municipal corporation began a stormwater drainage project in 2022."
+        }
+      ]
+    },
+    "language_patterns": {
+      "description": "Patterns related to word choice and grammar",
+      "patterns": [
+        {
+          "id": "ai_vocabulary",
+          "name": "Overused AI Vocabulary Words",
+          "severity": "high",
+          "description": "These words appear far more frequently in post-2023 text and often co-occur",
+          "trigger_words": [
+            "additionally",
+            "align with",
+            "crucial",
+            "delve",
+            "emphasizing",
+            "enduring",
+            "enhance",
+            "fostering",
+            "garner",
+            "highlight",
+            "interplay",
+            "intricate",
+            "intricacies",
+            "key",
+            "landscape",
+            "pivotal",
+            "showcase",
+            "tapestry",
+            "testament",
+            "underscore",
+            "valuable",
+            "vibrant",
+            "moreover",
+            "furthermore",
+            "nevertheless",
+            "comprehensive",
+            "robust",
+            "seamless",
+            "leverage"
+          ],
+          "example_bad": "Additionally, a distinctive feature is the incorporation of camel meat. An enduring testament to Italian colonial influence is the widespread adoption of pasta in the local culinary landscape.",
+          "example_good": "Somali cuisine also includes camel meat, which is considered a delicacy. Pasta dishes, introduced during Italian colonization, remain common."
+        },
+        {
+          "id": "copula_avoidance",
+          "name": "Avoidance of is/are (Copula Avoidance)",
+          "severity": "medium",
+          "description": "LLMs substitute elaborate constructions for simple copulas",
+          "trigger_words": [
+            "serves as",
+            "stands as",
+            "marks",
+            "represents",
+            "boasts",
+            "features",
+            "offers"
+          ],
+          "example_bad": "Gallery 825 serves as LAAA's exhibition space. The gallery features four separate spaces and boasts over 3,000 square feet.",
+          "example_good": "Gallery 825 is LAAA's exhibition space. The gallery has four rooms totaling 3,000 square feet."
+        },
+        {
+          "id": "negative_parallelisms",
+          "name": "Negative Parallelisms",
+          "severity": "medium",
+          "description": "Constructions like 'Not only...but...' or 'It's not just about...' are overused",
+          "trigger_patterns": [
+            "not only.*but also",
+            "it's not just about.*it's",
+            "not merely.*but",
+            "it's not just.*it's"
+          ],
+          "example_bad": "It's not just about the beat riding under the vocals; it's part of the aggression. It's not merely a song, it's a statement.",
+          "example_good": "The heavy beat adds to the aggressive tone."
+        },
+        {
+          "id": "rule_of_three",
+          "name": "Rule of Three Overuse",
+          "severity": "medium",
+          "description": "LLMs force ideas into groups of three to appear comprehensive",
+          "example_bad": "The event features keynote sessions, panel discussions, and networking opportunities. Attendees can expect innovation, inspiration, and industry insights.",
+          "example_good": "The event includes talks and panels. There's also time for informal networking between sessions."
+        },
+        {
+          "id": "elegant_variation",
+          "name": "Elegant Variation (Synonym Cycling)",
+          "severity": "medium",
+          "description": "AI has repetition-penalty code causing excessive synonym substitution",
+          "example_bad": "The protagonist faces many challenges. The main character must overcome obstacles. The central figure eventually triumphs. The hero returns home.",
+          "example_good": "The protagonist faces many challenges but eventually triumphs and returns home."
+        },
+        {
+          "id": "false_ranges",
+          "name": "False Ranges",
+          "severity": "medium",
+          "description": "LLMs use 'from X to Y' constructions where X and Y aren't on a meaningful scale",
+          "trigger_patterns": [
+            "from.*to.*from.*to"
+          ],
+          "example_bad": "Our journey through the universe has taken us from the singularity of the Big Bang to the grand cosmic web, from the birth and death of stars to the enigmatic dance of dark matter.",
+          "example_good": "The book covers the Big Bang, star formation, and current theories about dark matter."
+        }
+      ]
+    },
+    "style_patterns": {
+      "description": "Patterns related to formatting and presentation",
+      "patterns": [
+        {
+          "id": "em_dash_overuse",
+          "name": "Em Dash Overuse",
+          "severity": "medium",
+          "description": "LLMs use em dashes more than humans, mimicking 'punchy' sales writing",
+          "example_bad": "The term is primarily promoted by Dutch institutions—not by the people themselves. You don't say 'Netherlands, Europe' as an address—yet this mislabeling continues—even in official documents.",
+          "example_good": "The term is primarily promoted by Dutch institutions, not by the people themselves. You don't say 'Netherlands, Europe' as an address, yet this mislabeling continues in official documents."
+        },
+        {
+          "id": "boldface_overuse",
+          "name": "Overuse of Boldface",
+          "severity": "low",
+          "description": "AI chatbots emphasize phrases in boldface mechanically",
+          "example_bad": "It blends **OKRs (Objectives and Key Results)**, **KPIs (Key Performance Indicators)**, and visual strategy tools such as the **Business Model Canvas (BMC)**.",
+          "example_good": "It blends OKRs, KPIs, and visual strategy tools like the Business Model Canvas and Balanced Scorecard."
+        },
+        {
+          "id": "inline_header_lists",
+          "name": "Inline-Header Vertical Lists",
+          "severity": "medium",
+          "description": "AI outputs lists where items start with bolded headers followed by colons",
+          "example_bad": "- **User Experience:** The user experience has been significantly improved.\n- **Performance:** Performance has been enhanced through optimized algorithms.\n- **Security:** Security has been strengthened with end-to-end encryption.",
+          "example_good": "The update improves the interface, speeds up load times through optimized algorithms, and adds end-to-end encryption."
+        },
+        {
+          "id": "title_case_headings",
+          "name": "Title Case in Headings",
+          "severity": "low",
+          "description": "AI chatbots capitalize all main words in headings inappropriately",
+          "example_bad": "## Strategic Negotiations And Global Partnerships",
+          "example_good": "## Strategic negotiations and global partnerships"
+        },
+        {
+          "id": "emoji_decoration",
+          "name": "Emoji Decoration",
+          "severity": "medium",
+          "description": "AI chatbots often decorate headings or bullet points with emojis",
+          "example_bad": "🚀 **Launch Phase:** The product launches in Q3\n💡 **Key Insight:** Users prefer simplicity",
+          "example_good": "The product launches in Q3. User research showed a preference for simplicity."
+        },
+        {
+          "id": "curly_quotes",
+          "name": "Curly Quotation Marks",
+          "severity": "low",
+          "description": "ChatGPT uses curly quotes instead of straight quotes",
+          "note": "Check for typographic quotes like "" instead of straight quotes"
+        }
+      ]
+    },
+    "communication_patterns": {
+      "description": "Patterns related to conversational artifacts",
+      "patterns": [
+        {
+          "id": "collaborative_artifacts",
+          "name": "Collaborative Communication Artifacts",
+          "severity": "high",
+          "description": "Text meant as chatbot correspondence gets pasted as content",
+          "trigger_words": [
+            "I hope this helps",
+            "of course!",
+            "certainly!",
+            "you're absolutely right",
+            "would you like",
+            "let me know",
+            "here is a"
+          ],
+          "example_bad": "Here is an overview of the French Revolution. I hope this helps! Let me know if you'd like me to expand on any section.",
+          "example_good": "The French Revolution began in 1789 when financial crisis and food shortages led to widespread unrest."
+        },
+        {
+          "id": "knowledge_cutoff_disclaimers",
+          "name": "Knowledge-Cutoff Disclaimers",
+          "severity": "high",
+          "description": "AI disclaimers about incomplete information get left in text",
+          "trigger_words": [
+            "as of",
+            "up to my last training update",
+            "while specific details are limited",
+            "while specific details are scarce",
+            "based on available information"
+          ],
+          "example_bad": "While specific details about the company's founding are not extensively documented in readily available sources, it appears to have been established sometime in the 1990s.",
+          "example_good": "The company was founded in 1994, according to its registration documents."
+        },
+        {
+          "id": "sycophantic_tone",
+          "name": "Sycophantic/Servile Tone",
+          "severity": "high",
+          "description": "Overly positive, people-pleasing language",
+          "trigger_words": [
+            "great question",
+            "you're absolutely right",
+            "that's an excellent point",
+            "wonderful observation",
+            "brilliant insight"
+          ],
+          "example_bad": "Great question! You're absolutely right that this is a complex topic. That's an excellent point about the economic factors.",
+          "example_good": "The economic factors you mentioned are relevant here."
+        }
+      ]
+    },
+    "filler_and_hedging": {
+      "description": "Patterns related to unnecessary words and excessive qualification",
+      "patterns": [
+        {
+          "id": "filler_phrases",
+          "name": "Filler Phrases",
+          "severity": "medium",
+          "description": "Unnecessarily wordy constructions",
+          "replacements": {
+            "in order to achieve this goal": "to achieve this",
+            "due to the fact that": "because",
+            "at this point in time": "now",
+            "in the event that": "if",
+            "has the ability to": "can",
+            "it is important to note that": ""
+          }
+        },
+        {
+          "id": "excessive_hedging",
+          "name": "Excessive Hedging",
+          "severity": "medium",
+          "description": "Over-qualifying statements",
+          "example_bad": "It could potentially possibly be argued that the policy might have some effect on outcomes.",
+          "example_good": "The policy may affect outcomes."
+        },
+        {
+          "id": "generic_positive_conclusions",
+          "name": "Generic Positive Conclusions",
+          "severity": "medium",
+          "description": "Vague upbeat endings",
+          "trigger_words": [
+            "the future looks bright",
+            "exciting times lie ahead",
+            "continue their journey",
+            "toward excellence",
+            "a major step in the right direction"
+          ],
+          "example_bad": "The future looks bright for the company. Exciting times lie ahead as they continue their journey toward excellence.",
+          "example_good": "The company plans to open two more locations next year."
+        }
+      ]
+    }
+  },
+  "add_soul_guidance": {
+    "description": "Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as obvious as slop.",
+    "signs_of_soulless_writing": [
+      "Every sentence is the same length and structure",
+      "No opinions, just neutral reporting",
+      "No acknowledgment of uncertainty or mixed feelings",
+      "No first-person perspective when appropriate",
+      "No humor, no edge, no personality",
+      "Reads like a Wikipedia article or press release"
+    ],
+    "how_to_add_voice": {
+      "have_opinions": "Don't just report facts - react to them. 'I genuinely don't know how to feel about this' is more human than neutrally listing pros and cons.",
+      "vary_rhythm": "Short punchy sentences. Then longer ones that take their time getting where they're going. Mix it up.",
+      "acknowledge_complexity": "Real humans have mixed feelings. 'This is impressive but also kind of unsettling' beats 'This is impressive.'",
+      "use_first_person": "First person isn't unprofessional - it's honest. 'I keep coming back to...' or 'Here's what gets me...' signals a real person thinking.",
+      "let_mess_in": "Perfect structure feels algorithmic. Tangents, asides, and half-formed thoughts are human.",
+      "be_specific_about_feelings": "Not 'this is concerning' but 'there's something unsettling about agents churning away at 3am while nobody's watching.'"
+    }
+  },
+  "meta": {
+    "credits": "Based on Wikipedia's 'Signs of AI writing' maintained by WikiProject AI Cleanup, and humanizer skill by @blader",
+    "key_insight": "LLMs use statistical algorithms to guess what should come next. The result tends toward the most statistically likely result that applies to the widest variety of cases.",
+    "updated": "2026-02-04"
+  }
+}

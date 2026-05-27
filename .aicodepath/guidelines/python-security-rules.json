@@ -1,0 +1,64 @@
+{
+  "$schema": "AICodePath Python Security Guidelines",
+  "version": "1.0.0",
+  "description": "Security rules for Python files — prevents eval/exec, unsafe deserialization, shell injection, and secrets",
+  "_classification": {
+    "component_types": ["security", "all"],
+    "default_phase": ["code"]
+  },
+  "categories": {
+    "code-injection": {
+      "description": "Rules preventing code injection in Python",
+      "component_types": ["security", "all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-eval-exec",
+          "description": "No eval() or exec() — arbitrary code execution risk",
+          "pattern": "\\b(eval|exec)\\s*\\(",
+          "severity": "error",
+          "file_patterns": ["*.py", "!**/test_*.py", "!**/*_test.py"],
+          "message": "eval()/exec() allow arbitrary code execution — parse input safely instead"
+        },
+        {
+          "id": "no-shell-true",
+          "description": "No subprocess with shell=True — shell injection risk",
+          "pattern": "shell\\s*=\\s*True",
+          "severity": "error",
+          "file_patterns": ["*.py"],
+          "message": "shell=True passes command to the shell — use list arguments instead to prevent injection"
+        }
+      ]
+    },
+    "deserialization": {
+      "description": "Unsafe deserialization rules",
+      "component_types": ["security", "all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-pickle-untrusted",
+          "description": "Pickle deserialization of untrusted data allows RCE",
+          "pattern": "pickle\\.loads?\\(",
+          "severity": "error",
+          "file_patterns": ["*.py"],
+          "message": "pickle.load/loads on untrusted data allows remote code execution — use JSON or a safe format"
+        }
+      ]
+    },
+    "secrets": {
+      "description": "No hardcoded secrets in Python files",
+      "component_types": ["security", "all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-hardcoded-secrets",
+          "description": "No hardcoded API keys, tokens, or passwords",
+          "pattern": "(api_key|password|secret|token|private_key)\\s*=\\s*['\"][A-Za-z0-9+/=_\\-]{12,}['\"]",
+          "severity": "error",
+          "file_patterns": ["*.py"],
+          "message": "Hardcoded secret detected — use os.environ or a secrets manager"
+        }
+      ]
+    }
+  }
+}

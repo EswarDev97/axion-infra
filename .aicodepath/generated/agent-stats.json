@@ -1,0 +1,19 @@
+{
+  "version": "2.12.0",
+  "generated_at": "2026-04-20T19:23:42.761Z",
+  "totals": {
+    "agents": 109,
+    "skills": 103,
+    "hooks": 43
+  },
+  "agents_by_pack": {
+    "specialists": 41,
+    "design": 8,
+    "core": 8,
+    "infra": 8,
+    "quality": 7,
+    "lang": 27,
+    "data-ai": 5,
+    "planning": 5
+  }
+}

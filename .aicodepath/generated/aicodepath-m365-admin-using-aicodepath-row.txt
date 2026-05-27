@@ -1,0 +1,4 @@
+# using-aicodepath SKILL.md row for aicodepath-m365-admin
+# Batch: D4 | Pack: specialists
+
+| Microsoft 365 administration — Exchange Online, Teams, SharePoint, Microsoft Graph API, PowerShell automation for M365 | `aicodepath-m365-admin` |

@@ -1,0 +1,1 @@
+nextjs, next-js, app-router, next-server-actions, next-config, next-image

@@ -1,0 +1,4 @@
+# using-aicodepath SKILL.md row for aicodepath-legal-advisor
+# Batch: D4 | Pack: specialists
+
+| Contract drafting, GDPR/CCPA compliance, IP protection, terms of service, open source license review, vendor risk | `aicodepath-legal-advisor` |

@@ -1,0 +1,82 @@
+[
+  {
+    "query": "I'm building a Teams tab app and need to wire up FluentProvider at the root with our brand's custom color ramp. We're on @fluentui/react-components v9. How do I create a 16-shade brand palette and pass it as a custom theme?",
+    "should_trigger": true
+  },
+  {
+    "query": "We're following the 5-file component pattern for a custom StatusBadge in our Teams app — got the .tsx, .types.ts, and useStatusBadge.ts done. Now in renderStatusBadge.tsx I keep getting slot props not being forwarded. Should I be using assertSlots or getSlots?",
+    "should_trigger": true
+  },
+  {
+    "query": "Our Fluent UI DataGrid isn't showing sort indicators when users click column headers. makeStyles styles are applied fine. The column def has sortable: true set but nothing happens on click. Any idea what wiring I'm missing?",
+    "should_trigger": true
+  },
+  {
+    "query": "need to build a login form with fluent ui — Input for email, Dropdown for region, and a submit button. designer wants inline error messages under each field with a red border when invalid. what's the right way to connect aria-invalid and the error text?",
+    "should_trigger": true
+  },
+  {
+    "query": "We're building the iOS version of our Teams feature with fluentui-apple. The design calls for a Segmented Control to switch between three content views. Which Swift component do I use and is it available on Android too so we can share the design?",
+    "should_trigger": true
+  },
+  {
+    "query": "My renderButton.tsx in a @fluentui/react-components custom component isn't spreading the icon slot's className or style. I double-checked that I'm using assertSlots. Could it be a missing pragma at the top of the file?",
+    "should_trigger": true
+  },
+  {
+    "query": "setting up entrance animations for a Teams sidebar panel using Fluent 2 motion — want the panel to slide in from the left on open and fade out on close. not sure if i should use createPresenceComponent or createMotionComponent for this",
+    "should_trigger": true
+  },
+  {
+    "query": "In our Fluent UI app all the tokens like colorNeutralBackground1 and colorBrandForeground1 resolve to empty strings in dark mode even though I wrapped everything in FluentProvider with webDarkTheme. Light mode works fine. What am I missing?",
+    "should_trigger": true
+  },
+  {
+    "query": "We're adding a Drawer component to replace our custom slide-out panel in our @fluentui/react-components app. Trying to decide between overlay and inline modes — when should I use each, and does the Drawer need to be a direct child of FluentProvider?",
+    "should_trigger": true
+  },
+  {
+    "query": "Working on the Android version of our Teams mobile app with fluentui-android. I need a progress indicator while data loads and an avatar with initials in the toolbar. Are those components available in the Android library?",
+    "should_trigger": true
+  },
+  {
+    "query": "We're migrating our component library from MUI v5 to Chakra UI 2. A lot of our components use MUI's makeStyles pattern. What's the cleanest way to rewrite those as Chakra's sx prop or emotion-based styles without breaking the component API?",
+    "should_trigger": false
+  },
+  {
+    "query": "Building a React Native app for both iOS and Android that needs to match our web design tokens. We're looking at Tamagui vs NativeWind for cross-platform styling. Which gives better token sharing between web and native?",
+    "should_trigger": false
+  },
+  {
+    "query": "Our Next.js app uses shadcn/ui. I have an Input and a Select wrapped in a custom FormField component that needs to show inline validation errors with aria-describedby pointing to the error message. How do I wire that up without react-hook-form?",
+    "should_trigger": false
+  },
+  {
+    "query": "Tailwind is polluting class names in our design system's components — specifically when we use the component library inside a Tailwind-prefixed app the base styles bleed. How do I scope Tailwind with a prefix config so it doesn't conflict?",
+    "should_trigger": false
+  },
+  {
+    "query": "I need to build a semantic token system from scratch for a new design system — starting with brand blue #0058D0. How do I derive a full set of 16 alias tokens for text, surface, border, and interactive states in both light and dark mode?",
+    "should_trigger": false
+  },
+  {
+    "query": "Flutter app targeting Android — designer wants a circular progress indicator while API calls are pending and an avatar with initials in the AppBar. Is CupertinoActivityIndicator usable on Android or do I need a different widget?",
+    "should_trigger": false
+  },
+  {
+    "query": "building a SwiftUI app (internal tooling, not Teams) and need a segmented picker for 3 tabs at the top of a screen. want to style it with a custom accent color. how do i do this with only SwiftUI native components, no third-party pods?",
+    "should_trigger": false
+  },
+  {
+    "query": "We use Ant Design in our React app. I want our Form.Item error messages to automatically set aria-describedby on the child Input, the same way some other component libraries do it automatically. What's the best way to add that wiring without forking antd?",
+    "should_trigger": false
+  },
+  {
+    "query": "want to add page transition animations to our Next.js 14 app using framer-motion. specifically AnimatePresence so that pages slide in on forward navigation and fade out on back. whats the right pattern for app router?",
+    "should_trigger": false
+  },
+  {
+    "query": "Our React dashboard uses custom CSS modules and we need to hit WCAG 2.1 AA. What are the minimum contrast ratios for body text vs large text, how do we check focus ring visibility programmatically, and are there any automated tools we should add to CI?",
+    "should_trigger": false
+  }
+]

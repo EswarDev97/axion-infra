@@ -1,0 +1,114 @@
+{
+  "$schema": "AICodePath Python Lint Guidelines",
+  "version": "1.0.0",
+  "description": "Code quality lint rules for Python — enforces type hints, clean logging, and safe patterns",
+  "_classification": {
+    "component_types": [
+      "all"
+    ],
+    "default_phase": [
+      "code"
+    ]
+  },
+  "categories": {
+    "logging": {
+      "description": "Enforce structured logging over print statements",
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-print",
+          "description": "No print() in production Python — use logging module",
+          "pattern": "\\bprint\\s*\\(",
+          "severity": "warning",
+          "file_patterns": [
+            "*.py",
+            "!**/test_*.py",
+            "!**/*_test.py",
+            "!**/scripts/**"
+          ],
+          "message": "Replace print() with logging.info/debug/warning for structured output"
+        }
+      ]
+    },
+    "type-quality": {
+      "description": "Python type annotation quality rules",
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "type-hints",
+          "description": "Public functions should have type hints",
+          "pattern": "^def\\s+(?!_)\\w+\\s*\\([^)]*\\)\\s*:",
+          "severity": "info",
+          "file_patterns": [
+            "*.py"
+          ],
+          "message": "Consider adding type hints to public functions for better IDE support and safety"
+        },
+        {
+          "id": "no-bare-except",
+          "description": "No bare except — always specify the exception type",
+          "pattern": "except\\s*:",
+          "severity": "warning",
+          "file_patterns": [
+            "*.py"
+          ],
+          "message": "Bare 'except:' catches all exceptions including SystemExit — use 'except Exception:' or a specific type"
+        }
+      ]
+    },
+    "defaults": {
+      "description": "Python default argument safety",
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-mutable-default",
+          "description": "No mutable default arguments (list, dict) — shared across calls",
+          "pattern": "def\\s+\\w+\\s*\\([^)]*=\\s*(?:\\[|\\{)",
+          "severity": "error",
+          "file_patterns": [
+            "*.py"
+          ],
+          "message": "Mutable default arguments are shared across all calls — use None and assign inside the function"
+        }
+      ]
+    },
+    "pydantic": {
+      "description": "Pydantic schema design rules",
+      "component_types": [
+        "backend"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "pydantic-input-schema-no-strict-base",
+          "description": "Input schemas (Create/Update/Request/Payload) must not inherit from StrictBaseModel",
+          "pattern": "class\\s+\\w+(?:Create|Update|Request|Payload)\\s*\\(\\s*StrictBaseModel\\s*\\)",
+          "severity": "error",
+          "file_patterns": [
+            "*.py",
+            "!**/test_*.py",
+            "!**/*_test.py"
+          ],
+          "message": "StrictBaseModel (strict=True) must only be used for response/output schemas. Input schemas ending in Create, Update, Request, or Payload must use a non-strict base (BaseModel or a project-level lax InputModel) so that FastAPI can coerce types during request validation. Using StrictBaseModel on input schemas produces HTTP 422 for clients sending valid JSON with coercible types (e.g. string->Decimal)."
+        }
+      ]
+    }
+  }
+}

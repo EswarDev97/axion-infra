@@ -1,0 +1,56 @@
+{
+  "$schema": "AICodePath Go Lint Guidelines",
+  "version": "1.0.0",
+  "description": "Code quality lint rules for Go — enforces logging over printing, error wrapping, and init avoidance",
+  "_classification": {
+    "component_types": ["all"],
+    "default_phase": ["code"]
+  },
+  "categories": {
+    "logging": {
+      "description": "Enforce structured logging over print statements",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-println",
+          "description": "No fmt.Println in production Go — use a structured logger",
+          "pattern": "fmt\\.Println\\(",
+          "severity": "warning",
+          "file_patterns": ["*.go", "!**/*_test.go"],
+          "message": "Replace fmt.Println with your project's structured logger (slog, zap, logrus)"
+        }
+      ]
+    },
+    "error-quality": {
+      "description": "Error message quality in Go",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "error-wrapping",
+          "description": "Wrap errors with context using fmt.Errorf %w",
+          "pattern": "errors\\.New\\([^)]+\\+",
+          "severity": "info",
+          "file_patterns": ["*.go"],
+          "message": "Use fmt.Errorf(\"context: %w\", err) to wrap errors with context instead of concatenation"
+        }
+      ]
+    },
+    "init-function": {
+      "description": "Avoid init() for complex logic",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-init-func",
+          "description": "Avoid init() — prefer explicit initialization",
+          "pattern": "^func\\s+init\\s*\\(\\s*\\)",
+          "severity": "info",
+          "file_patterns": ["*.go"],
+          "message": "init() runs implicitly and is hard to test — prefer explicit initialization functions"
+        }
+      ]
+    }
+  }
+}

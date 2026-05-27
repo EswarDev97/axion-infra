@@ -1,0 +1,4 @@
+# using-aicodepath SKILL.md row for aicodepath-payment-integration
+# Batch: D2 | Pack: specialists
+
+| Payment gateway integration — Stripe, PayPal, Adyen, Razorpay, webhook handling, subscription billing, fraud prevention, PCI compliance | `aicodepath-payment-integration` |

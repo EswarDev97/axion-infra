@@ -1,0 +1,6 @@
+{
+  "model": { "display_name": "Claude Sonnet 4.6", "name": "claude-sonnet-4-6" },
+  "context_window": { "context_window_size": 200000, "used_percentage": 45, "current_usage": { "input_tokens": 90000, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0 } },
+  "rate_limits": { "five_hour": { "used_percentage": 23.5 }, "seven_day": { "used_percentage": 67.2 } },
+  "cost": { "total_cost_usd": 0.0042 }
+}

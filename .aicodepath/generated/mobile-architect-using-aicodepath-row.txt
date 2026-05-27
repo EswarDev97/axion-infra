@@ -1,0 +1,2 @@
+// C14 — aicodepath-mobile-architect row for using-aicodepath/SKILL.md Agents table
+| Mobile app architecture, iOS/Android/cross-platform, offline-first sync, push notifications, cold start optimization | `aicodepath-mobile-architect` |

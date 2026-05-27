@@ -1,0 +1,7 @@
+// C13 — aicodepath-code-simplifier DOMAIN_MAPPING entries
+"code-simplification": ["code-simplifier"],
+"nesting-reduction": ["code-simplifier"],
+"readability": ["code-simplifier"],
+"code-clarity": ["code-simplifier"],
+"coding-standards-apply": ["code-simplifier"],
+"simplify-code": ["code-simplifier"],

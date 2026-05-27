@@ -1,0 +1,7 @@
+// C13 — aicodepath-ci-fixer DOMAIN_MAPPING entries
+"ci-cd": ["ci-fixer"],
+"github-actions": ["ci-fixer"],
+"pipeline-failure": ["ci-fixer"],
+"build-fix": ["ci-fixer"],
+"ci-repair": ["ci-fixer"],
+"compilation-error": ["ci-fixer"],

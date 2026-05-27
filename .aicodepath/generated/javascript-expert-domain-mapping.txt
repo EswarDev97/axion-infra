@@ -1,0 +1,1 @@
+javascript, es2024, nodejs, esmodules, bun-runtime, vitest-js

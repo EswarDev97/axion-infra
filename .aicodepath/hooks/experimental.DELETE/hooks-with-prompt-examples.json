@@ -1,0 +1,202 @@
+{
+  "$schema": "https://claude.ai/schemas/hooks.json",
+  "description": "Extended hooks configuration with prompt-based hooks examples",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/session-start-hook.js",
+            "statusMessage": "Initializing AICodePath workflow..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/pre-flight-check.js",
+            "statusMessage": "Running pre-flight checks..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/guideline-validator.js",
+            "statusMessage": "Validating guideline compliance..."
+          },
+          {
+            "type": "comment",
+            "comment": "Example: Prompt-based code validation (disabled by default)",
+            "disabled": true,
+            "type": "prompt",
+            "promptTemplate": "code-validation-template.md",
+            "model": "sonnet",
+            "timeout": 30000,
+            "statusMessage": "AI-validating code quality..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/pre-commit-validator.js",
+            "statusMessage": "Validating git commit..."
+          },
+          {
+            "type": "comment",
+            "comment": "Example: Prompt-based safety check for bash commands",
+            "disabled": true,
+            "type": "prompt",
+            "prompt": "Evaluate if this bash command is safe to execute: $ARGUMENTS. Check for destructive operations (rm -rf, dd, mkfs), security risks (curl|sh), or system modifications. Consider: 1) Can this delete important files? 2) Does it modify system configuration? 3) Does it download/execute untrusted code? Return: allow (safe), deny (dangerous), or ask (needs confirmation).",
+            "model": "haiku",
+            "timeout": 15000,
+            "statusMessage": "AI safety check for command..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/auto-artifact-creator.js",
+            "statusMessage": "Creating artifact entries..."
+          },
+          {
+            "type": "command",
+            "command": "./hooks/gicl-iteration-hook.js",
+            "statusMessage": "Running GICL quality gates..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "comment": "Example: Prompt-based stop evaluation",
+        "hooks": [
+          {
+            "type": "prompt",
+            "promptTemplate": "stop-check-template.md",
+            "model": "haiku",
+            "timeout": 15000,
+            "statusMessage": "Evaluating stop request..."
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "comment": "New in Phase 2: SessionEnd lifecycle hook",
+        "matcher": "clear|logout",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/session-cleanup.js",
+            "statusMessage": "Cleaning up session...",
+            "comment": "Cleanup tasks, log statistics, close connections"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "comment": "New in Phase 2: PreCompact lifecycle hook",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/pre-compact-checkpoint.js",
+            "statusMessage": "Saving state before compaction...",
+            "comment": "Checkpoint workflow state before context compaction"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "comment": "New in Phase 2: Auto-approve safe operations",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/auto-approve-safe-operations.js",
+            "statusMessage": "Evaluating permission request...",
+            "comment": "Auto-approve known-safe patterns like 'git status', 'ls'"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "comment": "New in Phase 2: Inject context into code-reviewer subagent",
+        "matcher": "code-reviewer",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/inject-guideline-context.js",
+            "statusMessage": "Injecting guidelines into code-reviewer...",
+            "comment": "Provide guideline context to code review subagent"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "comment": "New in Phase 2: Validate Plan subagent output",
+        "matcher": "Plan",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/validate-plan-output.js",
+            "statusMessage": "Validating plan output...",
+            "comment": "Ensure plan meets requirements before accepting"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "comment": "New in Phase 2: External notifications",
+        "matcher": "permission_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/notify-slack.js",
+            "async": true,
+            "comment": "Send Slack notification when permission needed"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "comment": "New in Phase 2: Handle tool failures",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/tool-failure-handler.js",
+            "statusMessage": "Analyzing failure...",
+            "comment": "Provide recovery suggestions when tools fail"
+          }
+        ]
+      }
+    ]
+  },
+  "notes": {
+    "promptHooks": "Prompt-based hooks use LLM reasoning for validation. Enable by setting disabled:false.",
+    "asyncHooks": "Async hooks run in background without blocking. Results delivered on next turn.",
+    "lifecycleHooks": "New hooks: SessionEnd, PreCompact, PermissionRequest, SubagentStart/Stop, Notification, PostToolUseFailure",
+    "costTracking": "Prompt hooks track LLM usage and costs. Check session stats for budget monitoring."
+  }
+}

@@ -1,0 +1,2 @@
+// C16b — aicodepath-error-recovery row for using-aicodepath/SKILL.md Agents table
+| Semantic error diagnosis — root cause analysis, 3+ repeated errors, GICL regression, PyTorch/CUDA runtime errors | `aicodepath-error-recovery` |

@@ -1,0 +1,2 @@
+// C13 — aicodepath-ci-fixer row for using-aicodepath/SKILL.md Agents table
+| CI/CD failures, "fix CI", "pipeline is red", GitHub Actions logs | `aicodepath-ci-fixer` |

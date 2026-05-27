@@ -1,0 +1,9 @@
+# DOMAIN_MAPPING entries for aicodepath-legal-advisor
+# Batch: D4 | Pack: specialists
+
+"contract-review": ["legal-advisor"],
+"gdpr-compliance": ["legal-advisor"],
+"privacy-policy": ["legal-advisor"],
+"terms-of-service": ["legal-advisor"],
+"ip-protection": ["legal-advisor"],
+"open-source-license": ["legal-advisor"],

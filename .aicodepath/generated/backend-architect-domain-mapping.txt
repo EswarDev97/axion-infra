@@ -1,0 +1,1 @@
+backend-architecture, service-layer, repository-pattern, cqrs, event-sourcing, service-decomposition

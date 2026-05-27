@@ -1,0 +1,340 @@
+{
+  "$schema": "AICodePath Data Modeling Guidelines",
+  "version": "2.0.0",
+  "description": "Enterprise-grade data modeling, governance, and AI-safe rules for relational, NoSQL, caching, migrations, performance, security, and database programmability",
+  "_classification": {
+    "component_types": ["database"],
+    "default_phase": ["code"],
+    "design_applies": true,
+    "design_signals": ["table", "schema", "column", "migration", "sql", "database", "entity", "model", "fk", "foreign key", "index", "query", "repository", "orm", "kysely", "prisma", "sequelize"]
+  },
+  "hard_policies": {
+    "no_business_logic_in_db": true,
+    "no_arrays_in_relational": true,
+    "no_csv_or_delimited_storage": true,
+    "no_cross_table_triggers": true,
+    "no_dynamic_sql": true,
+    "schemas_required_at_scale": true,
+    "tenant_isolation_mandatory": true
+  },
+  "categories": {
+    "relational": {
+      "description": "Relational database design best practices",
+      "component_types": ["database"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "primary-key-required",
+          "description": "Every table must have a primary key",
+          "pattern": "CREATE TABLE(?!.*PRIMARY KEY)",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.sql", "*migration*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Every table must have a PRIMARY KEY defined",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design explicitly define a primary key for every proposed table? If any table lacks a primary key specification, BLOCK."
+        },
+        {
+          "id": "no-enum-columns",
+          "description": "Avoid ENUM columns - use lookup tables instead",
+          "pattern": "\\bENUM\\s*\\(",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": ["*.sql", "*migration*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Avoid ENUM columns - use lookup tables for better maintainability",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design use ENUM types anywhere? If so, replace with a lookup table (lkp_ prefix) referenced via FK. BLOCK on any ENUM in schema design."
+        }
+      ]
+    },
+    "design_patterns": {
+      "description": "Database design patterns and best practices",
+      "component_types": ["database"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "polymorphic-shared-entities",
+          "description": "Use polymorphic design for shared entities like contacts and addresses",
+          "pattern": "CREATE TABLE.*(?:customer_contact|vendor_contact|employee_contact|customer_address|vendor_address)",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.sql", "*migration*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Use polymorphic design - create shared tables (contacts, addresses) with bridge tables instead of duplicating for each entity (e.g., contacts + customer_contacts bridge)",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design duplicate contact/address tables per entity (e.g., customer_address, vendor_address)? If so, propose a shared polymorphic table with a bridge. BLOCK on duplicated entity-specific contact/address tables."
+        }
+      ]
+    },
+    "naming": {
+      "description": "Database naming conventions",
+      "component_types": ["database"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "table-snake-case",
+          "description": "Table names should be snake_case and plural",
+          "pattern": "CREATE TABLE\\s+['\"`]?[A-Z]",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": ["*.sql", "*migration*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Table names should be snake_case (e.g., user_profiles not UserProfiles)",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Are all proposed table names written in snake_case plural form (e.g., vehicle_listings, market_valuations)? Flag any PascalCase or camelCase table names."
+        },
+        {
+          "id": "column-snake-case",
+          "description": "Column names should be snake_case",
+          "pattern": "\\b[a-z]+[A-Z][a-z]+\\b.*(?:INTEGER|VARCHAR|TEXT|BOOLEAN|UUID)",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": ["*.sql", "*migration*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Column names should be snake_case (e.g., created_at not createdAt)",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Are all proposed column names in snake_case (e.g., created_at, tenant_id, vehicle_make)? Flag any camelCase column names."
+        },
+        {
+          "id": "lookup-table-naming",
+          "description": "Lookup tables must be prefixed with lkp_",
+          "pattern": "CREATE TABLE\\s+(?!lkp_)\\w*(status|type|category|role|state|priority|level)\\w*",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.sql", "*migration*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Lookup/reference tables must be prefixed with 'lkp_' (e.g., lkp_order_status, lkp_user_roles)",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Do ALL lookup/reference tables in the design use the lkp_ prefix? Check for any table representing status, type, category, role, state, priority, or level values that does NOT start with lkp_. BLOCK if any such table lacks the prefix."
+        }
+      ]
+    },
+    "anti_patterns": {
+      "description": "Disallowed relational patterns",
+      "component_types": ["database"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-array-columns",
+          "description": "ARRAY columns forbidden in relational schemas",
+          "pattern": "\\[\\]|ARRAY\\[|ARRAY\\(",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.sql", "*migration*", "*entity*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "ARRAY columns are forbidden in relational schemas - use junction tables",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design propose any array/list columns to store multiple values in a single field? If so, replace with a junction/bridge table. BLOCK on any array column proposal."
+        },
+        {
+          "id": "no-csv-values",
+          "description": "CSV/delimited values forbidden",
+          "pattern": "VARCHAR.*,.*,|TEXT.*\\|.*\\|",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.sql", "*migration*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "CSV/delimited values are forbidden - normalize into separate rows",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design store comma-separated or pipe-delimited values in any single column? If so, normalize into separate rows with a junction table. BLOCK on any such pattern."
+        },
+        {
+          "id": "prefer-lookup-over-constraints",
+          "description": "Use lookup tables instead of constraints",
+          "pattern": "CHECK\\s*\\(.*IN\\s*\\(",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.sql", "*migration*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Don't use CHECK constraints - create lookup tables prefixed with 'lkp_' instead (e.g., lkp_order_status)",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design use CHECK (...IN (...)) constraints to restrict column values? If so, replace with a lkp_* lookup table referenced via FK. BLOCK on any CHECK constraint with inline value lists."
+        },
+      ]
+    },
+    "triggers": {
+      "description": "Trigger governance rules - triggers are discouraged",
+      "component_types": ["database"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-triggers",
+          "description": "Triggers should not be used - implement logic in application layer",
+          "pattern": "CREATE TRIGGER",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.sql", "*migration*", "!**/__tests__/**", "!**/test/**", "!**/tests/**", "!**/migrations/**"],
+          "message": "Don't use triggers - implement business logic, validations, and cascades in the application layer for maintainability and testability",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design propose database triggers for any logic? If so, move that logic to the application service layer. BLOCK on any trigger proposal."
+        },
+        {
+          "id": "no-cross-table-trigger",
+          "description": "Triggers must not modify other tables",
+          "pattern": "CREATE TRIGGER[\\s\\S]*?(INSERT INTO|UPDATE|DELETE FROM)(?!.*NEW|OLD)",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.sql", "*migration*", "!**/__tests__/**", "!**/test/**", "!**/tests/**", "!**/migrations/**"],
+          "message": "Triggers must not modify other tables - use application layer for cascades",
+          "component_types": ["database"],
+          "phase": ["code"]
+        },
+        {
+          "id": "no-external-calls-trigger",
+          "description": "Triggers must not call external systems",
+          "pattern": "CREATE TRIGGER[\\s\\S]*?(http|notify|dblink|pg_notify)",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.sql", "*migration*", "!**/__tests__/**", "!**/test/**", "!**/tests/**", "!**/migrations/**"],
+          "message": "Triggers must not call external systems - use event-driven architecture",
+          "component_types": ["database"],
+          "phase": ["code"]
+        }
+      ]
+    },
+    "stored_procedures": {
+      "description": "Stored procedure constraints",
+      "component_types": ["database"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-business-logic-procedure",
+          "description": "Business logic must not live in procedures",
+          "pattern": "CREATE PROCEDURE[\\s\\S]*?(workflow|approval|state_machine|validate_business)",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.sql", "*migration*", "!**/__tests__/**", "!**/test/**", "!**/tests/**", "!**/migrations/**"],
+          "message": "Business logic must not live in stored procedures - use application layer",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design place business logic (workflow, approval, state machine, validation) in stored procedures? If so, move to application service layer. BLOCK."
+        },
+        {
+          "id": "no-dynamic-sql",
+          "description": "Dynamic SQL is forbidden",
+          "pattern": "EXECUTE\\s+IMMEDIATE|EXECUTE\\s+FORMAT|EXEC\\s*\\(",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.sql", "*migration*", "!**/__tests__/**", "!**/test/**", "!**/tests/**", "!**/migrations/**"],
+          "message": "Dynamic SQL is forbidden - use parameterized queries",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design mention dynamic SQL construction? If so, replace with parameterized queries or ORM. BLOCK."
+        }
+      ]
+    },
+    "functions": {
+      "description": "Database function rules",
+      "component_types": ["database"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-data-mutation-function",
+          "description": "Functions must not mutate data",
+          "pattern": "CREATE FUNCTION[\\s\\S]*?(INSERT|UPDATE|DELETE)",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.sql", "*migration*", "!**/__tests__/**", "!**/test/**", "!**/tests/**", "!**/migrations/**"],
+          "message": "Functions must not mutate data - use procedures or application layer",
+          "component_types": ["database"],
+          "phase": ["code"]
+        },
+        {
+          "id": "volatility-declared",
+          "description": "Declare function volatility explicitly",
+          "pattern": "CREATE FUNCTION(?!.*(?:IMMUTABLE|STABLE|VOLATILE))",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": ["*.sql", "*migration*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Declare function volatility explicitly (IMMUTABLE, STABLE, or VOLATILE)",
+          "component_types": ["database"],
+          "phase": ["code"]
+        }
+      ]
+    },
+    "performance": {
+      "description": "Query and data access performance",
+      "component_types": ["database"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "select-star",
+          "description": "Avoid SELECT * in production code",
+          "pattern": "SELECT\\s+\\*\\s+FROM",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": ["*repository*", "*service*", "*.sql", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Avoid SELECT * - explicitly list needed columns for better performance",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design mention SELECT * or fetching all columns? If so, specify explicit column projections. Flag for discussion."
+        },
+        {
+          "id": "n-plus-one-query",
+          "description": "Avoid N+1 query patterns",
+          "pattern": "for.*await.*find|forEach.*await.*query",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*repository*", "*service*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Potential N+1 query - use batch fetching, JOINs, or eager loading",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design involve fetching a list and then querying related data per item in a loop? If so, propose batch fetching or JOINs to avoid N+1. Flag for discussion."
+        }
+      ]
+    },
+    "security": {
+      "description": "Data security patterns",
+      "component_types": ["database", "service", "api"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-sa-accounts",
+          "description": "Don't use SA/admin database accounts for applications",
+          "pattern": "(?:sa|postgres|root|admin|dba).*@.*(?:host|server|endpoint)",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*config*", "*.env*", "*connection*", "*database*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "CRITICAL: Don't use SA/admin accounts (sa, postgres, root) - create dedicated application service accounts with minimal privileges",
+          "component_types": ["database", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design specify which database account services will use? Ensure dedicated service accounts (not postgres/root/admin) are specified with least-privilege. BLOCK on any mention of superuser accounts for app services."
+        },
+        {
+          "id": "sql-injection",
+          "description": "Prevent SQL injection with parameterized queries",
+          "pattern": "\\$\\{.*\\}.*(?:SELECT|INSERT|UPDATE|DELETE)|`.*\\+.*`.*(?:SELECT|INSERT|UPDATE|DELETE)",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*repository*", "*service*", "*.sql", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "CRITICAL: Use parameterized queries to prevent SQL injection",
+          "component_types": ["database", "service", "api"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design specify parameterized queries or ORM usage for all database interactions? Flag any design that mentions string-concatenated SQL. BLOCK."
+        }
+      ]
+    },
+    "ai_agent_safety": {
+      "description": "AI-specific guardrails for database operations",
+      "component_types": ["database"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-destructive-ai-operations",
+          "description": "AI should not perform destructive operations",
+          "pattern": "DROP TABLE|TRUNCATE|DELETE FROM(?!.*WHERE)",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.sql", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "AI agents must not perform destructive operations without explicit approval",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design include any DROP TABLE, TRUNCATE, or DELETE without WHERE clause operations? If so, flag for explicit user approval. BLOCK on unguarded destructive operations."
+        }
+      ]
+    }
+  }
+}

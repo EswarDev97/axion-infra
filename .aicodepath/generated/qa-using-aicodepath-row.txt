@@ -1,0 +1,2 @@
+// C16b — aicodepath-qa row for using-aicodepath/SKILL.md Agents table
+| E2E and unit test implementation — Jest, Vitest, Playwright page objects, coverage gaps, flaky test quarantine | `aicodepath-qa` |

@@ -1,0 +1,56 @@
+{
+  "$schema": "AICodePath Rust Lint Guidelines",
+  "version": "1.0.0",
+  "description": "Code quality lint rules for Rust — flags debug macros, incomplete TODOs, and non-idiomatic iteration",
+  "_classification": {
+    "component_types": ["all"],
+    "default_phase": ["code"]
+  },
+  "categories": {
+    "debug": {
+      "description": "Debug macro removal",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-dbg",
+          "description": "No dbg!() macro in production code",
+          "pattern": "\\bdbg!\\s*\\(",
+          "severity": "warning",
+          "file_patterns": ["*.rs", "!**/tests/**", "!**/*_test.rs"],
+          "message": "Remove dbg!() before committing — use a proper logging crate for structured output"
+        }
+      ]
+    },
+    "completeness": {
+      "description": "Code completeness rules",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-todo",
+          "description": "No todo!() macro in shipped code",
+          "pattern": "\\btodo!\\s*\\(",
+          "severity": "info",
+          "file_patterns": ["*.rs"],
+          "message": "todo!() panics at runtime — implement or track as an issue before shipping"
+        }
+      ]
+    },
+    "style": {
+      "description": "Idiomatic Rust style",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "prefer-iter",
+          "description": "Prefer iterator methods over manual index loops",
+          "pattern": "for\\s+\\w+\\s+in\\s+0\\s*\\.\\.\\s*\\w+\\.len\\(\\)",
+          "severity": "info",
+          "file_patterns": ["*.rs"],
+          "message": "Use .iter().enumerate() or direct iteration instead of index-based loops"
+        }
+      ]
+    }
+  }
+}

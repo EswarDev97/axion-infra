@@ -1,0 +1,1 @@
+php, phpstan, psr-12, php-composer, php-fibers, php-strict

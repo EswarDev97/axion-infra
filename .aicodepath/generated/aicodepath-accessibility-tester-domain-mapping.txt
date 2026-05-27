@@ -1,0 +1,9 @@
+# DOMAIN_MAPPING entries for aicodepath-accessibility-tester
+# Batch: D3 | Pack: specialists
+
+"wcag-compliance": ["accessibility-tester"],
+"a11y-audit": ["accessibility-tester"],
+"screen-reader": ["accessibility-tester"],
+"keyboard-navigation": ["accessibility-tester"],
+"color-contrast": ["accessibility-tester"],
+"aria-audit": ["accessibility-tester"],

@@ -1,0 +1,45 @@
+{
+  "version": "2.0",
+  "repo": "aicodepath-tool",
+  "created_at": "2026-03-22T14:01:10.005Z",
+  "updated_at": "2026-04-01T00:00:00Z",
+  "rules": [
+    {
+      "id": "qa-clarifying-direct-recommendation",
+      "source": "learned",
+      "title": "Q&A clarifying questions: give direct recommendation, not options menu",
+      "rule": "When asking a clarifying Q&A question about an implementation mechanism (e.g., 'how should state be tracked?', 'which approach for X?'), present the recommended answer directly with rationale rather than listing N options. Reserve multi-option proposals for design approach decisions in brainstorm phase where trade-offs are genuinely open.",
+      "applies_to": ".aicodepath/skills/",
+      "category": "workflow",
+      "severity": "warning",
+      "confidence": 0.85,
+      "enabled": true,
+      "expires_when": null,
+      "source_note": "User responded 'What is the strategic solution?' when presented with options A/B/C for the learn_run_this_session tracking mechanism — indicating preference for direct strategic recommendation during Q&A, not a list (session 2026-03-28). Enabled 2026-04-01 with applies_to scoped to skills (not all files).",
+      "created_at": "2026-03-28T11:05:00Z",
+      "updated_at": "2026-04-01T00:00:00Z"
+    },
+    {
+      "id": "write-plan-persist-agent-recommendations",
+      "source": "manual",
+      "title": "aicodepath-write-plan must persist agent recommendations into the saved plan document",
+      "rule": "When aicodepath-write-plan invokes aicodepath-classify-component, the agent recommendations produced (grouped by Design/Plan/Construction phase) must be written into the saved plan document under a '## Recommended Agents' section — not just displayed in-session. The plan document template must include this section so that anyone picking up the plan knows which specialist agents to invoke at each phase.",
+      "applies_to": ".aicodepath/skills/aicodepath-write-plan/",
+      "category": "framework",
+      "severity": "error",
+      "confidence": 0.92,
+      "enabled": true,
+      "expires_when": null,
+      "source_note": "After write-plan produced a full plan, the ## Recommended Agents section from classify-component was only shown in conversation and not included in the plan file. User explicitly asked why it was missing and instructed to update the plan to include it (session 2026-03-22).",
+      "created_at": "2026-03-22T00:00:00Z",
+      "updated_at": "2026-03-22T00:00:00Z"
+    }
+  ],
+  "signalHistory": [],
+  "statistics": {
+    "totalRules": 2,
+    "totalSignals": 0,
+    "sessionsAnalyzed": 0,
+    "lastSessionId": null
+  }
+}

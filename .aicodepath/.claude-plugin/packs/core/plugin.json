@@ -1,0 +1,17 @@
+{
+  "name": "aicodepath-core",
+  "version": "2.13.0",
+  "description": "Core AICodePath agents for everyday development",
+  "author": { "name": "AICodePath", "url": "https://github.com/aicodepath/aicodepath-tool" },
+  "license": "MIT",
+  "agents": [
+    "../../../agents/aicodepath-architect.md",
+    "../../../agents/aicodepath-backend-architect.md",
+    "../../../agents/aicodepath-code-reviewer.md",
+    "../../../agents/aicodepath-code-simplifier.md",
+    "../../../agents/aicodepath-refactoring-expert.md",
+    "../../../agents/aicodepath-test-engineer.md",
+    "../../../agents/aicodepath-qa.md",
+    "../../../agents/aicodepath-codebase-pattern-finder.md"
+  ]
+}

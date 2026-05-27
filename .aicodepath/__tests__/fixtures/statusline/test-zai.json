@@ -1,0 +1,5 @@
+{
+  "model": { "name": "glm-4.7" },
+  "usage": { "prompt_tokens": 50000, "completion_tokens": 10000, "total_tokens": 60000 },
+  "context_window": { "context_window_size": 128000, "used_percentage": 47 }
+}

@@ -1,0 +1,2 @@
+// C15 — aicodepath-plan-analyst row for using-aicodepath/SKILL.md Agents table
+| Plan scope analysis — effort sizing, risk scoring, dependency map, critical path, execution sequence (solo/swarm) | `aicodepath-plan-analyst` |

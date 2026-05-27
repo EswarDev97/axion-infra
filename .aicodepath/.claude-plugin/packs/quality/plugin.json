@@ -1,0 +1,16 @@
+{
+  "name": "aicodepath-quality",
+  "version": "2.13.0",
+  "description": "Quality, security, and compliance specialists",
+  "author": { "name": "AICodePath", "url": "https://github.com/aicodepath/aicodepath-tool" },
+  "license": "MIT",
+  "agents": [
+    "../../../agents/aicodepath-security-engineer.md",
+    "../../../agents/aicodepath-compliance-auditor.md",
+    "../../../agents/aicodepath-performance-engineer.md",
+    "../../../agents/aicodepath-error-recovery.md",
+    "../../../agents/aicodepath-writing-auditor.md",
+    "../../../agents/aicodepath-silent-failure-hunter.md",
+    "../../../agents/aicodepath-test-completeness-analyzer.md"
+  ]
+}

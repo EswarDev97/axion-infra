@@ -1,0 +1,1 @@
+| PHP 8.3+ strict types, PSR-12 compliance, enums, readonly, PHPStan level 9, Composer | `aicodepath-php-expert` |

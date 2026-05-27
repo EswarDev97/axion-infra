@@ -1,0 +1,1 @@
+| FastAPI async endpoints, Pydantic v2 models, dependency injection, SQLAlchemy 2.0 async, Alembic | `aicodepath-fastapi-expert` |

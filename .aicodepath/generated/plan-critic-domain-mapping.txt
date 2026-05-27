@@ -1,0 +1,7 @@
+// C15 — aicodepath-plan-critic DOMAIN_MAPPING entries
+"plan-critique": ["plan-critic"],
+"plan-approval": ["plan-critic"],
+"dependency-check": ["plan-critic"],
+"acceptance-criteria-review": ["plan-critic"],
+"plan-feasibility": ["plan-critic"],
+"plan-validation": ["plan-critic"],

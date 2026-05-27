@@ -1,0 +1,9 @@
+# DOMAIN_MAPPING entries for aicodepath-ai-engineer
+# Batch: D1 | Pack: specialists
+
+"ai-integration": ["ai-engineer"],
+"model-selection": ["ai-engineer"],
+"ethical-ai": ["ai-engineer"],
+"bias-detection": ["ai-engineer"],
+"explainability": ["ai-engineer"],
+"ai-governance": ["ai-engineer"],

@@ -1,0 +1,9 @@
+# DOMAIN_MAPPING entries for aicodepath-m365-admin
+# Batch: D4 | Pack: specialists
+
+"microsoft-365": ["m365-admin"],
+"exchange-online": ["m365-admin"],
+"teams-admin": ["m365-admin"],
+"sharepoint-admin": ["m365-admin"],
+"graph-api-m365": ["m365-admin"],
+"purview-compliance": ["m365-admin"],

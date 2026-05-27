@@ -1,0 +1,2 @@
+// C13 — aicodepath-code-simplifier row for using-aicodepath/SKILL.md Agents table
+| Simplify code, reduce nesting, improve readability, apply coding standards, code clarity pass | `aicodepath-code-simplifier` |

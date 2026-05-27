@@ -1,0 +1,77 @@
+{
+  "name": "aicodepath",
+  "owner": {
+    "name": "AICodePath",
+    "url": "https://github.com/aicodepath/aicodepath-tool"
+  },
+  "metadata": {
+    "version": "2.14.0",
+    "description": "AICodePath framework — AI-Driven Development Life Cycle (AIDLC) toolset with 106 specialist agents and 100+ skills organized into installable plugin packs"
+  },
+  "plugins": [
+    {
+      "name": "aicodepath-core",
+      "source": "./packs/core",
+      "description": "Core AICodePath agents always needed: architect, backend-architect, code-reviewer, code-simplifier, refactoring-expert, test-engineer, qa, codebase-pattern-finder",
+      "version": "2.13.0",
+      "category": "core",
+      "keywords": ["architect", "review", "test", "refactor", "core"]
+    },
+    {
+      "name": "aicodepath-lang",
+      "source": "./packs/lang",
+      "description": "Language specialist agents: TypeScript, Python, React, Next.js, Go, Rust, Java, Vue, Django, FastAPI",
+      "version": "2.13.0",
+      "category": "languages",
+      "keywords": ["typescript", "python", "react", "nextjs", "golang", "rust", "java", "vue", "django", "fastapi"]
+    },
+    {
+      "name": "aicodepath-infra",
+      "source": "./packs/infra",
+      "description": "Infrastructure and DevOps specialists: devops-architect, sre-engineer, ci-fixer, kubernetes-expert, terraform-expert, cost-optimizer, chaos-engineer, incident-responder",
+      "version": "2.13.0",
+      "category": "infrastructure",
+      "keywords": ["devops", "kubernetes", "terraform", "sre", "chaos", "incident", "cost"]
+    },
+    {
+      "name": "aicodepath-quality",
+      "source": "./packs/quality",
+      "description": "Quality, security, and compliance: security-engineer, compliance-auditor, performance-engineer, error-recovery, writing-auditor",
+      "version": "2.13.0",
+      "category": "quality",
+      "keywords": ["security", "compliance", "performance", "audit", "writing"]
+    },
+    {
+      "name": "aicodepath-data-ai",
+      "source": "./packs/data-ai",
+      "description": "Data and AI specialists: data-scientist, ml-engineer, llm-architect, data-engineer, mobile-architect",
+      "version": "2.13.0",
+      "category": "data-ai",
+      "keywords": ["data", "ml", "ai", "llm", "rag", "mlops"]
+    },
+    {
+      "name": "aicodepath-design",
+      "source": "./packs/design",
+      "description": "Design specialists: api-designer, database-architect, frontend-architect, ui-designer, ux-designer, technical-writer, communication-coach",
+      "version": "2.13.0",
+      "category": "design",
+      "keywords": ["api", "database", "frontend", "ui", "ux", "design", "writing"]
+    },
+    {
+      "name": "aicodepath-planning",
+      "source": "./packs/planning",
+      "description": "Planning and orchestration: plan-critic, plan-analyst, swarm-lead, idea-validator, legacy-modernizer",
+      "version": "2.13.0",
+      "category": "planning",
+      "keywords": ["plan", "analyze", "swarm", "validate", "modernize"]
+    },
+    {
+      "name": "aicodepath-specialists",
+      "source": "./packs/specialists",
+      "description": "Specialist agents for niche domains, languages, and platforms",
+      "version": "2.14.0",
+      "category": "specialists",
+      "keywords": ["specialist", "domain", "niche", "platform"]
+    }
+  ]
+}

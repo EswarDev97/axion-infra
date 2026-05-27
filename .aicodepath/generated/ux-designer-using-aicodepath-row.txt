@@ -1,0 +1,2 @@
+// C16 — aicodepath-ux-designer row for using-aicodepath/SKILL.md Agents table
+| UX research through wireframes — personas, journey maps, information architecture, WCAG accessibility audits | `aicodepath-ux-designer` |

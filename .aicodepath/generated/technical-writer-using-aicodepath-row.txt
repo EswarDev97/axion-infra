@@ -1,0 +1,2 @@
+// C16 — aicodepath-technical-writer row for using-aicodepath/SKILL.md Agents table
+| Technical documentation — README, OpenAPI 3.0, architecture diagrams, runbooks, CHANGELOGs, ADRs, codemap generation | `aicodepath-technical-writer` |

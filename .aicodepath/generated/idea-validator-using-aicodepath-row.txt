@@ -1,0 +1,2 @@
+// C15 — aicodepath-idea-validator row for using-aicodepath/SKILL.md Agents table
+| Validate a product or project idea — go/no-go, competitor teardown, demand verification, differentiation analysis | `aicodepath-idea-validator` |

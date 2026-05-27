@@ -1,0 +1,3 @@
+docker-compose=devops-architect
+argocd=devops-architect
+terraform-module=devops-architect

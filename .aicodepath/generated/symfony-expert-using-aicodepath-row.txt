@@ -1,0 +1,1 @@
+| Symfony 7+ autowiring, Doctrine ORM PHP attributes, Messenger async, API Platform 3, Voters | `aicodepath-symfony-expert` |

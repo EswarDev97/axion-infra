@@ -1,0 +1,244 @@
+{
+  "$schema": "AICodePath Type Design Guidelines",
+  "version": "1.0.0",
+  "description": "Type design rules for TypeScript/JavaScript projects - encapsulation, invariants, usefulness, and enforcement",
+  "source": "Inspired by pr-review-toolkit type-design-analyzer patterns",
+  "_classification": {
+    "component_types": ["service", "api", "all"],
+    "default_phase": ["code"],
+    "design_applies": true,
+    "design_signals": ["typescript", "interface", "type", "model", "dto", "schema", "class", "entity", "struct"]
+  },
+  "categories": {
+    "encapsulation": {
+      "description": "Rules for proper type encapsulation",
+      "component_types": ["service", "api", "all"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "private-fields",
+          "description": "Use private fields for internal state",
+          "pattern": "class\\s+\\w+\\s*\\{[^}]*public\\s+\\w+\\s*[=:]",
+          "severity": "info",
+          "languages": [
+            "typescript",
+            "javascript"
+          ],
+          "message": "Consider using private fields to encapsulate internal state",
+          "component_types": ["service", "all"],
+          "phase": ["design", "code"],
+          "design_check": "Do the proposed class designs expose internal state as public fields? Consider making internal state private with accessor methods. Flag for review."
+        },
+        {
+          "id": "no-public-collections",
+          "description": "Avoid exposing mutable collections directly",
+          "pattern": "public\\s+(\\w+\\s*:\\s*)?(Array|Set|Map|\\[\\])",
+          "severity": "warning",
+          "languages": [
+            "typescript"
+          ],
+          "message": "Avoid exposing mutable collections - return copies or use readonly",
+          "component_types": ["service", "all"],
+          "phase": ["design", "code"],
+          "design_check": "Do any proposed types expose mutable collections (arrays, sets, maps) as public fields? Use readonly or return copies to prevent unintended mutation. Flag for correction."
+        }
+      ]
+    },
+    "usefulness": {
+      "description": "Rules for type usefulness and ergonomics",
+      "component_types": ["all"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "avoid-deep-nesting",
+          "description": "Avoid deeply nested types",
+          "pattern": "\\{[^{}]*\\{[^{}]*\\{[^{}]*\\{",
+          "severity": "warning",
+          "languages": [
+            "typescript"
+          ],
+          "message": "Deeply nested types are hard to use - extract intermediate types",
+          "component_types": ["all"],
+          "phase": ["design", "code"],
+          "design_check": "Do any proposed type/interface designs have more than 3 levels of nesting? Extract intermediate named types for clarity. Flag for correction."
+        }
+      ]
+    },
+    "enforcement": {
+      "description": "Rules for runtime type enforcement",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-as-any",
+          "description": "Avoid casting to any",
+          "pattern": "as\\s+any",
+          "severity": "error",
+          "languages": [
+            "typescript"
+          ],
+          "message": "Avoid 'as any' - use proper type guards or fix the type",
+          "component_types": ["all"],
+          "phase": ["code"]
+        },
+        {
+          "id": "no-non-null-assertion",
+          "description": "Avoid non-null assertion operator",
+          "pattern": "\\w+!\\.",
+          "severity": "warning",
+          "languages": [
+            "typescript"
+          ],
+          "message": "Avoid non-null assertion (!) - use optional chaining or type guards instead",
+          "component_types": ["all"],
+          "phase": ["code"]
+        }
+      ]
+    },
+    "strict_mode": {
+      "description": "TypeScript strict mode enforcement — ensures code follows strict type-checking practices and does not bypass the type system",
+      "component_types": ["all"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-ts-ignore",
+          "description": "Use @ts-expect-error instead of @ts-ignore for type suppression",
+          "pattern": "//\\s*@ts-ignore",
+          "severity": "error",
+          "languages": [
+            "typescript"
+          ],
+          "file_patterns": [
+            "**/*.ts",
+            "**/*.tsx",
+            "!**/__tests__/**",
+            "!**/test/**",
+            "!**/tests/**",
+            "!**/*.test.ts",
+            "!**/*.spec.ts"
+          ],
+          "message": "Use @ts-expect-error instead of @ts-ignore — it will error when the suppressed issue is fixed, preventing stale suppressions",
+          "fix_suggestion": "Replace @ts-ignore with @ts-expect-error and add a description of the expected error",
+          "component_types": ["all"],
+          "phase": ["code"]
+        },
+        {
+          "id": "no-ts-nocheck",
+          "description": "Never disable type checking for an entire file",
+          "pattern": "//\\s*@ts-nocheck",
+          "severity": "error",
+          "languages": [
+            "typescript"
+          ],
+          "message": "Do not use @ts-nocheck — fix type errors individually instead of disabling the entire file",
+          "fix_suggestion": "Address individual type errors with @ts-expect-error or proper type fixes",
+          "component_types": ["all"],
+          "phase": ["code"]
+        },
+        {
+          "id": "no-double-type-assertion",
+          "description": "Avoid double type assertion (as unknown as T) to bypass type safety",
+          "pattern": "as\\s+unknown\\s+as\\s+",
+          "severity": "error",
+          "languages": [
+            "typescript"
+          ],
+          "file_patterns": [
+            "**/*.ts",
+            "**/*.tsx",
+            "!**/__tests__/**",
+            "!**/test/**",
+            "!**/tests/**",
+            "!**/*.test.ts",
+            "!**/*.spec.ts"
+          ],
+          "message": "Double type assertion 'as unknown as T' bypasses all type safety — fix the underlying type mismatch instead",
+          "fix_suggestion": "Use proper type guards, generics, or fix the type relationship instead of double-asserting",
+          "component_types": ["all"],
+          "phase": ["code"]
+        },
+        {
+          "id": "no-definite-assignment-abuse",
+          "description": "Limit use of definite assignment assertion (!:) which bypasses strictPropertyInitialization",
+          "pattern": "^\\s+(private |public |protected |readonly )*\\w+\\s*!:\\s*\\w+",
+          "severity": "warning",
+          "languages": [
+            "typescript"
+          ],
+          "file_patterns": [
+            "**/*.ts",
+            "**/*.tsx",
+            "!**/__tests__/**",
+            "!**/test/**",
+            "!**/tests/**",
+            "!**/*.test.ts",
+            "!**/*.spec.ts",
+            "!**/*.d.ts"
+          ],
+          "message": "Definite assignment assertion (!:) bypasses strictPropertyInitialization — initialize in constructor or provide a default value",
+          "fix_suggestion": "Initialize the property in the constructor, provide a default value, or make it optional with '?:'",
+          "component_types": ["all"],
+          "phase": ["code"]
+        },
+        {
+          "id": "no-type-assertion-object",
+          "description": "Avoid type assertion to empty object type which bypasses type safety",
+          "pattern": "as\\s+(\\{\\s*\\}|object\\b)",
+          "severity": "warning",
+          "languages": [
+            "typescript"
+          ],
+          "file_patterns": [
+            "**/*.ts",
+            "**/*.tsx",
+            "!**/__tests__/**",
+            "!**/test/**",
+            "!**/tests/**",
+            "!**/*.test.ts",
+            "!**/*.spec.ts"
+          ],
+          "message": "Avoid 'as {}' or 'as object' — these bypass type safety similar to 'as any'",
+          "fix_suggestion": "Use a proper interface, 'unknown' with type guards, or fix the type relationship",
+          "component_types": ["all"],
+          "phase": ["code"]
+        },
+        {
+          "id": "require-strict-tsconfig",
+          "description": "TypeScript projects must have strict mode enabled in tsconfig.json",
+          "check": "strict_tsconfig",
+          "severity": "warning",
+          "languages": [
+            "typescript"
+          ],
+          "file_patterns": [
+            "**/tsconfig.json",
+            "**/tsconfig.*.json"
+          ],
+          "message": "Enable 'strict: true' in tsconfig.json for comprehensive type safety",
+          "component_types": ["all"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design specify TypeScript strict mode (strict: true in tsconfig.json)? Ensure this is enabled for the project. Flag if not mentioned."
+        }
+      ]
+    }
+  },
+  "dimensions": {
+    "description": "Four dimensions of type design quality (from pr-review-toolkit)",
+    "encapsulation": {
+      "weight": 25,
+      "description": "How well types hide implementation details"
+    },
+    "invariants": {
+      "weight": 30,
+      "description": "How well types enforce business rules and constraints"
+    },
+    "usefulness": {
+      "weight": 25,
+      "description": "How ergonomic and self-documenting types are"
+    },
+    "enforcement": {
+      "weight": 20,
+      "description": "How well types are enforced at runtime boundaries"
+    }
+  }
+}

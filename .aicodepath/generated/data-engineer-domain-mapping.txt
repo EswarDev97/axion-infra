@@ -1,0 +1,7 @@
+// C13 — aicodepath-data-engineer DOMAIN_MAPPING entries
+"data-pipeline": ["data-engineer"],
+"etl": ["data-engineer"],
+"airflow": ["data-engineer"],
+"dbt": ["data-engineer"],
+"spark": ["data-engineer"],
+"data-warehouse": ["data-engineer"],

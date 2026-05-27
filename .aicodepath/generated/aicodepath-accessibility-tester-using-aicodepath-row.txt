@@ -1,0 +1,4 @@
+# using-aicodepath SKILL.md row for aicodepath-accessibility-tester
+# Batch: D3 | Pack: specialists
+
+| Accessibility compliance audit — WCAG 2.1/3.0, screen readers (NVDA, JAWS, VoiceOver), keyboard navigation, color contrast, ARIA | `aicodepath-accessibility-tester` |

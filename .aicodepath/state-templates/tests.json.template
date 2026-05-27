@@ -1,0 +1,52 @@
+{
+  "$schema": "AICodePath Test Status Tracking",
+  "version": "1.0.0",
+  "lastUpdated": "{{ISO_TIMESTAMP}}",
+  "project": "{{PROJECT_NAME}}",
+  "crNumber": "{{CR_NUMBER}}",
+  "summary": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "pending": 0
+  },
+  "coverage": {
+    "lines": 0,
+    "branches": 0,
+    "functions": 0,
+    "statements": 0
+  },
+  "failures": [
+    {
+      "_comment": "Template for failure entries",
+      "file": "path/to/test.spec.ts",
+      "test": "test description",
+      "error": "error message",
+      "line": 0,
+      "attempts": 0,
+      "firstFailed": "{{ISO_TIMESTAMP}}",
+      "lastAttempt": "{{ISO_TIMESTAMP}}"
+    }
+  ],
+  "recentlyFixed": [
+    {
+      "_comment": "Template for recently fixed entries",
+      "file": "path/to/test.spec.ts",
+      "test": "test description",
+      "fixedAt": "{{ISO_TIMESTAMP}}",
+      "fixedBy": "commit hash or description"
+    }
+  ],
+  "testSuites": [
+    {
+      "_comment": "Template for test suite entries",
+      "name": "suite name",
+      "file": "path/to/suite",
+      "tests": 0,
+      "passed": 0,
+      "failed": 0,
+      "duration": 0
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+{"cycle":1,"audit":98,"behavioral":5,"behavioral_total":5,"composite":118,"action":"KEEP","delta":"+31","mutated":["D2","D3","D4","D5"],"notes":"Added inference framework, WHY to HARD-GATE, Use-when description, MANDATORY taxonomy trigger, offloaded example to references/"}
+{"cycle":2,"audit":100,"behavioral":5,"behavioral_total":5,"composite":120,"action":"GRADE_A_EXIT","delta":"+2","mutated":["D5","D8"],"notes":"Added Do NOT Load guidance for example-output.md, added taxonomy-unreadable fallback — composite 120 reached"}

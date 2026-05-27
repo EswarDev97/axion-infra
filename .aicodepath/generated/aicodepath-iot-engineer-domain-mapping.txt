@@ -1,0 +1,9 @@
+# DOMAIN_MAPPING entries for aicodepath-iot-engineer
+# Batch: D2 | Pack: specialists
+
+"mqtt": ["iot-engineer"],
+"edge-computing": ["iot-engineer"],
+"ota-firmware": ["iot-engineer"],
+"device-management": ["iot-engineer"],
+"iot-telemetry": ["iot-engineer"],
+"mtls-iot": ["iot-engineer"],

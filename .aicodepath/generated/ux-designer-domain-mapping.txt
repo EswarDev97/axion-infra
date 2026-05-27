@@ -1,0 +1,7 @@
+// C16 — aicodepath-ux-designer DOMAIN_MAPPING entries
+"user-research": ["ux-designer"],
+"persona-creation": ["ux-designer"],
+"journey-mapping": ["ux-designer"],
+"information-architecture": ["ux-designer"],
+"wireframing": ["ux-designer"],
+"ux-audit": ["ux-designer"],

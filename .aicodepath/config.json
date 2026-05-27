@@ -1,0 +1,225 @@
+{
+  "version": "2.12.0",
+  "name": "aicodepath",
+  "hookProfile": "standard",
+  "metadata": {
+    "description": "AI-Guided Development Path - Structured workflow system for building software with Claude Code as your AI pair programmer",
+    "author": "AICodePath Team",
+    "license": "MIT",
+    "homepage": "https://github.com/febrahim-driod/aicodepath-tool",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/febrahim-driod/aicodepath-tool.git"
+    },
+    "keywords": [
+      "workflow",
+      "ai-development",
+      "code-generation",
+      "quality-enforcement",
+      "architecture",
+      "tdd",
+      "agile"
+    ]
+  },
+  "paths": {
+    "hooks": "hooks",
+    "rules": "rules",
+    "guidelines": "guidelines",
+    "lib": "lib",
+    "scripts": "scripts",
+    "db": "db",
+    "templates": "templates",
+    "stateTemplates": "state-templates",
+    "skills": "skills",
+    "agents": "agents",
+    "knowledgeBase": "aicodepath-docs",
+    "docs": "docs"
+  },
+  "features": {
+    "adaptiveWorkflow": {
+      "enabled": true,
+      "description": "Adaptive phase execution based on project complexity"
+    },
+    "qualityEnforcement": {
+      "enabled": true,
+      "layers": [
+        "prompting",
+        "hooks",
+        "checkpoints"
+      ],
+      "description": "Three-layer quality enforcement system"
+    },
+    "mockDetection": {
+      "enabled": true,
+      "threshold": 70,
+      "description": "Detects and blocks mock/stub implementations"
+    },
+    "duplicationDetection": {
+      "enabled": true,
+      "threshold": 70,
+      "description": "Detects code duplication"
+    },
+    "gicl": {
+      "enabled": true,
+      "description": "Governed Iterative Construction Loop",
+      "disableWith": "AICODEPATH_GICL_DISABLED=true"
+    },
+    "swarm": {
+      "enabled": true,
+      "description": "Multi-agent team orchestration via Claude Code Agent Teams",
+      "maxTeammates": 5,
+      "defaultPattern": "auto",
+      "syncIntervalMs": 5000,
+      "envVar": "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"
+    },
+    "frontendDesigner": {
+      "enabled": true,
+      "description": "Adaptive frontend design validation"
+    },
+    "ciIntegration": {
+      "enabled": true,
+      "description": "CI/CD lint parity checks"
+    },
+    "flags": {
+      "gicl": true,
+      "swarm": true,
+      "schema_context": true,
+      "visual_memory": true,
+      "terminal": true,
+      "duplication_checker": true,
+      "statusline": true,
+      "mock_detection": true,
+      "frontend_designer": true,
+      "ci_integration": true
+    }
+  },
+  "requiredPlugins": [
+    {
+      "id": "frontend-design@claude-plugins-official",
+      "minVersion": "1.0.0",
+      "purpose": "UI component generation with design validation"
+    },
+    {
+      "id": "github@claude-plugins-official",
+      "minVersion": "1.0.0",
+      "purpose": "GitHub integration for PRs, issues, and commits"
+    },
+    {
+      "id": "context7@claude-plugins-official",
+      "minVersion": "1.0.0",
+      "purpose": "Up-to-date library documentation access"
+    },
+    {
+      "id": "code-review@claude-plugins-official",
+      "minVersion": "1.0.0",
+      "purpose": "Automated code review"
+    },
+    {
+      "id": "commit-commands@claude-plugins-official",
+      "minVersion": "1.0.0",
+      "purpose": "Git commit helpers"
+    },
+    {
+      "id": "feature-dev@claude-plugins-official",
+      "minVersion": "1.0.0",
+      "purpose": "7-phase feature development workflow"
+    },
+    {
+      "id": "pr-review-toolkit@claude-plugins-official",
+      "minVersion": "1.0.0",
+      "purpose": "Comprehensive PR analysis with specialized agents"
+    }
+  ],
+  "optionalPlugins": [
+    {
+      "id": "linear@claude-plugins-official",
+      "purpose": "Issue tracking integration"
+    },
+    {
+      "id": "typescript@claude-plugins-official",
+      "purpose": "TypeScript code intelligence",
+      "condition": "project.hasTypeScript"
+    },
+    {
+      "id": "python@claude-plugins-official",
+      "purpose": "Python code intelligence",
+      "condition": "project.hasPython"
+    }
+  ],
+  "claudeCode": {
+    "minVersion": "1.0.0"
+  },
+  "install": {
+    "message": "Thank you for installing AICodePath! Run 'node hooks/pre-flight-check.js' to verify your environment.",
+    "requirements": {
+      "node": ">=16.0.0",
+      "npm": ">=8.0.0"
+    }
+  },
+  "scripts": {
+    "postinstall": "bash scripts/init-knowledge-base.sh"
+  },
+  "database": {
+    "schema": "db/schema.sql",
+    "migrations": "db/migrations"
+  },
+  "configuration": {
+    "knowledgeBase": {
+      "path": "aicodepath-docs/aicodepath.db",
+      "required": true,
+      "autoInit": true
+    },
+    "guidelines": {
+      "directory": "guidelines",
+      "files": [
+        "coding-standards.json",
+        "architecture-rules.json",
+        "security-rules.json",
+        "testing-standards.json",
+        "api-design-rules.json",
+        "data-modeling-rules.json",
+        "devops-rules.json"
+      ]
+    },
+    "rules": {
+      "directory": "rules",
+      "coreWorkflow": "rules/core-workflow.md"
+    }
+  },
+  "dashboard": {
+    "enabled": true,
+    "path": "dashboard",
+    "port": 3899,
+    "features": {
+      "webSocket": true,
+      "kanban": true,
+      "dependencyGraph": true,
+      "realTimeMonitoring": true
+    }
+  },
+  "documentation": {
+    "readme": "README.md",
+    "userGuide": "USER_GUIDE.md",
+    "claudeGuide": "CLAUDE.md",
+    "alignment": "CLAUDE_CODE_ALIGNMENT_REPORT.md",
+    "implementation": "IMPLEMENTATION_GUIDE.md",
+    "guides": [
+      "docs/ci-cd-integration.md",
+      "docs/image-support-guide.md",
+      "docs/plan-mode-guide.md",
+      "docs/subagent-patterns.md",
+      "docs/mcp-resource-guide.md"
+    ]
+  },
+  "tags": [
+    "workflow-automation",
+    "code-quality",
+    "architecture",
+    "test-driven-development",
+    "agile",
+    "documentation",
+    "knowledge-management",
+    "multi-agent",
+    "real-time-monitoring"
+  ]
+}

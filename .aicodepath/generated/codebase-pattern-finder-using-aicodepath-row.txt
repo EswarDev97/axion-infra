@@ -1,0 +1,2 @@
+// C16b — aicodepath-codebase-pattern-finder row for using-aicodepath/SKILL.md Agents table
+| Brownfield pattern discovery — find similar code, usage patterns, test examples, convention catalogs (read-only) | `aicodepath-codebase-pattern-finder` |

@@ -1,0 +1,1 @@
+minimal-api, efcore, dotnet-aspire, aot-dotnet, dotnet-hosted-service, webapplicationfactory

@@ -1,0 +1,178 @@
+{
+  "$schema": "AICodePath Observability Guidelines",
+  "version": "1.0.0",
+  "description": "Observability rules for logging, metrics, tracing, alerting, and dashboards",
+  "_classification": {
+    "component_types": ["observability", "service", "api"],
+    "default_phase": ["code"],
+    "design_applies": true,
+    "design_signals": ["log", "logging", "metric", "metrics", "trace", "tracing", "monitor", "alert", "dashboard", "observability", "telemetry", "pii", "structured"]
+  },
+  "categories": {
+    "logging": {
+      "description": "Structured logging best practices",
+      "component_types": ["service", "api", "observability"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "structured-logging-format",
+          "description": "Use structured logging (JSON) format",
+          "pattern": "console\\.log|console\\.error|console\\.warn",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": [
+            "*service*",
+            "*controller*",
+            "*handler*",
+            "!**/__tests__/**",
+            "!**/test/**",
+            "!**/tests/**",
+            "!**/*.test.js",
+            "!**/*.test.ts",
+            "!**/*.spec.js",
+            "!**/*.spec.ts",
+            "!**/commands/**",
+            "!**/scripts/**",
+            "!**/bin/**"
+          ],
+          "message": "Use structured logging (JSON format) instead of console.log for production code",
+          "component_types": ["service", "api"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design specify structured/JSON logging for all services? Ensure a logger library (e.g., pino, winston) is specified, not console.log. Flag if logging strategy is not mentioned."
+        },
+        {
+          "id": "no-pii-in-logs",
+          "description": "Never log PII or sensitive data",
+          "pattern": "log.*(password|ssn|credit_card|secret|token|apiKey)",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": [
+            "*service*",
+            "*controller*",
+            "*handler*",
+            "*middleware*"
+          ],
+          "message": "Never log PII or sensitive data (passwords, SSN, credit cards, secrets, tokens)",
+          "component_types": ["service", "api", "observability"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design log any fields that may contain PII (email, name, phone, SSN, address) or sensitive data (passwords, tokens, secrets)? If so, ensure those fields are masked or excluded. BLOCK."
+        },
+        {
+          "id": "avoid-log-spam",
+          "description": "Avoid excessive logging in loops",
+          "pattern": "for.*\\{[^}]*logger\\.|while.*\\{[^}]*logger\\.",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": [
+            "*service*",
+            "*handler*"
+          ],
+          "message": "Avoid logging inside loops - use batch logging or sampling",
+          "component_types": ["service"],
+          "phase": ["code"]
+        }
+      ]
+    },
+    "metrics": {
+      "description": "Application metrics and monitoring standards",
+      "component_types": ["observability", "service"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "cardinality-limit",
+          "description": "Limit metric label cardinality",
+          "pattern": "userId|user_id|requestId|ip_address",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": [
+            "*metrics*"
+          ],
+          "message": "Avoid high-cardinality labels (userId, requestId, IP) in metrics - causes storage explosion",
+          "component_types": ["observability"],
+          "phase": ["design", "code"],
+          "design_check": "Does the metrics design include high-cardinality labels (userId, requestId, sessionId, IP address)? Remove them from metric labels; use tracing for per-request context instead. BLOCK."
+        },
+        {
+          "id": "counter-increment-only",
+          "description": "Counters should only increase",
+          "pattern": "counter\\.dec|counter\\.sub|\\.decrement",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": [
+            "*metrics*"
+          ],
+          "message": "Counters must only increase - use gauges for values that can decrease",
+          "component_types": ["observability"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design use counters for values that can decrease (e.g., active connections, queue depth)? Replace with gauges. Counters are monotonically increasing only. Flag for correction."
+        }
+      ]
+    },
+    "secrets_management": {
+      "description": "Secrets and sensitive data handling",
+      "component_types": ["service", "api"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-hardcoded-secrets",
+          "description": "Never hardcode secrets",
+          "pattern": "password\\s*=\\s*['\"][^'\"]+['\"]|api_key\\s*=\\s*['\"][^'\"]+['\"]",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": [
+            "*.ts",
+            "*.js",
+            "*.py",
+            "*.go"
+          ],
+          "message": "Never hardcode secrets - use environment variables or secret managers",
+          "component_types": ["service", "api"],
+          "phase": ["code"]
+        }
+      ]
+    },
+    "error_handling": {
+      "description": "Error handling and reporting standards",
+      "component_types": ["service", "api"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-swallow-errors",
+          "description": "Never silently swallow errors",
+          "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": [
+            "*.ts",
+            "*.js"
+          ],
+          "message": "Never silently swallow errors - always log or rethrow",
+          "component_types": ["service", "api"],
+          "phase": ["design", "code"],
+          "design_check": "Does the error handling design specify what happens on each failure path? Ensure all errors are either logged + rethrown, or logged + handled with a fallback. BLOCK on silent error swallowing."
+        }
+      ]
+    },
+    "multi_tenant_observability": {
+      "description": "Observability in multi-tenant systems",
+      "component_types": ["observability", "service"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "tenant-metric-labeling",
+          "description": "Avoid tenant ID in metric labels",
+          "pattern": "tenantId|orgId",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": [
+            "*metrics*"
+          ],
+          "message": "Do not use tenant IDs as metric labels due to cardinality explosion",
+          "component_types": ["observability"],
+          "phase": ["design", "code"],
+          "design_check": "Does the metrics design include tenant ID as a metric label? Remove it — tenant-scoped analysis should use log queries or tracing, not metric labels. BLOCK."
+        }
+      ]
+    }
+  }
+}

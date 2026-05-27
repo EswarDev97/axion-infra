@@ -1,0 +1,1 @@
+expo, expo-router, eas-build, react-native, reanimated, flashlist

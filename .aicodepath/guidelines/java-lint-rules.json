@@ -1,0 +1,56 @@
+{
+  "$schema": "AICodePath Java Lint Guidelines",
+  "version": "1.0.0",
+  "description": "Code quality lint rules for Java — enforces structured logging, typed generics, and immutability",
+  "_classification": {
+    "component_types": ["all"],
+    "default_phase": ["code"]
+  },
+  "categories": {
+    "logging": {
+      "description": "Enforce structured logging over System.out",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-sysout",
+          "description": "No System.out.println in production Java — use SLF4J",
+          "pattern": "System\\.out\\.(print|println|printf)\\s*\\(",
+          "severity": "warning",
+          "file_patterns": ["*.java", "!**/*Test.java", "!**/test/**"],
+          "message": "Replace System.out with a SLF4J logger: log.info(\"{}\", value)"
+        }
+      ]
+    },
+    "generics": {
+      "description": "Raw type prevention",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-raw-types",
+          "description": "Avoid raw generic types — always parameterize",
+          "pattern": "(?:List|Map|Set|Collection|Optional)\\s+\\w",
+          "severity": "warning",
+          "file_patterns": ["*.java"],
+          "message": "Raw type detected — parameterize the generic: List<String>, Map<String, Object>"
+        }
+      ]
+    },
+    "immutability": {
+      "description": "Immutability and final usage",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "prefer-final",
+          "description": "Mark parameters and locals final when not reassigned",
+          "pattern": "\\b(?:public|private|protected)\\s+(?!final)\\w+\\s+\\w+;",
+          "severity": "info",
+          "file_patterns": ["*.java"],
+          "message": "Consider marking this field final if it is never reassigned after construction"
+        }
+      ]
+    }
+  }
+}

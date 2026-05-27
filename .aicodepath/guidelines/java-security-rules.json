@@ -1,0 +1,71 @@
+{
+  "$schema": "AICodePath Java Security Guidelines",
+  "version": "1.0.0",
+  "description": "Security rules for Java files — prevents SQL injection, field injection, hardcoded secrets, and System.exit",
+  "_classification": {
+    "component_types": ["security", "all"],
+    "default_phase": ["code"]
+  },
+  "categories": {
+    "injection": {
+      "description": "SQL and query injection prevention",
+      "component_types": ["security", "all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-sql-injection",
+          "description": "No SQL built with string concatenation — SQL injection risk",
+          "pattern": "\"\\s*(?:SELECT|INSERT|UPDATE|DELETE|WHERE)[^\"]*\"\\s*\\+",
+          "severity": "error",
+          "file_patterns": ["*.java"],
+          "message": "Building SQL with concatenation is vulnerable to injection — use PreparedStatement or JPA"
+        }
+      ]
+    },
+    "spring": {
+      "description": "Spring security patterns",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-field-injection",
+          "description": "Avoid @Autowired field injection — prefer constructor injection",
+          "pattern": "@Autowired\\s*\\n\\s*(private|protected)\\s+\\w",
+          "severity": "warning",
+          "file_patterns": ["*.java"],
+          "message": "@Autowired field injection makes testing harder — use constructor injection instead"
+        }
+      ]
+    },
+    "secrets": {
+      "description": "No hardcoded secrets in Java files",
+      "component_types": ["security", "all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-hardcoded-secrets",
+          "description": "No hardcoded API keys, tokens, or passwords",
+          "pattern": "(apiKey|api_key|password|secret|token|privateKey)\\s*=\\s*['\"][A-Za-z0-9+/=_\\-]{12,}['\"]",
+          "severity": "error",
+          "file_patterns": ["*.java"],
+          "message": "Hardcoded secret detected — use @Value('${...}') or a secrets manager"
+        }
+      ]
+    },
+    "lifecycle": {
+      "description": "JVM lifecycle management",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-system-exit",
+          "description": "No System.exit() — terminates the JVM unexpectedly",
+          "pattern": "System\\.exit\\s*\\(",
+          "severity": "error",
+          "file_patterns": ["*.java", "!**/Main.java", "!**/Application.java"],
+          "message": "System.exit() terminates the entire JVM — throw an exception or use a lifecycle hook"
+        }
+      ]
+    }
+  }
+}

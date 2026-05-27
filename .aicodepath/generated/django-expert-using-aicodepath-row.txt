@@ -1,0 +1,1 @@
+| Django 4+ async views, ORM (select_related/prefetch_related), DRF serializers, Celery, security hardening | `aicodepath-django-expert` |

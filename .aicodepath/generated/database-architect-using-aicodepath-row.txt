@@ -1,0 +1,1 @@
+| Database schema design, SQL/NoSQL selection, index strategy, migration scripts, sharding | `aicodepath-database-architect` |

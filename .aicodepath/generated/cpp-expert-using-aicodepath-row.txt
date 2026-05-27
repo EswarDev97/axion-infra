@@ -1,0 +1,1 @@
+| C++20/23 concepts, ranges, smart pointers, RAII, CMake, vcpkg, clang-tidy, sanitizers | `aicodepath-cpp-expert` |

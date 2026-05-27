@@ -1,0 +1,7 @@
+// C14 — aicodepath-llm-architect DOMAIN_MAPPING entries
+"rag-pipeline": ["llm-architect"],
+"llm-serving": ["llm-architect"],
+"vector-store": ["llm-architect"],
+"embedding-strategy": ["llm-architect"],
+"fine-tune-model": ["llm-architect"],
+"quantization": ["llm-architect"],

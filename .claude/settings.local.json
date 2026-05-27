@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python deploy_crm.py)",
+      "Bash(python debug_crm.py)",
+      "Bash(docker exec *)",
+      "Bash(python fix_employee_form.py)",
+      "Bash(python create_hr_tables.py)",
+      "Bash(python -c ' *)"
+    ]
+  }
+}

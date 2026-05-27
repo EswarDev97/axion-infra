@@ -1,0 +1,1 @@
+| TDD Red-Green-Refactor, test pyramid, coverage gates, Stryker mutation testing, Testcontainers | `aicodepath-test-engineer` |

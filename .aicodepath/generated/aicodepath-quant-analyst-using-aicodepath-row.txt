@@ -1,0 +1,4 @@
+# using-aicodepath SKILL.md row for aicodepath-quant-analyst
+# Batch: D2 | Pack: specialists
+
+| Quantitative trading strategies — backtesting, statistical arbitrage, derivatives pricing, risk metrics (VaR, Sharpe), HFT systems | `aicodepath-quant-analyst` |

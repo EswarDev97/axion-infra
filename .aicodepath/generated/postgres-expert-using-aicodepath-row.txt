@@ -1,0 +1,1 @@
+| PostgreSQL query tuning, JSONB, GIN indexes, partitioning, pgvector, PgBouncer, replication | `aicodepath-postgres-expert` |

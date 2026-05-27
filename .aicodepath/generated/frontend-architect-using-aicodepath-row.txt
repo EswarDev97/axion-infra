@@ -1,0 +1,1 @@
+| React/Vue/Angular component hierarchy, state management, bundle audit, CSS architecture, TypeScript patterns | `aicodepath-frontend-architect` |

@@ -1,0 +1,1 @@
+| System architecture, ADRs, monolith vs microservices, component boundaries, resilience patterns | `aicodepath-architect` |

@@ -1,0 +1,81 @@
+{
+  "$schema": "AICodePath Mobile Design Guidelines",
+  "version": "1.0.0",
+  "description": "Mobile design rules for platform selection, offline support, performance, and accessibility",
+  "_classification": {
+    "component_types": ["mobile", "frontend"],
+    "default_phase": ["code"],
+    "design_applies": true,
+    "design_signals": ["mobile", "ios", "android", "react native", "flutter", "swift", "kotlin", "app", "offline", "push notification", "analytics", "screen", "component", "ui"]
+  },
+  "categories": {
+    "platform": {
+      "description": "Platform selection and cross-platform patterns",
+      "component_types": ["mobile"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "shared-business-logic",
+          "description": "Keep business logic platform-agnostic",
+          "pattern": "import.*Platform|UIKit|android\\.",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": [
+            "*service*",
+            "*domain*",
+            "*business*"
+          ],
+          "message": "Business logic should be platform-agnostic - isolate platform deps to adapters",
+          "component_types": ["mobile"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design mix business logic with platform-specific APIs (UIKit, android.)? Separate via adapter pattern: business logic in platform-agnostic modules, platform deps in adapters. Flag for correction."
+        }
+      ]
+    },
+    "security": {
+      "description": "Mobile security patterns",
+      "component_types": ["mobile", "frontend"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-sensitive-logs",
+          "description": "No sensitive data in logs",
+          "pattern": "(console\\.log|logger\\.(info|debug|warn|error)).*\\b(auth[-_]?token|bearer[-_]?token|password|api[-_]?key|jwt|credential|secret|refresh[-_]?token|session[-_]?id)\\b|print.*\\bcredential\\b",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": [
+            "*.ts",
+            "*.js",
+            "*.swift",
+            "*.kt"
+          ],
+          "message": "Never log sensitive data (tokens, passwords, PII) - especially in production",
+          "component_types": ["mobile", "frontend"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design log any sensitive fields (auth tokens, passwords, API keys, credentials)? Remove them from all log statements. BLOCK."
+        }
+      ]
+    },
+    "analytics": {
+      "description": "User behavior and UX telemetry",
+      "component_types": ["mobile", "frontend"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "privacy-aware-analytics",
+          "description": "Avoid PII in analytics",
+          "pattern": "email|phone|aadhaar|ssn",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": [
+            "*analytics*"
+          ],
+          "message": "Do not send PII in analytics events",
+          "component_types": ["mobile", "frontend"],
+          "phase": ["design", "code"],
+          "design_check": "Does the analytics design include PII fields (email, phone, national ID, SSN)? Strip all PII from analytics events — use anonymous identifiers only. BLOCK."
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "aicodepath-data-ai",
+  "version": "2.13.0",
+  "description": "Data and AI specialists",
+  "author": { "name": "AICodePath", "url": "https://github.com/aicodepath/aicodepath-tool" },
+  "license": "MIT",
+  "agents": [
+    "../../../agents/aicodepath-data-scientist.md",
+    "../../../agents/aicodepath-ml-engineer.md",
+    "../../../agents/aicodepath-llm-architect.md",
+    "../../../agents/aicodepath-data-engineer.md",
+    "../../../agents/aicodepath-mobile-architect.md"
+  ]
+}

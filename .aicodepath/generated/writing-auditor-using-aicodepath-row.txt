@@ -1,0 +1,2 @@
+// C16b — aicodepath-writing-auditor row for using-aicodepath/SKILL.md Agents table
+| AI writing audit — detect and remove AI-isms from documentation and prose using 103-entry tiered vocabulary system | `aicodepath-writing-auditor` |

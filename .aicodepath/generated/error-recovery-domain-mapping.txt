@@ -1,0 +1,7 @@
+// C16b — aicodepath-error-recovery DOMAIN_MAPPING entries
+"semantic-error": ["error-recovery"],
+"repeated-error": ["error-recovery"],
+"gicl-regression": ["error-recovery"],
+"pytorch-error": ["error-recovery"],
+"cuda-error": ["error-recovery"],
+"tensor-shape": ["error-recovery"],

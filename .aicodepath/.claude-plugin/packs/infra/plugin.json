@@ -1,0 +1,17 @@
+{
+  "name": "aicodepath-infra",
+  "version": "2.13.0",
+  "description": "Infrastructure and DevOps specialists",
+  "author": { "name": "AICodePath", "url": "https://github.com/aicodepath/aicodepath-tool" },
+  "license": "MIT",
+  "agents": [
+    "../../../agents/aicodepath-devops-architect.md",
+    "../../../agents/aicodepath-sre-engineer.md",
+    "../../../agents/aicodepath-ci-fixer.md",
+    "../../../agents/aicodepath-kubernetes-expert.md",
+    "../../../agents/aicodepath-terraform-expert.md",
+    "../../../agents/aicodepath-cost-optimizer.md",
+    "../../../agents/aicodepath-chaos-engineer.md",
+    "../../../agents/aicodepath-incident-responder.md"
+  ]
+}

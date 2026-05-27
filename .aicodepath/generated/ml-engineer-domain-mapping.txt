@@ -1,0 +1,7 @@
+// C14 — aicodepath-ml-engineer DOMAIN_MAPPING entries
+"model-serving": ["ml-engineer"],
+"feature-store": ["ml-engineer"],
+"drift-monitoring": ["ml-engineer"],
+"ml-pipeline": ["ml-engineer"],
+"model-registry": ["ml-engineer"],
+"canary-ml": ["ml-engineer"],

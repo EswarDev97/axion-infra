@@ -1,0 +1,124 @@
+{
+  "$schema": "AICodePath Implementation Status Tracking",
+  "version": "1.1.0",
+  "lastUpdated": "{{ISO_TIMESTAMP}}",
+  "project": "{{PROJECT_NAME}}",
+  "crNumber": "{{CR_NUMBER}}",
+  "phase": "CONSTRUCTION",
+  "currentUnit": "",
+  "currentStage": "",
+  "completedSteps": [],
+  "pendingSteps": [],
+  "currentStep": {
+    "name": "",
+    "started": "",
+    "filesCreated": [],
+    "filesModified": [],
+    "filesRemaining": []
+  },
+  "units": [
+    {
+      "_comment": "Template for unit entries",
+      "id": "U001",
+      "name": "unit-name",
+      "description": "unit description",
+      "status": "pending",
+      "stages": {
+        "functional-design": "pending",
+        "nfr-requirements": "skipped",
+        "nfr-design": "skipped",
+        "infrastructure-design": "pending",
+        "database-design": "pending",
+        "code-generation": "pending"
+      },
+      "designArtifacts": [],
+      "codeArtifacts": [],
+      "testArtifacts": [],
+      "commits": [],
+      "authenticity": {
+        "_comment": "Implementation authenticity tracking per unit",
+        "overallScore": 0,
+        "status": "pending",
+        "files": []
+      }
+    }
+  ],
+  "authenticity": {
+    "_comment": "Global implementation authenticity tracking",
+    "enabled": true,
+    "version": "1.0.0",
+    "lastCheck": "{{ISO_TIMESTAMP}}",
+    "summary": {
+      "totalFiles": 0,
+      "filesChecked": 0,
+      "averageScore": 0,
+      "status": "PENDING"
+    },
+    "thresholds": {
+      "pass": 90,
+      "review": 70,
+      "fail": 0
+    },
+    "breakdown": {
+      "stub": 0,
+      "mock_data": 0,
+      "fake_logic": 0
+    },
+    "fileScores": [
+      {
+        "_comment": "Template for file authenticity entries",
+        "file": "path/to/file.ts",
+        "score": 100,
+        "status": "PASS",
+        "linesOfCode": 0,
+        "violations": {
+          "stub": 0,
+          "mock_data": 0,
+          "fake_logic": 0
+        },
+        "checkedAt": "{{ISO_TIMESTAMP}}"
+      }
+    ],
+    "blockedWrites": [],
+    "reviewRequired": []
+  },
+  "blockers": [],
+  "notes": "",
+  "decisions": [
+    {
+      "_comment": "Template for decision entries",
+      "timestamp": "{{ISO_TIMESTAMP}}",
+      "decision": "decision description",
+      "rationale": "why this decision was made",
+      "alternatives": ["other options considered"],
+      "kbDecisionId": null
+    }
+  ],
+  "knowledgeBaseSync": {
+    "_comment": "Knowledge base synchronization tracking",
+    "enabled": true,
+    "lastSync": "{{ISO_TIMESTAMP}}",
+    "syncStatus": "pending",
+    "artifactsMapped": {
+      "requirements": [],
+      "userStories": [],
+      "designs": [],
+      "code": [],
+      "tests": []
+    },
+    "traceabilityLinks": {
+      "created": 0,
+      "pending": 0
+    },
+    "validationsSynced": {
+      "authenticity": 0,
+      "duplication": 0,
+      "guidelines": 0
+    },
+    "codeEntities": {
+      "classes": 0,
+      "functions": 0,
+      "interfaces": 0
+    }
+  }
+}

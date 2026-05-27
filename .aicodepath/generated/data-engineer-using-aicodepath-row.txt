@@ -1,0 +1,2 @@
+// C13 — aicodepath-data-engineer row for using-aicodepath/SKILL.md Agents table
+| Data pipelines, ETL/ELT processes, data lake/warehouse architecture, stream processing, Airflow/dbt/Spark detected | `aicodepath-data-engineer` |

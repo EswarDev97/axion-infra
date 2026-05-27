@@ -1,0 +1,9 @@
+# DOMAIN_MAPPING entries for aicodepath-rl-engineer
+# Batch: D1 | Pack: specialists
+
+"reinforcement-learning": ["rl-engineer"],
+"reward-shaping": ["rl-engineer"],
+"ppo": ["rl-engineer"],
+"dqn": ["rl-engineer"],
+"sim-to-real": ["rl-engineer"],
+"rl-environment": ["rl-engineer"],

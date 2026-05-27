@@ -1,0 +1,1 @@
+| C# 12+ records, primary constructors, nullable reference types, ASP.NET Core minimal APIs, EF Core | `aicodepath-csharp-expert` |

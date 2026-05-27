@@ -1,0 +1,210 @@
+{
+  "$schema": "AICodePath Architecture Guidelines",
+  "version": "1.0.0",
+  "description": "Architecture rules for clean, maintainable code - layering, dependencies, and patterns",
+  "_classification": {
+    "component_types": ["service", "api", "database", "frontend", "all"],
+    "default_phase": ["code"],
+    "design_applies": true,
+    "design_signals": ["service", "layer", "controller", "repository", "architecture", "module", "dependency", "api", "endpoint", "domain", "entity", "pattern", "transaction", "config"]
+  },
+  "categories": {
+    "layering": {
+      "description": "Layer separation and dependency rules",
+      "component_types": ["service", "api"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "controller-no-db",
+          "description": "Controllers should not directly access database",
+          "pattern": "Controller.*\\.(find|save|update|delete|query|execute)",
+          "severity": "warning",
+          "languages": ["javascript", "typescript", "java"],
+          "message": "Controllers should delegate to services, not access database directly",
+          "component_types": ["api", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design show controllers calling database/repository methods directly? If so, route through a service layer. BLOCK on controller → repository direct calls."
+        },
+        {
+          "id": "service-no-request",
+          "description": "Services should not depend on HTTP request objects",
+          "pattern": "Service.*req\\.(body|params|query|headers)",
+          "severity": "warning",
+          "languages": ["javascript", "typescript"],
+          "message": "Services should receive parsed data, not raw request objects",
+          "component_types": ["api", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design show services receiving raw HTTP request objects (req.body, req.params)? If so, controllers should extract data and pass plain objects to services. Flag for correction."
+        }
+      ]
+    },
+    "dependencies": {
+      "description": "Dependency direction and coupling rules",
+      "component_types": ["service", "api", "all"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-circular-deps",
+          "description": "No circular dependencies between modules",
+          "check": "circular_dependency",
+          "severity": "error",
+          "message": "Circular dependency detected - refactor to break the cycle",
+          "component_types": ["service", "api", "all"],
+          "phase": ["design", "code"],
+          "design_check": "Does the proposed module/service dependency graph contain any cycles (A depends on B which depends on A)? If so, break the cycle by extracting shared logic into a third module. BLOCK on circular dependencies."
+        }
+      ]
+    },
+    "patterns": {
+      "description": "Design pattern enforcement",
+      "component_types": ["service", "api"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "strategy-for-variants",
+          "description": "Use strategy pattern instead of long switch statements",
+          "pattern": "switch\\s*\\([^)]+\\)\\s*\\{[^}]{500,}\\}",
+          "severity": "info",
+          "languages": ["javascript", "typescript", "java"],
+          "message": "Long switch statement - consider strategy pattern",
+          "component_types": ["service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design have multiple variants of behavior handled by a single large conditional? Consider proposing a strategy pattern with a map of handlers. Flag for review."
+        }
+      ]
+    },
+    "api": {
+      "description": "API design rules",
+      "component_types": ["api"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "version-api",
+          "description": "APIs should be versioned",
+          "pattern": "app\\.(get|post|put|delete)\\s*\\(['\"](?!/api/v)",
+          "severity": "info",
+          "languages": ["javascript", "typescript"],
+          "message": "Consider versioning your API endpoints (/api/v1/...)",
+          "component_types": ["api"],
+          "phase": ["design", "code"],
+          "design_check": "Do all proposed API endpoints include a version prefix (e.g., /api/v1/)? Flag any endpoint without versioning."
+        }
+      ]
+    },
+    "database": {
+      "description": "Database design rules",
+      "component_types": ["database"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-enums-in-db",
+          "description": "Use lookup tables instead of database ENUMs",
+          "pattern": "ENUM\\s*\\(|postgresql\\.ENUM",
+          "severity": "error",
+          "languages": ["python", "sql"],
+          "message": "Use lookup tables instead of ENUMs for flexibility",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design propose ENUM types in the database schema? Replace with lkp_* lookup tables. BLOCK."
+        },
+        {
+          "id": "soft-delete",
+          "description": "Consider soft delete for important data",
+          "pattern": "DELETE FROM",
+          "severity": "info",
+          "languages": ["sql"],
+          "message": "Consider using soft delete (is_deleted flag) for audit purposes",
+          "component_types": ["database"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design include hard-delete operations for important business entities (users, orders, vehicles)? Recommend adding a deleted_at or is_deleted column for soft deletes and audit purposes."
+        }
+      ]
+    },
+    "async": {
+      "description": "Asynchronous programming patterns",
+      "component_types": ["service", "api"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "prefer-async-await",
+          "description": "Prefer async/await over raw promises",
+          "pattern": "\\.then\\s*\\([^)]*\\)\\s*\\.then",
+          "severity": "info",
+          "languages": ["javascript", "typescript"],
+          "message": "Consider using async/await for better readability",
+          "component_types": ["service", "api"],
+          "phase": ["code"]
+        }
+      ]
+    },
+    "transactions": {
+      "description": "Transactional boundary definition",
+      "component_types": ["service", "database"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-nested-transactions",
+          "description": "Avoid nested or overlapping transactions",
+          "pattern": "beginTransaction.*beginTransaction",
+          "severity": "error",
+          "file_patterns": ["*service*", "*repository*"],
+          "message": "Nested transactions increase complexity and failure modes",
+          "component_types": ["service", "database"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design show nested or overlapping transaction boundaries (a service starting a transaction inside another transaction)? If so, flatten the transaction scope. BLOCK."
+        }
+      ]
+    },
+    "configuration": {
+      "description": "Environment and configuration isolation",
+      "component_types": ["service", "api", "all"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-env-access-in-domain",
+          "description": "Domain logic must not read environment variables",
+          "pattern": "process\\.env|os\\.environ",
+          "severity": "error",
+          "file_patterns": ["*domain*", "*entity*"],
+          "message": "Environment access belongs to infrastructure layer",
+          "component_types": ["service", "all"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design show domain/entity classes reading environment variables (process.env, os.environ)? Move env access to config/infrastructure layer and inject values via constructor. BLOCK."
+        }
+      ]
+    }
+  },
+    "frontend": {
+      "description": "Frontend architecture rules",
+      "component_types": ["frontend"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-hardcoded-reference-data",
+          "description": "Frontend components must not hardcode reference/lookup data as static arrays",
+          "pattern": "const [A-Z_]+ = \\[\\s*\\{\\s*(code|value|type):",
+          "severity": "warning",
+          "languages": ["javascript", "typescript"],
+          "message": "Hardcoded reference data (status codes, contact types, address types, etc.) must be fetched from a backend lookup API and cached client-side. Only derived UI concerns (colors, icons, CSS classes keyed by code) may remain as frontend constants.",
+          "component_types": ["frontend"],
+          "phase": ["design", "code"],
+          "design_check": "Does any proposed component define a static array of reference/lookup data (e.g. status options, contact types, address types, priority levels)? If the data originates from a database table, it must be fetched via a backend API and cached client-side — not hardcoded. Flag for correction."
+        }
+      ]
+    },
+  "duplication_scoring": {
+    "description": "Scoring system for code duplication",
+    "version": "1.0.0",
+    "thresholds": {
+      "clean": { "max_duplication_percent": 5, "status": "PASS", "description": "Minimal duplication - code is well-factored" },
+      "acceptable": { "max_duplication_percent": 15, "status": "REVIEW", "description": "Some duplication - consider refactoring" },
+      "excessive": { "max_duplication_percent": 100, "status": "FAIL", "description": "Significant duplication - refactoring required" }
+    },
+    "similarity_algorithms": {
+      "exact": { "description": "Character-for-character match (ignoring whitespace)", "use_for": ["migration scripts", "configuration"] },
+      "token_based": { "description": "Compare token sequences (ignores variable names)", "use_for": ["functions", "classes", "code blocks"] },
+      "ast_based": { "description": "Compare abstract syntax trees", "use_for": ["semantic duplicates", "structural patterns"] },
+      "fingerprint": { "description": "Hash-based fingerprinting for large codebases", "use_for": ["brownfield analysis", "full codebase scans"] }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+| Expo SDK 51+, Expo Router v3, EAS Build/Update, React Native Reanimated 3, FlashList, Maestro E2E | `aicodepath-expo-rn-expert` |

@@ -1,0 +1,4 @@
+# using-aicodepath SKILL.md row for aicodepath-rl-engineer
+# Batch: D1 | Pack: specialists
+
+| Reinforcement learning systems — environment design, reward shaping, PPO/SAC/DQN, sim-to-real transfer, safety constraints | `aicodepath-rl-engineer` |

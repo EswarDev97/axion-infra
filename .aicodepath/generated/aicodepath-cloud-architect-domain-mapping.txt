@@ -1,0 +1,9 @@
+# DOMAIN_MAPPING entries for aicodepath-cloud-architect
+# Batch: D3 | Pack: specialists
+
+"cloud-architecture": ["cloud-architect"],
+"well-architected-framework": ["cloud-architect"],
+"multi-cloud": ["cloud-architect"],
+"cloud-migration": ["cloud-architect"],
+"disaster-recovery": ["cloud-architect"],
+"cloud-landing-zone": ["cloud-architect"],

@@ -1,0 +1,4 @@
+# using-aicodepath SKILL.md row for aicodepath-azure-infra-expert
+# Batch: D3 | Pack: specialists
+
+| Azure infrastructure — Bicep IaC, Entra ID, Conditional Access, Az PowerShell automation, and Azure landing zones | `aicodepath-azure-infra-expert` |

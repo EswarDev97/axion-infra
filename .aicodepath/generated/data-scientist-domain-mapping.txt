@@ -1,0 +1,7 @@
+// C14 — aicodepath-data-scientist DOMAIN_MAPPING entries
+"exploratory-data-analysis": ["data-scientist"],
+"eda": ["data-scientist"],
+"feature-engineering": ["data-scientist"],
+"statistical-analysis": ["data-scientist"],
+"model-selection": ["data-scientist"],
+"bias-fairness": ["data-scientist"],

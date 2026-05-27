@@ -1,0 +1,4 @@
+# using-aicodepath SKILL.md row for aicodepath-ai-engineer
+# Batch: D1 | Pack: specialists
+
+| AI integration, model selection, accuracy tuning, ethical guardrails, bias detection, explainability, drift monitoring | `aicodepath-ai-engineer` |

@@ -1,0 +1,9 @@
+# DOMAIN_MAPPING entries for aicodepath-nlp-engineer
+# Batch: D1 | Pack: specialists
+
+"ner": ["nlp-engineer"],
+"sentiment-analysis": ["nlp-engineer"],
+"text-classification": ["nlp-engineer"],
+"transformer-fine-tuning": ["nlp-engineer"],
+"nlp-pipeline": ["nlp-engineer"],
+"multilingual-nlp": ["nlp-engineer"],

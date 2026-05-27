@@ -1,0 +1,1 @@
+| Vue 3 Composition API, `<script setup>`, Pinia stores, Nuxt 3 SSR/SSG, Vue Router, composables | `aicodepath-vue-expert` |

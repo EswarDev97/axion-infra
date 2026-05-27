@@ -1,0 +1,1 @@
+| Elixir/OTP supervision trees, GenServer, Phoenix LiveView, Ecto schemas, "let it crash" fault tolerance | `aicodepath-elixir-expert` |

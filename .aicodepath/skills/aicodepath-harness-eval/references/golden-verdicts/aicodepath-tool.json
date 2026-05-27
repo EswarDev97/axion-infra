@@ -1,0 +1,62 @@
+{
+  "$schema": "golden-verdict-fixture-v1",
+  "fixtureVersion": "1.0.0",
+  "rubricVersion": "1.0.0",
+  "target": "aicodepath-tool",
+  "codebaseSignature": {
+    "gitSha": "b6973ef26aae7bdb9ead8b1086d79cd5a02ae5e5",
+    "gitBranch": "main",
+    "aicodepathVersion": "2.12.0",
+    "pinnedAt": "2026-04-08T17:33:55Z"
+  },
+  "pinnedBy": "Manual smoke-test run via check-primitives.js + rubric application during SOTA architecture fix session. See aicodepath-docs/harness-eval/20260408T173355Z-full-smoke.md for the full rendered report that produced these verdicts.",
+  "expectedSummary": {
+    "strong": 11,
+    "partial": 1,
+    "missing": 0,
+    "total": 12
+  },
+  "expectedVerdicts": {
+    "1":   { "verdict": "PASS",    "rationale": "agent-loader.js + agent-registry.js + parseFrontmatter across agent-wiring-check.js and stats-builder.js. 106 agent markdown files + 102 SKILL.md files enumerable statically without LLM." },
+    "2":   { "verdict": "PASS",    "rationale": "permission-manager.js:77 CHECK(decision IN (allow, deny, ask)) — 3-tier enum matches CC bar exactly. safety-guardrails.js R01-R06 provides additional classifier layer." },
+    "3":   { "verdict": "PASS",    "rationale": "checkpoint-manager.js (file-based snapshots) + enhanced-checkpoint-manager.js (file + conversation rollback) + session-state-manager.js. Resume via /aicodepath-resume skill." },
+    "4":   { "verdict": "PASS",    "rationale": "phase-state-machine.js (6 phases × 7 gate types with transitionHistory). workflow_state table has UNIQUE(phase, stage, COALESCE(cr_number, N/A)) — qualifies as unique-constraint idempotency form per rubric. Matches CC pattern (CC also lacks explicit idempotency keys)." },
+    "5":   { "verdict": "PASS",    "rationale": "pricing-calculator.js predictBudget + checkBudget + classifyTaskComplexity (5 tiers). cost-tracker-hook.js persists per-session via Stop event. Same post-completion gating pattern as CC (neither system does literal pre-turn)." },
+    "6":   { "verdict": "PASS",    "rationale": "event-publisher.js + ws-emitter.js + websocket-server.js + api/server.js. Dashboard + terminal WebSocket channels. ~20 emit methods with safe-fail try/catch." },
+    "7":   { "verdict": "PASS",    "rationale": "lib/logger.js (structured, Winston) + decision-logger.js (ADRs to decisions table + audit_log view) + agent-trace-logger.js (JSONL with 14 operation types). logger.info/error calls throughout api/routes/." },
+    "8":   { "verdict": "PASS",    "rationale": "confidence-checker.js (5 weighted checks, thresholds 90/70) + guideline-validator.js + /aicodepath-verify skill + /aicodepath-edd skill (EDD) + GICL score loop + TDD enforcement. Best-in-class implementation." },
+    "9":   { "verdict": "PASS",    "rationale": "agent-suggester.js DOMAIN_MAPPING (209 entries verified) + VIOLATION_TYPE_MAPPING (23 entries). swarm-team-composer.js composeTeam() with PHASE_DEFAULTS per AIDLC phase. /aicodepath-classify-component skill for per-feature agent recommendations." },
+    "10":  { "verdict": "PASS",    "rationale": "pre-compact-hook.js integrates with CC PreCompact event — creates auto-checkpoint before compaction, returns preserve_messages (first message + last 5), emits WS event, prompts /aicodepath-learn. Host integration pattern is preferred over reimplementation per rubric." },
+    "11":  { "verdict": "EXCEEDS", "rationale": "EXCEEDS Claude Code baseline. hooks/lib/permission-manager.js:91 CREATE TABLE permission_audit with action CHECK IN (grant, revoke, use, suggest). Line 94 enum, lines 148/192/220 auditLog() calls on grant/use/revoke, line 354 SELECT for audit queries, line 396 INSERT. Dedicated aicodepath-docs/permissions.db file separate from main DB. CLI interface: grant/check/list/suggestions/stats/audit/cleanup. CC reference is in-memory only — aicodepath-tool has full persistent SQL ledger." },
+    "12a": { "verdict": "PASS",    "rationale": "/aicodepath-diagnostics skill + database-health.js (network FS detection, WAL/DELETE journal mode auto-select, retry-on-busy) + diagnostics.sh + validate-structure.sh + mcp-health-check.js hook. Multiple diagnostic entry points." },
+    "12b": { "verdict": "PARTIAL", "rationale": "bin/aicodepath.js init + commands/init.js + pre-flight-check.js + preference-bootstrap.js exist. Init IS staged (DB → migrations → symlinks → settings.json → MCP). Gap: no formal staged-boot abstraction with typed stage reporting or per-session readiness result that other hooks can depend on before proceeding. Implicit stages, not explicit." },
+    "12c": { "verdict": "PASS",    "rationale": "stop_reason field present in multiple subsystems: gicl-session-manager.js:57 (TEXT column with 4+ values — superseded, quality_gate_passed, max_iterations_reached, stale_auto_closed), session-auto-cleanup.js:49 (stale_auto_closed_session_start), hook-wrapper.js:99 (propagates stopReason from hook results), gicl-iteration-hook.js:362-367 (custom stop conditions). Matches CC bar: free-text reason field in multiple subsystems." },
+    "12d": { "verdict": "PASS",    "rationale": "reflexion-learner.js (session_id + confidence 0-1 monotonic + times_used + times_helped + created_at + resolved_at) + visual-memory-writer.js (diagram staleness detection) + aicodepath-learn 11-field preference schema with source_note + expires_when + enabled gate. preference-roundtrip.test.js verifies round-trip of all provenance fields." }
+  },
+  "invariants": [
+    {
+      "id": "inv-11-exceeds",
+      "description": "Primitive 11 (Permission Audit Trail) must remain EXCEEDS — aicodepath-tool's persistent SQL audit ledger in permission-manager.js:91 is the canonical proof that the framework exceeds Claude Code's in-memory denialTracking.ts baseline. Downgrading this verdict would mean the permission_audit table was deleted or stopped being used.",
+      "assertion": { "kind": "verdict-equals", "primitiveId": "11", "expected": "EXCEEDS" },
+      "failureMessage": "Primitive #11 dropped below EXCEEDS. Check hooks/lib/permission-manager.js:91 for the permission_audit CREATE TABLE — if missing, investigate why the persistent ledger was removed."
+    },
+    {
+      "id": "inv-no-missing",
+      "description": "No primitive should ever verdict MISSING. The 2026-04-08 baseline has zero MISSING primitives and any regression to MISSING represents either (a) functionality being deleted or (b) a check script bug that needs fixing before the drift is accepted.",
+      "assertion": { "kind": "count-equals", "bucket": "missing", "expected": 0 },
+      "failureMessage": "At least one primitive verdicted MISSING. Every MISSING must be investigated before the baseline is re-pinned — do not silently accept."
+    },
+    {
+      "id": "inv-day-one-all-passing",
+      "description": "Day One primitives (1-8) are the non-negotiable minimum for any production agent harness per Nate B. Jones' framework. Any primitive in this range dropping below PASS is a catastrophic regression.",
+      "assertion": { "kind": "no-missing-in-range", "primitiveIds": ["1","2","3","4","5","6","7","8"] },
+      "failureMessage": "A Day One primitive (1-8) verdicted MISSING. This is catastrophic. Do not re-pin until the underlying cause is fixed."
+    },
+    {
+      "id": "inv-total-is-12",
+      "description": "The rubric covers exactly 12 primitives. If the skill produces a different total, either the rubric was extended without updating the fixture, or the check scripts are dropping primitives on the floor.",
+      "assertion": { "kind": "count-equals", "bucket": "total", "expected": 12 },
+      "failureMessage": "Total primitive count != 12. Investigate check-primitives.js CHECKS array or the rubric file."
+    }
+  ]
+}

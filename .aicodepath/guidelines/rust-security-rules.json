@@ -1,0 +1,56 @@
+{
+  "$schema": "AICodePath Rust Security Guidelines",
+  "version": "1.0.0",
+  "description": "Security rules for Rust files — flags unsafe blocks, unwrap panics, and hardcoded secrets",
+  "_classification": {
+    "component_types": ["security", "all"],
+    "default_phase": ["code"]
+  },
+  "categories": {
+    "unsafe": {
+      "description": "Unsafe block usage — requires justification comment",
+      "component_types": ["security", "all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-unsafe-unjustified",
+          "description": "unsafe blocks must have a SAFETY comment explaining the invariant",
+          "pattern": "unsafe\\s*\\{",
+          "severity": "warning",
+          "file_patterns": ["*.rs"],
+          "message": "Add a // SAFETY: comment before this unsafe block explaining why the invariants are upheld"
+        }
+      ]
+    },
+    "panic": {
+      "description": "Panic-inducing patterns in production Rust",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-unwrap-production",
+          "description": "Avoid .unwrap() in production code — prefer proper error handling",
+          "pattern": "\\.unwrap\\(\\)(?!_)",
+          "severity": "warning",
+          "file_patterns": ["*.rs", "!**/*_test.rs", "!**/tests/**"],
+          "message": ".unwrap() panics on None/Err — use match, ?, or .unwrap_or_else() instead"
+        }
+      ]
+    },
+    "secrets": {
+      "description": "No hardcoded secrets in Rust files",
+      "component_types": ["security", "all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-hardcoded-secrets",
+          "description": "No hardcoded API keys, tokens, or passwords",
+          "pattern": "(api_key|password|secret|token|private_key)\\s*=\\s*['\"][A-Za-z0-9+/=_\\-]{12,}['\"]",
+          "severity": "error",
+          "file_patterns": ["*.rs"],
+          "message": "Hardcoded secret detected — use std::env::var or a secrets crate"
+        }
+      ]
+    }
+  }
+}

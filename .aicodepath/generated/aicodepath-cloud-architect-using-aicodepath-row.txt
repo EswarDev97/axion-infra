@@ -1,0 +1,4 @@
+# using-aicodepath SKILL.md row for aicodepath-cloud-architect
+# Batch: D3 | Pack: specialists
+
+| Multi-cloud and cloud-native architecture — AWS/GCP/Azure landing zones, Well-Architected Framework, disaster recovery, cloud cost strategy | `aicodepath-cloud-architect` |

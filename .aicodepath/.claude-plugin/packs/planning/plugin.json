@@ -1,0 +1,14 @@
+{
+  "name": "aicodepath-planning",
+  "version": "2.13.0",
+  "description": "Planning and orchestration specialists",
+  "author": { "name": "AICodePath", "url": "https://github.com/aicodepath/aicodepath-tool" },
+  "license": "MIT",
+  "agents": [
+    "../../../agents/aicodepath-plan-critic.md",
+    "../../../agents/aicodepath-plan-analyst.md",
+    "../../../agents/aicodepath-swarm-lead.md",
+    "../../../agents/aicodepath-idea-validator.md",
+    "../../../agents/aicodepath-legacy-modernizer.md"
+  ]
+}

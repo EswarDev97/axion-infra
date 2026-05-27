@@ -1,0 +1,56 @@
+{
+  "$schema": "AICodePath AI Regression Pattern Guidelines",
+  "version": "1.0.0",
+  "description": "Advisory guidelines for AI-written test files — flags common AI blind spots: sandbox/production parity gaps, error state cleanup omissions, and optimistic rollback assumptions. All rules are severity: info.",
+  "_classification": {
+    "component_types": ["all"],
+    "default_phase": ["code"]
+  },
+  "categories": {
+    "sandbox-parity": {
+      "description": "Advisory checks for sandbox vs production environment parity in tests",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "sandbox-parity-check",
+          "description": "Tests using hardcoded localhost URLs may not reflect production behavior",
+          "pattern": "(localhost|127\\.0\\.0\\.1):\\d{4}",
+          "severity": "info",
+          "file_patterns": ["**/*.test.*", "**/*.spec.*"],
+          "message": "Advisory: hardcoded localhost URL in test — verify this matches your CI/production service discovery pattern"
+        }
+      ]
+    },
+    "error-cleanup": {
+      "description": "Advisory checks for error state cleanup in tests",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "error-cleanup-verification",
+          "description": "Tests that create resources should verify cleanup on error paths",
+          "pattern": "(?:beforeEach|setUp|@Before)\\b",
+          "severity": "info",
+          "file_patterns": ["**/*.test.*", "**/*.spec.*"],
+          "message": "Advisory: test has setup — confirm teardown/cleanup runs on both success and failure paths"
+        }
+      ]
+    },
+    "rollback": {
+      "description": "Advisory checks for optimistic rollback assumptions in tests",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "optimistic-rollback-reminder",
+          "description": "Tests that mock DB transactions may not reflect actual rollback behavior",
+          "pattern": "(?:mockTransaction|mock.*[Rr]ollback|stub.*[Rr]ollback)",
+          "severity": "info",
+          "file_patterns": ["**/*.test.*", "**/*.spec.*"],
+          "message": "Advisory: mocked rollback may diverge from actual DB behavior — consider an integration test with a real transaction"
+        }
+      ]
+    }
+  }
+}

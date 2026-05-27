@@ -1,0 +1,2 @@
+// C14 — aicodepath-ml-engineer row for using-aicodepath/SKILL.md Agents table
+| MLOps pipelines, model serving infrastructure, feature stores, drift monitoring, canary/shadow deployments | `aicodepath-ml-engineer` |

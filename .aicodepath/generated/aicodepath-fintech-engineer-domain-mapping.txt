@@ -1,0 +1,9 @@
+# DOMAIN_MAPPING entries for aicodepath-fintech-engineer
+# Batch: D2 | Pack: specialists
+
+"double-entry-accounting": ["fintech-engineer"],
+"idempotent-payment": ["fintech-engineer"],
+"kyc-aml": ["fintech-engineer"],
+"pci-dss": ["fintech-engineer"],
+"financial-ledger": ["fintech-engineer"],
+"reconciliation-job": ["fintech-engineer"],

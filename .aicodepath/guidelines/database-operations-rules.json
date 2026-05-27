@@ -1,0 +1,253 @@
+{
+  "$schema": "AICodePath Database Operations Guidelines",
+  "version": "1.0.0",
+  "description": "Runtime database usage patterns: connection pooling, query execution discipline, service account governance, and transaction lifecycle management. Complements data-modeling-rules.json (schema design) with operational runtime rules.",
+  "_classification": {
+    "component_types": ["database", "service"],
+    "default_phase": ["code"],
+    "design_applies": true,
+    "design_signals": ["pool", "pooling", "connection", "service account", "db account", "db user", "db role", "GRANT", "query execution", "batch", "pagination", "n+1", "prepared statement", "transaction", "connection string", "db config", "database config", "max connections", "idle timeout", "connection timeout"]
+  },
+  "hard_policies": {
+    "no_superuser_in_app": true,
+    "pool_required": true,
+    "parameterized_queries_only": true,
+    "pagination_on_lists": true,
+    "dedicated_service_accounts": true,
+    "least_privilege_per_service": true
+  },
+  "categories": {
+    "connection_pooling": {
+      "description": "Connection pool configuration and lifecycle — required for every service that connects to the DB",
+      "component_types": ["database", "service"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "pool-required",
+          "description": "Connection pooling must be configured — never create a new DB connection per request",
+          "pattern": "new\\s+(?:Client|Connection)\\s*\\([^)]*(?:host|database|connectionString)",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*database*", "*db*", "*connection*", "*config*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Use a connection pool (e.g., pg Pool, Kysely pool) — never create a new raw DB connection per request",
+          "component_types": ["database", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design specify a connection pool for database access? BLOCK if the design creates a new DB connection per request or per operation with no shared pool."
+        },
+        {
+          "id": "pool-size-bounded",
+          "description": "Connection pool must declare explicit min/max connection limits",
+          "pattern": "new\\s+Pool\\s*\\((?![\\s\\S]{0,200}(?:max|maxConnections|pool_size|poolSize))",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*database*", "*db*", "*pool*", "*config*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Pool must define explicit min/max connection counts — unbounded pools exhaust DB server connections under load",
+          "component_types": ["database", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design specify explicit min and max connection counts for the pool? BLOCK if the pool is created without bounded limits (max connections unset)."
+        },
+        {
+          "id": "pool-timeout-configured",
+          "description": "Pool must configure connection timeout and idle timeout to prevent leaks",
+          "pattern": "new\\s+Pool\\s*\\((?![\\s\\S]{0,300}(?:idleTimeoutMillis|connectionTimeoutMillis|connectionTimeout|connect_timeout|statement_timeout))",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": ["*database*", "*db*", "*pool*", "*config*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Configure idleTimeoutMillis and connectionTimeoutMillis on the pool to prevent silent connection leaks",
+          "component_types": ["database", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design configure connection timeout and idle timeout for the pool? Flag if missing — connection leaks can exhaust the pool silently under sustained load."
+        },
+        {
+          "id": "no-per-request-connection",
+          "description": "Do not create a new DB connection inside a request handler or middleware",
+          "pattern": "(?:req|request|ctx|context|handler).*(?:\\.connect\\(|new Client\\(|new Connection\\()",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*controller*", "*route*", "*middleware*", "*handler*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Never create a DB connection inside a request handler — acquire from a shared pool instead",
+          "component_types": ["database", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design create or open DB connections inside request handlers, controllers, or middleware? If so, replace with pool acquisition. BLOCK."
+        }
+      ]
+    },
+    "service_accounts": {
+      "description": "Database service account governance — dedicated least-privilege accounts per service, never shared superuser",
+      "component_types": ["database", "service", "devops"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "dedicated-service-account",
+          "description": "Each service must use a dedicated DB account — not postgres, root, admin, or sa",
+          "pattern": "(?:DB_USER|DATABASE_USER|PGUSER|db_user|database_user)\\s*[=:]\\s*['\"]?(?:postgres|root|admin|sa|dba|superuser)",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.env*", "*config*", "*database*", "docker-compose*", "!**/__tests__/**"],
+          "message": "Use a dedicated service account per service — never use postgres/root/admin for application code",
+          "component_types": ["database", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design specify dedicated DB service accounts per service (e.g., advisorapp, advisor_ai)? BLOCK if any service is configured to use postgres, root, admin, dba, or sa."
+        },
+        {
+          "id": "least-privilege-per-service",
+          "description": "Service accounts must receive only the minimum permissions they need per schema",
+          "pattern": "GRANT\\s+ALL(?:\\s+PRIVILEGES)?\\s+ON",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.sql", "*migration*", "*init*", "*setup*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Never GRANT ALL — assign specific permissions per schema (e.g., CRUD on core, read-only on lookup, append-only on audit)",
+          "component_types": ["database", "devops"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design grant permissions at a fine-grained level per schema (e.g., SELECT/INSERT/UPDATE/DELETE on core, SELECT-only on lookup)? BLOCK if GRANT ALL or blanket permissions are proposed."
+        },
+        {
+          "id": "separate-read-write-accounts",
+          "description": "Read-only services should use a read-only DB account to limit blast radius",
+          "severity": "warning",
+          "file_patterns": ["*config*", "*.env*", "*database*", "!**/__tests__/**"],
+          "message": "Consider a read-only DB account for services that only read data — limits blast radius of a compromised credential",
+          "component_types": ["database", "service"],
+          "phase": ["design"],
+          "design_check": "Are there services in the design that only read data? If so, propose a read-only DB account for those services to limit the impact of a credential compromise."
+        },
+        {
+          "id": "no-shared-credentials-across-services",
+          "description": "Service accounts must not share credentials across service boundaries",
+          "severity": "error",
+          "file_patterns": ["*.env*", "*config*", "docker-compose*", "!**/__tests__/**"],
+          "message": "Each service must have its own unique DB credentials — no shared accounts across service boundaries",
+          "component_types": ["database", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design reuse a single DB account across multiple distinct services? If so, create separate accounts per service. BLOCK on shared credentials across service boundaries."
+        },
+        {
+          "id": "no-app-schema-changes",
+          "description": "Application service accounts must not have DDL permissions",
+          "pattern": "GRANT.*(?:CREATE|DROP|ALTER).*TO.*(?:advisorapp|advisor_ai|app_user|service_account)",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.sql", "*migration*", "*init*", "!**/__tests__/**"],
+          "message": "Application service accounts must not have DDL permissions (CREATE, DROP, ALTER) — schema changes belong in migrations run by a migration-only account",
+          "component_types": ["database", "devops"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design give application service accounts DDL permissions (CREATE TABLE, DROP, ALTER)? If so, remove — DDL belongs to migration scripts run with a migration-specific account. BLOCK."
+        }
+      ]
+    },
+    "query_execution": {
+      "description": "Query execution discipline — safety, performance, and correctness",
+      "component_types": ["database", "service"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "parameterized-queries-only",
+          "description": "All queries must use parameterized binding — no string interpolation of user input into SQL",
+          "pattern": "`[^`]*\\$\\{[^}]+\\}[^`]*(?:SELECT|INSERT|UPDATE|DELETE|WHERE|FROM)[^`]*`|(?:SELECT|INSERT|UPDATE|DELETE).*'\\s*\\+\\s*\\w+",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*repository*", "*service*", "*query*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "CRITICAL: Never interpolate variables into SQL strings — use parameterized queries ($1, ?, named params) or an ORM",
+          "component_types": ["database", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design specify parameterized queries or ORM-based query building for all DB interactions? BLOCK if the design mentions string-concatenated or template-literal SQL with dynamic values."
+        },
+        {
+          "id": "pagination-on-lists",
+          "description": "All list/collection queries must be paginated — no unbounded result sets",
+          "pattern": "(?:findAll|findMany|getAll|listAll)\\s*\\(",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*repository*", "*service*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "All list queries must include pagination (LIMIT/OFFSET or cursor-based) — unbounded queries can OOM the server",
+          "component_types": ["database", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Do all list/collection queries in the design include pagination (page size, cursor, or LIMIT/OFFSET)? BLOCK if any list query is unbounded with no limit."
+        },
+        {
+          "id": "batch-over-loop",
+          "description": "Use batch operations instead of per-item queries in loops (N+1 prevention)",
+          "pattern": "for.*await.*(?:findById|findOne|\\bupdate\\b|\\binsert\\b)|forEach.*await.*(?:findById|findOne|\\bupdate\\b|\\binsert\\b)",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*repository*", "*service*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Avoid querying inside loops (N+1) — use batch INSERT/UPDATE, WHERE IN (...), or JOIN instead",
+          "component_types": ["database", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design involve processing a list and querying or updating the DB per item in a loop? If so, replace with batch operations (WHERE IN, bulk insert, JOIN). BLOCK on loop-per-query patterns."
+        },
+        {
+          "id": "explicit-column-projection",
+          "description": "Repositories must list explicit columns — no SELECT *",
+          "pattern": "SELECT\\s+\\*\\s+FROM",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": ["*repository*", "*service*", "*.sql", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Avoid SELECT * — specify only the columns needed for better performance and schema-change resilience",
+          "component_types": ["database", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design propose fetching all columns (SELECT *) for any query? If so, specify explicit column projections. Flag for discussion."
+        },
+        {
+          "id": "query-timeout-required",
+          "description": "Long-running queries must have a timeout configured",
+          "severity": "warning",
+          "file_patterns": ["*repository*", "*service*", "*query*", "*config*", "!**/__tests__/**"],
+          "message": "Set statement_timeout or query timeout for long-running queries to avoid blocking connections in the pool",
+          "component_types": ["database", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design include a statement timeout or query timeout for queries that could be long-running (reports, bulk exports, aggregations)? Flag if absent — unbounded queries can starve the pool."
+        }
+      ]
+    },
+    "transaction_discipline": {
+      "description": "Transaction scoping, isolation, and error handling rules",
+      "component_types": ["database", "service"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "short-transactions",
+          "description": "Transactions must be short — no external I/O or heavy computation inside a transaction",
+          "severity": "warning",
+          "file_patterns": ["*repository*", "*service*", "*transaction*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Keep transactions short — never place HTTP calls, file I/O, queue publishes, or heavy computation inside a DB transaction",
+          "component_types": ["database", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design place HTTP calls, external service calls, file I/O, or heavy computation inside a database transaction? If so, move those operations outside the transaction boundary. BLOCK on long-running operations inside transactions."
+        },
+        {
+          "id": "explicit-rollback-on-error",
+          "description": "All transactions must handle errors and rollback explicitly",
+          "severity": "error",
+          "file_patterns": ["*repository*", "*service*", "*transaction*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Every transaction must have try/catch with explicit rollback — uncommitted transactions that error without rollback hold locks",
+          "component_types": ["database", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design handle transaction rollback explicitly on error for all write operations? Flag if error handling is absent from any transaction flow."
+        },
+        {
+          "id": "no-nested-transactions",
+          "description": "Nested transactions (savepoints mid-flow) must be avoided",
+          "pattern": "SAVEPOINT|nested.*transaction|transaction.*within.*transaction",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*repository*", "*service*", "*transaction*", "!**/__tests__/**", "!**/test/**", "!**/tests/**"],
+          "message": "Avoid nested transactions — refactor into a single flat transaction boundary; use savepoints only when explicitly required",
+          "component_types": ["database", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design call functions that start their own transactions from within an outer transaction? If so, flatten into a single transaction boundary. BLOCK on nested transaction proposals."
+        },
+        {
+          "id": "write-isolation-level",
+          "description": "Specify isolation level explicitly for write transactions with concurrency concerns",
+          "severity": "warning",
+          "file_patterns": ["*repository*", "*service*", "*transaction*", "!**/__tests__/**"],
+          "message": "For write transactions with concurrent access, specify isolation level (READ COMMITTED is default; use REPEATABLE READ or SERIALIZABLE when needed)",
+          "component_types": ["database", "service"],
+          "phase": ["design"],
+          "design_check": "Does the design involve concurrent writes to the same rows from multiple processes? If so, specify the required isolation level to prevent dirty reads, phantom reads, or lost updates."
+        }
+      ]
+    }
+  }
+}

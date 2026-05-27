@@ -1,0 +1,7 @@
+// C16 — aicodepath-ui-designer DOMAIN_MAPPING entries
+"design-system": ["ui-designer"],
+"design-tokens": ["ui-designer"],
+"dark-mode-tokens": ["ui-designer"],
+"component-library": ["ui-designer"],
+"wcag-tokens": ["ui-designer"],
+"figma-handoff": ["ui-designer"],

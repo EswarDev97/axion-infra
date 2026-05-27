@@ -1,0 +1,7 @@
+// C15 — aicodepath-plan-analyst DOMAIN_MAPPING entries
+"effort-sizing": ["plan-analyst"],
+"risk-scoring": ["plan-analyst"],
+"dependency-map": ["plan-analyst"],
+"critical-path": ["plan-analyst"],
+"execution-sequence": ["plan-analyst"],
+"plan-scope": ["plan-analyst"],

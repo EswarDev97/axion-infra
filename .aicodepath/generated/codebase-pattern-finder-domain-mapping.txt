@@ -1,0 +1,7 @@
+// C16b — aicodepath-codebase-pattern-finder DOMAIN_MAPPING entries
+"pattern-catalog": ["codebase-pattern-finder"],
+"brownfield-patterns": ["codebase-pattern-finder"],
+"codebase-archaeology": ["codebase-pattern-finder"],
+"usage-examples": ["codebase-pattern-finder"],
+"convention-discovery": ["codebase-pattern-finder"],
+"implementation-patterns": ["codebase-pattern-finder"],

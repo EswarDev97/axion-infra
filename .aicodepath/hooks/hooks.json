@@ -1,0 +1,351 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start-hook.js",
+            "tier": "minimal",
+            "statusMessage": "Initializing AICodePath workflow..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/visual-memory-loader.js",
+            "tier": "standard",
+            "statusMessage": "Loading visual memory diagrams..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-auto-cleanup.js",
+            "tier": "strict",
+            "statusMessage": "Cleaning up stale session state..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pre-flight-check.js",
+            "tier": "minimal",
+            "statusMessage": "Running pre-flight checks..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/plan-role-activator.js",
+            "tier": "standard",
+            "statusMessage": "Resolving role from plan context..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/workflow-query-detector.js",
+            "tier": "standard",
+            "statusMessage": "Checking for workflow query..."
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/permission-request-hook.js",
+            "tier": "standard",
+            "statusMessage": "Evaluating permission request..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/config-protection-hook.js",
+            "tier": "minimal",
+            "statusMessage": "Checking file protection..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/schema-context-hook.js",
+            "tier": "standard",
+            "statusMessage": "Loading schema context..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/guideline-validator.js",
+            "tier": "standard",
+            "statusMessage": "Validating guideline compliance..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/duplication-checker.js",
+            "tier": "standard",
+            "statusMessage": "Checking for code duplication..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/checkpoint-guard-hook.js",
+            "tier": "minimal",
+            "statusMessage": "Checking worktree cleanliness..."
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/mcp-health-check.js",
+            "tier": "standard",
+            "statusMessage": "Checking MCP server health..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/safety-guardrails.js",
+            "tier": "minimal",
+            "statusMessage": "Safety guardrails check..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pre-commit-validator.js",
+            "tier": "minimal",
+            "statusMessage": "Checking commit safety..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/spec-sync-validator.js",
+            "tier": "standard",
+            "statusMessage": "Validating spec-code sync..."
+          }
+        ]
+      },
+      {
+        "matcher": "Glob|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/graph-context-nudge.js",
+            "tier": "standard",
+            "statusMessage": "Injecting graph context..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/ci-status-checker.js",
+            "tier": "standard",
+            "statusMessage": "Monitoring CI status..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/post-commit-hook.js",
+            "tier": "standard",
+            "statusMessage": "Checking post-commit actions..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/graph-git-hook.js",
+            "tier": "standard",
+            "statusMessage": "Updating code graph..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/maintenance-skill-suggester.js",
+            "tier": "strict",
+            "statusMessage": "Checking maintenance suggestions..."
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "_ordering_note": "CRITICAL: auto-artifact-creator MUST be first — gicl-iteration-hook queries artifact records it creates",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/auto-artifact-creator.js",
+            "tier": "standard",
+            "statusMessage": "Creating artifact entries..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/gicl-iteration-hook.js",
+            "tier": "standard",
+            "statusMessage": "Running GICL quality gates..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-security-scan.js",
+            "tier": "standard",
+            "statusMessage": "Security pattern scan..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/test-tampering-detector.js",
+            "tier": "standard",
+            "statusMessage": "Test integrity check..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/construction-skill-suggester.js",
+            "tier": "standard",
+            "statusMessage": "Checking for skill suggestions..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/document-skill-suggester.js",
+            "tier": "strict",
+            "statusMessage": "Checking documentation suggestions..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/plans-watcher.js",
+            "tier": "standard",
+            "statusMessage": "Checking plan file changes..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/tdd-order-check.js",
+            "tier": "standard",
+            "statusMessage": "Checking TDD order..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/auto-test-runner.js",
+            "tier": "standard",
+            "statusMessage": "Auto-running tests..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/inception-skill-suggester.js",
+            "tier": "standard",
+            "statusMessage": "Checking inception skill suggestions..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/visual-memory-generator.js",
+            "tier": "strict",
+            "statusMessage": "Generating visual memory diagrams..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/monorepo-skill-suggester.js",
+            "tier": "strict",
+            "statusMessage": "Checking monorepo skill suggestions..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/agent-audit-on-write.js",
+            "tier": "standard",
+            "statusMessage": "Checking agent wiring..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/framework-asset-quality-hook.js",
+            "tier": "standard",
+            "statusMessage": "Checking framework asset quality..."
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-failure-hook.js",
+            "tier": "standard",
+            "statusMessage": "Handling tool failure..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/response-stop-hook.js",
+            "tier": "standard",
+            "statusMessage": "Processing response completion..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/cost-tracker-hook.js",
+            "tier": "standard",
+            "statusMessage": "Tracking session costs..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/desktop-notify-hook.js",
+            "tier": "strict",
+            "statusMessage": "Sending desktop notification..."
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact-hook.js",
+            "tier": "standard",
+            "statusMessage": "Preparing for context compaction..."
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-end-hook.js",
+            "tier": "strict",
+            "statusMessage": "Finalizing session..."
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/notification-hook.js",
+            "tier": "strict",
+            "statusMessage": "Processing notification..."
+          }
+        ]
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/worktree-lifecycle.js",
+            "tier": "strict",
+            "statusMessage": "Cleaning up worktree state..."
+          }
+        ]
+      }
+    ]
+  }
+}

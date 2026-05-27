@@ -1,0 +1,7 @@
+// C16 — aicodepath-communication-coach DOMAIN_MAPPING entries
+"draft-review": ["communication-coach"],
+"tone-calibration": ["communication-coach"],
+"difficult-conversation": ["communication-coach"],
+"sbi-feedback": ["communication-coach"],
+"stakeholder-communication": ["communication-coach"],
+"pr-description-review": ["communication-coach"],

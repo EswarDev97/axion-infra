@@ -1,0 +1,4 @@
+# using-aicodepath SKILL.md row for aicodepath-blockchain-developer
+# Batch: S2 | Pack: specialists
+
+| Smart contracts and DApps — Solidity, gas optimization, ERC standards, security auditing (Slither, Mythril), DeFi protocols | `aicodepath-blockchain-developer` |

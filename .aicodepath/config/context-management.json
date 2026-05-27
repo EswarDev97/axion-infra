@@ -1,0 +1,68 @@
+{
+  "enabled": true,
+  "strategy": "hybrid",
+  "thresholds": {
+    "warning": 0.60,
+    "critical": 0.70,
+    "maximum": 0.85
+  },
+  "model_limits": {
+    "claude-sonnet-4": 200000,
+    "claude-opus-4": 200000,
+    "claude-sonnet-3-5": 200000,
+    "claude-opus-4-6": 200000,
+    "claude-opus-4-6-1m": 1000000,
+    "claude-sonnet-4-6": 200000,
+    "claude-haiku-4-5": 200000,
+    "gpt-4": 128000,
+    "gpt-4-turbo": 128000,
+    "gemini-pro": 1000000,
+    "gemini-1.5-pro": 2000000
+  },
+  "strategies": {
+    "priority_loading": {
+      "enabled": true,
+      "description": "Load important context at start/end of window to avoid 'lost in the middle' problem",
+      "always_include": [
+        "guidelines/*.json",
+        "CLAUDE.md",
+        ".aicodepath/rules/*.md"
+      ],
+      "position": "start"
+    },
+    "compaction": {
+      "enabled": true,
+      "description": "Automatically summarize middle content when threshold exceeded",
+      "trigger_at": 0.70,
+      "method": "summarize",
+      "preserve_recent": true
+    },
+    "caching": {
+      "enabled": false,
+      "description": "Cache static content (guidelines, rules) to reduce duplication",
+      "cache_static": [
+        "guidelines",
+        "rules"
+      ]
+    }
+  },
+  "warnings": {
+    "show_percentage": true,
+    "show_token_count": true,
+    "suggest_compaction": true
+  },
+  "research_notes": {
+    "source": "Context ROT research 2026",
+    "findings": [
+      "Effective capacity is 60-70% of advertised maximum",
+      "Performance drops 15-47% as context fills up",
+      "Claude 4 Sonnet: <5% degradation across 200k tokens (best-in-class)",
+      "'Lost in the Middle' phenomenon: information at start/end retrieved better than middle"
+    ],
+    "recommendations": [
+      "Use only 70-80% of full context window to avoid accuracy drop",
+      "Place important information at beginning and end",
+      "Enable auto-compaction at 70% threshold"
+    ]
+  }
+}

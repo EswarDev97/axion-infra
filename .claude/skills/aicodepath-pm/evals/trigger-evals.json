@@ -1,0 +1,22 @@
+[
+  {"query": "my PM asked me to write the PRD for our new checkout flow — we need to handle guest users, saved cards, and 3DS. where do i start", "should_trigger": true},
+  {"query": "we're doing quarterly planning next week and i need to write OKRs for the growth team. our north star is weekly active buyers. can you help me draft them", "should_trigger": true},
+  {"query": "i need to do a SWOT for our B2B SaaS before the board meeting on friday. competitors are Salesforce and HubSpot, we're focused on SMEs", "should_trigger": true},
+  {"query": "retention dropped from 42% to 31% last quarter and my CEO is asking why. i have access to our BigQuery data but don't know where to start analyzing", "should_trigger": true},
+  {"query": "write me 3 user personas for a fintech app targeting freelancers in Southeast Asia. they mostly do gig work and send money internationally", "should_trigger": true},
+  {"query": "we're launching in the US market next month and i need a go-to-market plan. product is a project management tool for design teams", "should_trigger": true},
+  {"query": "sprint planning tomorrow and we have 23 tickets. help me figure out what goes in using MoSCoW — we have a hard deadline of March 31", "should_trigger": true},
+  {"query": "can you review my PM resume? i'm applying for senior PM roles at fintechs. been a PM for 4 years, mostly consumer products", "should_trigger": true},
+  {"query": "i need to size the market for an AI writing assistant targeting enterprise legal teams. TAM SAM SOM breakdown please", "should_trigger": true},
+  {"query": "help me write job stories for our notifications feature. users are getting too many emails and churning. i need to capture the real motivation not just the feature", "should_trigger": true},
+  {"query": "our postgres users table has columns: id, email, created_at, last_login, plan_tier. write a query to find users who signed up 90 days ago and never came back", "should_trigger": false},
+  {"query": "i want to add a dark mode to our react app. what's the best way to implement CSS variables for theming", "should_trigger": false},
+  {"query": "can you help me write a performance review for my engineer? she shipped the payment gateway refactor on time and mentored two juniors", "should_trigger": false},
+  {"query": "we need to migrate our monolith to microservices. help me plan the strangler fig pattern for the auth module", "should_trigger": false},
+  {"query": "write a SWOT analysis of the python programming language vs javascript for backend development", "should_trigger": false},
+  {"query": "our CI pipeline is failing on the integration tests. here's the error: connection refused on port 5432", "should_trigger": false},
+  {"query": "i'm preparing a postmortem for last week's outage. our API was down for 4 hours due to a DB connection pool exhaustion", "should_trigger": false},
+  {"query": "can you help me draft an email to my team explaining the new on-call rotation schedule starting next month", "should_trigger": false},
+  {"query": "we're running an A/B test on button color — red vs green — for the checkout CTA. sample size is 2000 per variant, conversion rates are 3.2% vs 3.8%", "should_trigger": false},
+  {"query": "help me design the database schema for a multi-tenant SaaS — each tenant has their own users, projects, and billing info", "should_trigger": false}
+]

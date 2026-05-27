@@ -1,0 +1,90 @@
+{
+  "skill_name": "aicodepath-prompt-engg",
+  "skill_path": ".aicodepath/skills/aicodepath-prompt-engg",
+  "evals": [
+    {
+      "id": 0,
+      "name": "improve-gemini-no-search-system-prompt",
+      "prompt": "The Gemini no_search system prompt isn't consistently returning all 11 attributes in attribute_risks — sometimes it only returns 8 or 9. Can you fix the system prompt so it always returns all 11?",
+      "input_files": [],
+      "assertions": [
+        {
+          "text": "Skill identifies the correct target file (gemini/no_search/system.txt)",
+          "type": "qualitative"
+        },
+        {
+          "text": "Skill loads and reads references/output-schema.md before proposing changes",
+          "type": "qualitative"
+        },
+        {
+          "text": "Improved prompt explicitly lists all 11 attribute names by name",
+          "type": "qualitative"
+        },
+        {
+          "text": "Response includes before/after comparison with changes summary",
+          "type": "qualitative"
+        },
+        {
+          "text": "All 6 validation checklist items are checked before file is written",
+          "type": "qualitative"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "add-with-search-variables-to-user-prompt",
+      "prompt": "I need to add {{gemini_price_ranges}} and {{listing_count}} to the Anthropic with_search user.txt prompt. The model should use these as a market pricing anchor when estimating price ranges.",
+      "input_files": [],
+      "assertions": [
+        {
+          "text": "Skill targets anthropic/with_search/user.txt",
+          "type": "qualitative"
+        },
+        {
+          "text": "Clarification gate 5 (with_search variable usage) is addressed",
+          "type": "qualitative"
+        },
+        {
+          "text": "Improved prompt contains both {{gemini_price_ranges}} and {{listing_count}} variables",
+          "type": "qualitative"
+        },
+        {
+          "text": "Prompt explains to the model how to use these variables (as price anchor, not just informational)",
+          "type": "qualitative"
+        },
+        {
+          "text": "Skill runs MinIO import command after writing the file",
+          "type": "qualitative"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "debug-inconsistent-json-output-perplexity",
+      "prompt": "The Perplexity no_search prompt keeps returning JSON wrapped in markdown code fences. How do I fix it?",
+      "input_files": [],
+      "assertions": [
+        {
+          "text": "Skill identifies this as a TIDD-EC D (Don't) gap — missing no-markdown constraint",
+          "type": "qualitative"
+        },
+        {
+          "text": "Skill targets perplexity/no_search — asks to confirm system or user prompt, or reads both",
+          "type": "qualitative"
+        },
+        {
+          "text": "Improved prompt contains an explicit no-markdown constraint (not just implicit)",
+          "type": "qualitative"
+        },
+        {
+          "text": "Response explains why the constraint needs to be explicit rather than assumed",
+          "type": "qualitative"
+        },
+        {
+          "text": "Skill optionally suggests CAI P3 principle as a reinforcement mechanism",
+          "type": "qualitative"
+        }
+      ]
+    }
+  ]
+}

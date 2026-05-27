@@ -1,0 +1,33 @@
+{
+  "version": "1.0.0",
+  "templates": [
+    {
+      "id": "claude-md",
+      "name": "CLAUDE.md",
+      "path": "templates/claude-md/CLAUDE.md",
+      "description": "Project instructions template for Claude Code",
+      "category": "configuration"
+    },
+    {
+      "id": "agents-md",
+      "name": "AGENTS.md",
+      "path": "templates/agents-md/AGENTS.md",
+      "description": "Agent composition documentation template",
+      "category": "documentation"
+    },
+    {
+      "id": "review-output",
+      "name": "Review Output Style",
+      "path": "templates/output-styles/review-output.md",
+      "description": "Standardized output format for code/plan/scope reviews",
+      "category": "output-style"
+    },
+    {
+      "id": "dashboard",
+      "name": "React Dashboard",
+      "path": "templates/dashboard/",
+      "description": "Vite + React dashboard for GICL and session monitoring",
+      "category": "ui"
+    }
+  ]
+}

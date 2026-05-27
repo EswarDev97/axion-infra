@@ -1,0 +1,4 @@
+# using-aicodepath SKILL.md row for aicodepath-seo-specialist
+# Batch: D3 | Pack: specialists
+
+| Organic search optimization — technical SEO, keyword research, Core Web Vitals, structured data (Schema.org), E-E-A-T | `aicodepath-seo-specialist` |

@@ -1,0 +1,2 @@
+// C16 — aicodepath-communication-coach row for using-aicodepath/SKILL.md Agents table
+| Communication coaching — draft review, tone calibration, roleplay prep, SBI/What-Why-How framework, PR descriptions | `aicodepath-communication-coach` |

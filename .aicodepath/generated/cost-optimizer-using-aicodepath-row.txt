@@ -1,0 +1,2 @@
+// C15 — aicodepath-cost-optimizer row for using-aicodepath/SKILL.md Agents table
+| Cloud cost reduction — right-sizing, RI/SP recommendations, FinOps tagging, cost anomaly detection (AWS/Azure/GCP) | `aicodepath-cost-optimizer` |

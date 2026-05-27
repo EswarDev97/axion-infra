@@ -1,0 +1,1063 @@
+{
+  "$schema": "AICodePath Security Guidelines",
+  "version": "1.0.0",
+  "description": "Security rules to prevent common vulnerabilities - OWASP Top 10 and more",
+  "_classification": {
+    "component_types": [
+      "security",
+      "all"
+    ],
+    "default_phase": [
+      "code"
+    ],
+    "design_applies": true,
+    "design_signals": [
+      "auth",
+      "authentication",
+      "authorization",
+      "security",
+      "password",
+      "token",
+      "jwt",
+      "secret",
+      "encrypt",
+      "hash",
+      "cors",
+      "csrf",
+      "ssl",
+      "tls",
+      "rbac",
+      "permission",
+      "role",
+      "session"
+    ]
+  },
+  "categories": {
+    "secrets": {
+      "description": "Rules for handling secrets and sensitive data",
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-hardcoded-secrets",
+          "description": "No hardcoded passwords, API keys, or tokens",
+          "pattern": "(password|passwd|pwd|secret|api_key|apiKey|apikey|api-key|API_KEY|token|auth_token|authToken|auth-token|private_key|privateKey|private-key|access_key|accessKey|client_secret|clientSecret|bearer)\\s*[:=]\\s*['\"][A-Za-z0-9+/=_-]{12,}['\"]",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "Hardcoded secret detected - use environment variables or a secrets manager",
+          "exceptions": {
+            "safe_patterns": [
+              "password\\s*[:=]\\s*['\"]\\$\\{",
+              "password\\s*[:=]\\s*['\"]process\\.env",
+              "password\\s*[:=]\\s*['\"]<[^>]+>",
+              "password\\s*[:=]\\s*['\"][*]{8,}['\"]"
+            ],
+            "description": "Allows env var placeholders, template variables, and masked values"
+          }
+        },
+        {
+          "id": "no-aws-credentials",
+          "description": "No hardcoded AWS credentials",
+          "pattern": "(?:^|[^A-Z0-9])(AKIA|ASIA|AIDA|AROA|AIPA|ANPA|ANVA|APKA)[A-Z0-9]{16}(?:[^A-Z0-9]|$)",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "AWS access key detected - remove and rotate immediately"
+        },
+        {
+          "id": "no-aws-secret-key",
+          "description": "No hardcoded AWS secret access keys",
+          "pattern": "(?:aws_secret_access_key|AWS_SECRET_ACCESS_KEY|secret_key|secretKey)\\s*[:=]\\s*['\"][A-Za-z0-9+/]{40}['\"]",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "AWS secret access key detected - remove and rotate immediately"
+        },
+        {
+          "id": "no-private-keys",
+          "description": "No private keys in source code",
+          "pattern": "-----BEGIN\\s+(RSA\\s+|DSA\\s+|EC\\s+|OPENSSH\\s+|ENCRYPTED\\s+)?PRIVATE\\s+KEY-----",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "Private key detected in source code - remove immediately"
+        },
+        {
+          "id": "no-ssh-private-keys",
+          "description": "No SSH private keys in source code",
+          "pattern": "-----BEGIN\\s+(SSH2\\s+)?ENCRYPTED\\s+PRIVATE\\s+KEY-----|\\bssh-rsa\\s+AAAA[A-Za-z0-9+/]{100,}",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "SSH private key detected in source code - remove immediately"
+        },
+        {
+          "id": "no-certificate-keys",
+          "description": "No certificate private keys in source code",
+          "pattern": "-----BEGIN\\s+CERTIFICATE-----[\\s\\S]{50,}-----END\\s+CERTIFICATE-----|-----BEGIN\\s+X509\\s+CRL-----",
+          "severity": "warning",
+          "languages": [
+            "*"
+          ],
+          "message": "Certificate detected - ensure it does not contain private keys"
+        },
+        {
+          "id": "no-jwt-secrets",
+          "description": "No JWT secrets in source code",
+          "pattern": "(jwt_secret|jwtSecret|JWT_SECRET|jwt_key|jwtKey|JWT_KEY)\\s*[:=]\\s*['\"][A-Za-z0-9+/=_-]{32,}['\"]",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "JWT secret detected - use environment variables"
+        },
+        {
+          "id": "no-actual-jwt-tokens",
+          "description": "No actual JWT tokens in source code",
+          "pattern": "eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "JWT token detected in source code - tokens should never be committed"
+        },
+        {
+          "id": "no-connection-strings",
+          "description": "No database connection strings with credentials",
+          "pattern": "(mongodb|postgres|postgresql|mysql|mariadb|mssql|redis|elasticsearch|amqp|rabbitmq)://[^\\s:@]+:[^\\s@]{3,}@",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "Connection string with credentials detected - use environment variables"
+        },
+        {
+          "id": "no-github-tokens",
+          "description": "No GitHub tokens in source code",
+          "pattern": "(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36,}",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "GitHub token detected - remove and rotate immediately"
+        },
+        {
+          "id": "no-slack-tokens",
+          "description": "No Slack tokens in source code",
+          "pattern": "xox[baprs]-[A-Za-z0-9-]{10,}",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "Slack token detected - remove and rotate immediately"
+        },
+        {
+          "id": "no-stripe-keys",
+          "description": "No Stripe API keys in source code",
+          "pattern": "(?:sk|pk|rk)_(live|test)_[A-Za-z0-9]{24,}",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "Stripe API key detected - remove and rotate immediately"
+        },
+        {
+          "id": "no-google-api-keys",
+          "description": "No Google API keys in source code",
+          "pattern": "AIza[A-Za-z0-9_-]{35}",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "Google API key detected - remove and rotate immediately"
+        },
+        {
+          "id": "no-azure-connection-strings",
+          "description": "No Azure connection strings in source code",
+          "pattern": "DefaultEndpointsProtocol=https;AccountName=[^;]+;AccountKey=[A-Za-z0-9+/=]{40,}",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "Azure connection string detected - use environment variables or Key Vault"
+        },
+        {
+          "id": "no-oauth-client-secrets",
+          "description": "No OAuth client secrets in source code",
+          "pattern": "(client_secret|clientSecret|consumer_secret|consumerSecret)\\s*[:=]\\s*['\"][A-Za-z0-9_-]{16,}['\"]",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "OAuth client secret detected - use environment variables"
+        },
+        {
+          "id": "no-sendgrid-keys",
+          "description": "No SendGrid API keys in source code",
+          "pattern": "SG\\.[A-Za-z0-9_-]{22}\\.[A-Za-z0-9_-]{43}",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "SendGrid API key detected - remove and rotate immediately"
+        },
+        {
+          "id": "no-twilio-keys",
+          "description": "No Twilio credentials in source code",
+          "pattern": "SK[a-f0-9]{32}|AC[a-f0-9]{32}",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "Twilio credential detected - remove and rotate immediately"
+        },
+        {
+          "id": "no-mailgun-keys",
+          "description": "No Mailgun API keys in source code",
+          "pattern": "key-[A-Za-z0-9]{32}",
+          "severity": "warning",
+          "languages": [
+            "*"
+          ],
+          "message": "Possible Mailgun API key detected - use environment variables"
+        },
+        {
+          "id": "no-generic-api-keys",
+          "description": "No generic API key patterns in source code",
+          "pattern": "(?:api[_-]?key|apikey|auth[_-]?token)\\s*[:=]\\s*['\"][A-Za-z0-9]{32,}['\"]",
+          "severity": "warning",
+          "languages": [
+            "*"
+          ],
+          "message": "Possible API key detected - use environment variables"
+        },
+        {
+          "id": "test-secrets-use-env-or-dynamic",
+          "description": "Test files must use environment variables or dynamic values for secrets, not hardcoded strings",
+          "pattern": "(?:password|email|api_key|apiKey|secret|token|auth)\\s*[:=]\\s*['\"][a-zA-Z0-9._%+@-]{6,}['\"]",
+          "file_patterns": [
+            "**/__tests__/**",
+            "**/*.test.*",
+            "**/*.spec.*"
+          ],
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "Test secrets must use os.environ.get() / process.env or dynamic generators — hardcoded secrets in tests get committed to version control"
+        }
+      ]
+    },
+    "injection": {
+      "description": "Rules to prevent injection attacks",
+      "component_types": [
+        "api",
+        "service",
+        "frontend"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-eval",
+          "description": "Avoid using eval()",
+          "pattern": "\\beval\\s*\\(",
+          "severity": "error",
+          "languages": [
+            "javascript",
+            "typescript",
+            "python"
+          ],
+          "message": "eval() is dangerous - use safer alternatives"
+        },
+        {
+          "id": "no-function-constructor",
+          "description": "Avoid Function constructor for dynamic code",
+          "pattern": "new\\s+Function\\s*\\(",
+          "severity": "error",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Function constructor can execute arbitrary code - use safer alternatives"
+        },
+        {
+          "id": "no-sql-concat",
+          "description": "Avoid string concatenation in SQL queries (excludes parser/generator files)",
+          "pattern": "(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE).*\\+.*\\$|`.*\\$\\{.*\\}.*(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE)",
+          "severity": "error",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design use ORM or parameterized queries for all database interactions? Flag any mention of string-concatenated SQL. BLOCK.",
+          "languages": [
+            "*"
+          ],
+          "file_patterns": [
+            "**/*.py",
+            "**/*.js",
+            "**/*.ts",
+            "!**/parsers/**",
+            "!**/generators/**",
+            "!**/tests/**"
+          ],
+          "message": "SQL injection risk - use parameterized queries"
+        },
+        {
+          "id": "no-raw-sql",
+          "description": "Avoid raw SQL with user input",
+          "pattern": "\\.(execute|query|raw)\\s*\\(\\s*[`'\"].*?\\$\\{",
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript",
+            "python"
+          ],
+          "message": "Potential SQL injection - use parameterized queries"
+        },
+        {
+          "id": "no-shell-injection",
+          "description": "Avoid shell command with user input",
+          "pattern": "(exec|spawn|execSync|spawnSync)\\s*\\([^)]*\\$\\{",
+          "severity": "error",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "file_patterns": [
+            "*.js",
+            "*.cjs",
+            "*.mjs",
+            "!**/__tests__/**",
+            "!**/test/**",
+            "!**/tests/**",
+            "!**/*.test.js",
+            "!**/*.test.ts",
+            "!**/*.spec.js",
+            "!**/*.spec.ts",
+            "!**/hooks/**",
+            "!**/scripts/**"
+          ],
+          "message": "Command injection risk - sanitize input or use safer alternatives"
+        },
+        {
+          "id": "no-python-shell",
+          "description": "Avoid Python shell execution with user input",
+          "pattern": "(os\\.system|subprocess\\.call|subprocess\\.run|subprocess\\.Popen)\\s*\\(([^)]*\\+|f['\"])",
+          "severity": "error",
+          "languages": [
+            "python"
+          ],
+          "message": "Command injection risk - use subprocess with list arguments and shell=False"
+        },
+        {
+          "id": "no-innerhtml",
+          "description": "Avoid innerHTML with user input",
+          "pattern": "\\.innerHTML\\s*=",
+          "severity": "warning",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the frontend design use innerHTML with dynamic user content? Replace with textContent or a sanitization library. Flag.",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "XSS risk - use textContent or sanitize HTML"
+        },
+        {
+          "id": "no-outerhtml",
+          "description": "Avoid outerHTML with user input",
+          "pattern": "\\.outerHTML\\s*=",
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "XSS risk - use textContent or sanitize HTML"
+        },
+        {
+          "id": "no-document-write",
+          "description": "Avoid document.write for dynamic content",
+          "pattern": "document\\.write\\s*\\(",
+          "severity": "error",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "XSS risk - document.write can execute scripts from user input"
+        },
+        {
+          "id": "no-dangerously-set-innerhtml",
+          "description": "Avoid React dangerouslySetInnerHTML",
+          "pattern": "dangerouslySetInnerHTML",
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "XSS risk - ensure HTML is sanitized with DOMPurify or similar"
+        }
+      ]
+    },
+    "path_traversal": {
+      "description": "Path traversal attack prevention",
+      "component_types": [
+        "api",
+        "service"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-path-concat-user-input",
+          "description": "Avoid path concatenation with user input",
+          "pattern": "(path\\.join|path\\.resolve|fs\\.readFile|fs\\.writeFile|fs\\.access)\\s*\\([^)]*req\\.(body|params|query)",
+          "severity": "error",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Path traversal risk - validate and sanitize file paths from user input"
+        },
+        {
+          "id": "no-double-dot-path",
+          "description": "Detect potential path traversal patterns",
+          "pattern": "(?<!path\\.)(\\.\\.[\\\\/])",
+          "file_patterns": [
+            "**/*.js",
+            "**/*.ts",
+            "**/*.py",
+            "!**/__tests__/**",
+            "!**/test/**",
+            "!**/tests/**",
+            "!**/hooks/**",
+            "!**/scripts/**"
+          ],
+          "severity": "warning",
+          "languages": [
+            "*"
+          ],
+          "message": "Path traversal pattern detected - ensure proper path validation"
+        }
+      ]
+    },
+    "authentication": {
+      "description": "Authentication security rules",
+      "component_types": [
+        "api",
+        "service"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-weak-passwords",
+          "description": "Password requirements should be enforced",
+          "pattern": "password.*length\\s*[<>=]{1,2}\\s*[1-7]\\b",
+          "severity": "warning",
+          "languages": [
+            "*"
+          ],
+          "message": "Password minimum length should be at least 8 characters"
+        },
+        {
+          "id": "hash-passwords",
+          "description": "Passwords should be hashed, not stored in plain text",
+          "pattern": "password.*=.*user\\.password|password.*=.*req\\.body",
+          "severity": "warning",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design specify password hashing using bcrypt or argon2? Reject any design that stores passwords in plaintext or using reversible encryption. BLOCK.",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Ensure passwords are hashed before storage (use bcrypt)"
+        },
+        {
+          "id": "secure-session-config",
+          "description": "Session cookies should be secure",
+          "pattern": "cookie.*secure\\s*:\\s*false",
+          "severity": "error",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the session design specify secure: true, httpOnly: true, sameSite settings for cookies? Flag if session configuration is underspecified.",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Session cookies should have secure: true in production"
+        },
+        {
+          "id": "no-auth-bypass",
+          "description": "Authentication checks should not have bypass conditions",
+          "pattern": "if.*admin.*=.*true|if.*skipAuth",
+          "severity": "warning",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design have any authentication bypass conditions (e.g., skipAuth flag, admin=true from client)? BLOCK on any bypass mechanism.",
+          "languages": [
+            "*"
+          ],
+          "message": "Review authentication bypass logic for security"
+        }
+      ]
+    },
+    "headers": {
+      "description": "HTTP security header rules",
+      "component_types": [
+        "api"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "cors-wildcard",
+          "description": "Avoid CORS wildcard in production",
+          "pattern": "cors\\s*\\(\\s*\\)|Access-Control-Allow-Origin.*\\*",
+          "severity": "warning",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the API design specify CORS configuration? Ensure specific origins are whitelisted, not wildcard (*). Flag wildcard CORS.",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "CORS wildcard (*) should not be used in production"
+        },
+        {
+          "id": "csrf-protection",
+          "description": "Enable CSRF protection for state-changing operations",
+          "check": "csrf_middleware",
+          "severity": "warning",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the API design include CSRF protection for state-changing operations (POST/PUT/DELETE)? Flag if CSRF middleware is not mentioned.",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Ensure CSRF protection is enabled for POST/PUT/DELETE routes"
+        }
+      ]
+    },
+    "logging": {
+      "description": "Security logging rules",
+      "component_types": [
+        "service",
+        "api"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-sensitive-logging",
+          "description": "Do not log sensitive information",
+          "pattern": "(log|console).*\b(auth[-_]?token|api[-_]?key|secret[-_]?key|password|bearer[-_]?token|refresh[-_]?token|access[-_]?token|jwt|private[-_]?key|session[-_]?id)\b",
+          "severity": "error",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the logging design expose sensitive fields (auth tokens, API keys, secrets, passwords)? Remove them. BLOCK.",
+          "languages": [
+            "*"
+          ],
+          "message": "Do not log sensitive information like passwords or tokens"
+        },
+        {
+          "id": "no-stack-trace-response",
+          "description": "Do not expose stack traces in responses",
+          "pattern": "res\\.(send|json)\\s*\\([^)]*\\.stack",
+          "severity": "error",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the error handling design return stack traces to clients? Stack traces must be logged internally only, not returned in API responses. BLOCK.",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Do not expose stack traces to clients"
+        }
+      ]
+    },
+    "crypto": {
+      "description": "Cryptography rules",
+      "component_types": [
+        "service"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-weak-crypto",
+          "description": "Avoid weak cryptographic algorithms",
+          "pattern": "createHash\\s*\\(['\"]md5['\"]|createHash\\s*\\(['\"]sha1['\"]",
+          "severity": "warning",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design use MD5 or SHA1 for any security-sensitive hashing? Replace with SHA-256+ or bcrypt/argon2 for passwords. BLOCK.",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Use stronger hash algorithms (SHA-256 or better)"
+        },
+        {
+          "id": "no-hardcoded-iv",
+          "description": "Do not use hardcoded initialization vectors",
+          "pattern": "iv\\s*[:=]\\s*['\"]",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "IV should be randomly generated, not hardcoded"
+        }
+      ]
+    },
+    "authorization": {
+      "description": "Authorization and access control rules",
+      "component_types": [
+        "api",
+        "service"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-trust-client-role",
+          "description": "Do not trust role from client input",
+          "pattern": "role\\s*[:=]\\s*req\\.body|isAdmin\\s*[:=]\\s*req\\.body",
+          "severity": "error",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design accept role or permission values from client requests (req.body.role, req.body.isAdmin)? Roles must come from the authentication token or database, never from client input. BLOCK.",
+          "message": "Never trust role/permission from client input"
+        }
+      ]
+    },
+    "ssrf": {
+      "description": "Server-Side Request Forgery prevention",
+      "component_types": [
+        "service",
+        "api"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "block-metadata-ips",
+          "description": "Block cloud metadata IPs",
+          "pattern": "169\\.254\\.169\\.254|metadata\\.google|metadata\\.azure",
+          "severity": "error",
+          "message": "Block access to cloud metadata endpoints"
+        }
+      ]
+    },
+    "file_uploads": {
+      "description": "File upload security",
+      "component_types": [
+        "api",
+        "service"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-executable-uploads",
+          "description": "Block executable uploads",
+          "pattern": "\\.(exe|sh|bat|js|php|jar)$",
+          "file_patterns": [
+            "**/upload/**",
+            "**/uploads/**",
+            "!**/__tests__/**",
+            "!**/test/**",
+            "!**/tests/**",
+            "!**/scripts/**"
+          ],
+          "severity": "error",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the file upload design restrict allowed file types? Ensure executable formats (.exe, .sh, .bat, .js, .php) are blocked. BLOCK if no type restriction is specified.",
+          "message": "Executable files must not be allowed for upload"
+        }
+      ]
+    },
+    "deserialization": {
+      "description": "Deserialization attack prevention",
+      "component_types": [
+        "service",
+        "api"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-unsafe-deserialization",
+          "description": "Avoid unsafe deserialization",
+          "pattern": "pickle\\.loads|ObjectInputStream|deserialize\\(",
+          "severity": "error",
+          "message": "Unsafe deserialization detected - use safe formats and validation"
+        }
+      ]
+    },
+    "cloud_security": {
+      "description": "Cloud and container security",
+      "component_types": [
+        "devops"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-privileged-containers",
+          "description": "Containers must not run privileged",
+          "pattern": "privileged:\\s*true",
+          "severity": "error",
+          "message": "Privileged containers are not allowed"
+        }
+      ]
+    },
+    "security_anti_patterns": {
+      "description": "Common security mistakes and what NOT to do - learn from real-world failures",
+      "critical": true,
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "anti-trust-client-validation",
+          "description": "NEVER trust client-side validation alone",
+          "pattern": "(disable|skip|bypass).*server.*valid|client.*only.*valid|frontend.*valid.*enough",
+          "severity": "error",
+          "priority": "CRITICAL",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design rely only on client-side validation for security-sensitive operations? Server-side validation is mandatory for all inputs. BLOCK.",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: Client-side validation is for UX only. ALWAYS validate on the server. Attackers bypass client-side validation trivially.",
+          "impact": "security-breach",
+          "examples": {
+            "bad": "// Client validates email format, server trusts it",
+            "good": "// Server re-validates all input regardless of client validation"
+          }
+        },
+        {
+          "id": "anti-security-by-obscurity",
+          "description": "NEVER rely on security by obscurity",
+          "pattern": "secret.*url|hidden.*endpoint|unpredictable.*path|obscure.*route",
+          "severity": "error",
+          "priority": "CRITICAL",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: Security by obscurity fails. Use proper authentication and authorization. URLs are logged, cached, and leaked.",
+          "impact": "security-breach"
+        },
+        {
+          "id": "anti-roll-your-own-crypto",
+          "description": "NEVER implement custom cryptography",
+          "pattern": "custom.*encrypt|own.*hash|homemade.*crypto|diy.*security",
+          "severity": "error",
+          "priority": "CRITICAL",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design propose custom cryptographic implementations? Use established libraries (bcrypt, argon2, libsodium). BLOCK on custom crypto.",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: Never roll your own crypto. Use established libraries (bcrypt, argon2, libsodium). Custom crypto has subtle vulnerabilities.",
+          "impact": "security-breach"
+        },
+        {
+          "id": "anti-storing-plaintext-passwords",
+          "description": "NEVER store passwords in plaintext or reversible encryption",
+          "pattern": "password.*=.*encrypt\\(|aes.*password|reversible.*password|decrypt.*password",
+          "severity": "error",
+          "priority": "CRITICAL",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design store passwords in plaintext or using reversible encryption? Only one-way hashing (bcrypt/argon2) is acceptable. BLOCK.",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: Never encrypt passwords (encryption is reversible). Use one-way hashing with bcrypt or argon2.",
+          "impact": "data-breach"
+        },
+        {
+          "id": "anti-md5-sha1-passwords",
+          "description": "NEVER use MD5 or SHA1 for password hashing",
+          "pattern": "md5\\(.*password|sha1\\(.*password|password.*md5|password.*sha1",
+          "severity": "error",
+          "priority": "CRITICAL",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: MD5 and SHA1 are broken for passwords. Use bcrypt, argon2, or PBKDF2 with high cost factor.",
+          "impact": "security-breach"
+        },
+        {
+          "id": "anti-comparing-passwords-directly",
+          "description": "NEVER compare passwords with == or ===",
+          "pattern": "password\\s*===?\\s*|===?\\s*password|password.*==.*input",
+          "severity": "error",
+          "priority": "CRITICAL",
+          "languages": [
+            "javascript",
+            "typescript",
+            "python"
+          ],
+          "message": "ANTI-PATTERN: Direct password comparison exposes timing attacks. Use constant-time comparison (crypto.timingSafeEqual).",
+          "impact": "security-breach"
+        },
+        {
+          "id": "anti-exposing-stack-traces",
+          "description": "NEVER expose stack traces to users in production",
+          "pattern": "res\\.(send|json).*error\\.stack|response.*stack.*trace|return.*stackTrace",
+          "severity": "error",
+          "priority": "HIGH",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Stack traces expose internal paths, versions, and logic. Log internally, return generic message to users.",
+          "impact": "information-disclosure"
+        },
+        {
+          "id": "anti-exposing-database-errors",
+          "description": "NEVER expose raw database errors to users",
+          "pattern": "res\\.(send|json).*db.*error|catch.*res\\.send.*err|return.*sql.*error",
+          "severity": "error",
+          "priority": "HIGH",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Database errors reveal schema, table names, and query structure. Log internally, return generic message.",
+          "impact": "information-disclosure"
+        },
+        {
+          "id": "anti-hardcoded-secrets-in-code",
+          "description": "NEVER hardcode secrets in source code",
+          "pattern": "(api_key|apiKey|apikey|API_KEY|secret|SECRET|password|PASSWORD|passwd|token|TOKEN|auth_token|authToken|private_key|privateKey|access_key|accessKey|client_secret|clientSecret)\\s*[:=]\\s*['\"][A-Za-z0-9+/=_-]{20,}['\"]",
+          "severity": "error",
+          "priority": "CRITICAL",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design reference any secrets inline? All secrets (API keys, passwords, tokens) must come from environment variables or a secrets manager. BLOCK.",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: Hardcoded secrets end up in version control. Use environment variables or secret managers.",
+          "impact": "security-breach",
+          "mitigation": "Use process.env.SECRET_NAME or a secrets manager (AWS Secrets Manager, HashiCorp Vault, Azure Key Vault)"
+        },
+        {
+          "id": "anti-disabling-ssl-verification",
+          "description": "NEVER disable SSL certificate verification",
+          "pattern": "rejectUnauthorized.*false|verify.*ssl.*false|ssl.*verify.*false|NODE_TLS_REJECT_UNAUTHORIZED.*0",
+          "severity": "error",
+          "priority": "CRITICAL",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design disable SSL certificate verification anywhere? BLOCK \u2014 fix certificate issues properly, never disable verification.",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: Disabling SSL verification enables man-in-the-middle attacks. Fix certificate issues properly.",
+          "impact": "security-breach"
+        },
+        {
+          "id": "anti-using-http-for-sensitive",
+          "description": "NEVER use HTTP for sensitive data transmission",
+          "pattern": "http://.*login|http://.*password|http://.*token|http://.*api.*key",
+          "severity": "error",
+          "priority": "CRITICAL",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: HTTP transmits data in plaintext. Always use HTTPS for anything sensitive.",
+          "impact": "data-breach"
+        },
+        {
+          "id": "anti-storing-jwt-in-localstorage",
+          "description": "NEVER store JWTs in localStorage for authentication",
+          "pattern": "localStorage\\.(set|get)Item.*token|localStorage.*jwt|jwt.*localStorage",
+          "severity": "warning",
+          "priority": "HIGH",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the frontend design store JWT tokens in localStorage? Use httpOnly cookies instead to prevent XSS token theft. BLOCK.",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: localStorage is vulnerable to XSS. Use httpOnly cookies for auth tokens.",
+          "impact": "token-theft"
+        },
+        {
+          "id": "anti-long-lived-tokens",
+          "description": "NEVER use long-lived access tokens without refresh mechanism",
+          "pattern": "expiresIn.*['\"](\\d+d|\\d{2,}h|never|infinite)['\"]|exp.*year|token.*never.*expire",
+          "severity": "warning",
+          "priority": "HIGH",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design use long-lived access tokens (days/weeks) without a refresh mechanism? Use short-lived access tokens + refresh tokens. Flag if token expiry is not specified.",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: Long-lived tokens increase attack window. Use short-lived access tokens with refresh tokens.",
+          "impact": "persistent-compromise"
+        },
+        {
+          "id": "anti-cors-wildcard-credentials",
+          "description": "NEVER combine CORS wildcard with credentials",
+          "pattern": "Access-Control-Allow-Origin.*\\*.*credentials|credentials.*true.*origin.*\\*",
+          "severity": "error",
+          "priority": "CRITICAL",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design combine wildcard CORS origin with credentials: true? This is forbidden. Use specific allowed origins. BLOCK.",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: Wildcard CORS with credentials is dangerous. Explicitly whitelist allowed origins.",
+          "impact": "security-breach"
+        },
+        {
+          "id": "anti-mass-assignment",
+          "description": "NEVER directly assign request body to database models",
+          "pattern": "Model\\.(create|update)\\(req\\.body\\)|new.*Model\\(req\\.body\\)|Object\\.assign.*req\\.body",
+          "severity": "error",
+          "priority": "HIGH",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design pass request body directly to database create/update operations? Whitelist allowed fields explicitly. BLOCK.",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Mass assignment allows attackers to set unintended fields (isAdmin, role). Whitelist allowed fields.",
+          "impact": "privilege-escalation"
+        },
+        {
+          "id": "anti-sequential-ids",
+          "description": "AVOID exposing sequential IDs for enumerable resources",
+          "pattern": "/:id|/users/\\d+|/orders/\\d+|findById\\(parseInt",
+          "severity": "warning",
+          "priority": "MEDIUM",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design expose sequential integer IDs for user-facing resources? Use UUIDs to prevent enumeration attacks. Flag for review.",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "CAUTION: Sequential IDs allow enumeration attacks. Consider UUIDs for user-facing resources and always enforce authorization.",
+          "impact": "information-disclosure"
+        },
+        {
+          "id": "anti-debug-mode-production",
+          "description": "NEVER enable debug mode in production",
+          "pattern": "DEBUG.*=.*true|debug.*mode.*prod|FLASK_DEBUG.*1|app\\.debug.*True",
+          "severity": "error",
+          "priority": "HIGH",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: Debug mode exposes sensitive information and may allow code execution. Disable in production.",
+          "impact": "information-disclosure"
+        },
+        {
+          "id": "anti-catching-all-errors-silently",
+          "description": "NEVER catch all errors and ignore them",
+          "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*(//.*)?\\}|except.*pass|catch.*continue",
+          "severity": "warning",
+          "priority": "HIGH",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: Silent error handling hides security issues. Log errors, then handle or rethrow appropriately.",
+          "impact": "hidden-vulnerabilities"
+        }
+      ]
+    }
+  }
+}

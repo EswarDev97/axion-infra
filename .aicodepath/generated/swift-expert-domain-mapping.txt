@@ -1,0 +1,6 @@
+swift=swift-expert
+swiftui=swift-expert
+xcode=swift-expert
+swift-package=swift-expert
+swift-concurrency=swift-expert
+swiftdata=swift-expert

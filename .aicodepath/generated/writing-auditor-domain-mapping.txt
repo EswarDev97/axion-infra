@@ -1,0 +1,7 @@
+// C16b — aicodepath-writing-auditor DOMAIN_MAPPING entries
+"ai-isms": ["writing-auditor"],
+"writing-audit": ["writing-auditor"],
+"humanize-text": ["writing-auditor"],
+"remove-ai-patterns": ["writing-auditor"],
+"tier1-vocabulary": ["writing-auditor"],
+"prose-quality": ["writing-auditor"],

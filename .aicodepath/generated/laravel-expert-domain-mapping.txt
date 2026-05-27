@@ -1,0 +1,1 @@
+laravel, eloquent, artisan, livewire-laravel, filament, laravel-horizon

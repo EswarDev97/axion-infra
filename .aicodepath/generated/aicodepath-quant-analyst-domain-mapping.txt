@@ -1,0 +1,9 @@
+# DOMAIN_MAPPING entries for aicodepath-quant-analyst
+# Batch: D2 | Pack: specialists
+
+"quant-trading": ["quant-analyst"],
+"backtest": ["quant-analyst"],
+"statistical-arbitrage": ["quant-analyst"],
+"derivatives-pricing": ["quant-analyst"],
+"var-sharpe": ["quant-analyst"],
+"walk-forward": ["quant-analyst"],

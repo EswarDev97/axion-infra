@@ -1,0 +1,4 @@
+# using-aicodepath SKILL.md row for aicodepath-nlp-engineer
+# Batch: D1 | Pack: specialists
+
+| NLP systems — NER, sentiment analysis, text classification, transformer fine-tuning, multilingual support | `aicodepath-nlp-engineer` |

@@ -1,0 +1,269 @@
+{
+  "$schema": "AICodePath Surgical Changes Guidelines",
+  "version": "1.0.0",
+  "description": "Enforce surgical, scope-bounded code changes — touch only what the task requires, match existing style, no drive-by refactoring. Derived from Andrej Karpathy's observations on LLM coding pitfalls.",
+  "_classification": {
+    "component_types": [
+      "all"
+    ],
+    "default_phase": [
+      "code"
+    ],
+    "design_applies": true,
+    "design_signals": [
+      "refactor",
+      "cleanup",
+      "improve",
+      "style",
+      "format",
+      "rename",
+      "modernize",
+      "update"
+    ]
+  },
+  "categories": {
+    "scope_discipline": {
+      "description": "Changes must trace directly to the task — no opportunistic cleanup, reformatting, or unrelated improvements",
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-drive-by-docstrings",
+          "description": "Do not add docstrings or JSDoc to functions you did not modify",
+          "pattern": "(/\\*\\*[\\s\\S]*?\\*/|\"\"\"[\\s\\S]*?\"\"\"|'''[\\s\\S]*?''')",
+          "severity": "info",
+          "priority": "MEDIUM",
+          "phase": [
+            "code"
+          ],
+          "languages": [
+            "*"
+          ],
+          "message": "SURGICAL CHECK: If this docstring is on a function you did NOT change for the current task, remove it. Only add documentation to code you are actively modifying.",
+          "category": "scope_discipline"
+        },
+        {
+          "id": "no-drive-by-type-annotations",
+          "description": "Do not add type annotations to existing untyped code outside your task scope",
+          "pattern": ":\\s*(string|number|boolean|void|any|unknown|never|null|undefined|Array<|Record<|Promise<)\\b",
+          "severity": "info",
+          "priority": "MEDIUM",
+          "phase": [
+            "code"
+          ],
+          "languages": [
+            "javascript"
+          ],
+          "message": "SURGICAL CHECK: Type annotation detected in a .js file. If this is an existing function you did NOT change for the current task, do not add types. Type annotation changes belong in a separate task.",
+          "category": "scope_discipline"
+        },
+        {
+          "id": "no-unrelated-rename",
+          "description": "Do not rename variables, functions, or parameters outside the scope of the current task",
+          "check": "manual_review",
+          "severity": "warning",
+          "priority": "HIGH",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the proposed change rename any symbol (variable, function, parameter, class) that is NOT directly required by the task? Renaming is a valid activity — but it must be its own task with its own test verification, not a side-effect of unrelated work. Flag any rename outside the task's stated scope.",
+          "languages": [
+            "*"
+          ],
+          "message": "SURGICAL CHECK: Renaming a symbol outside the current task's scope is a separate task. If the rename is needed, create a new task for it — do not bundle it.",
+          "category": "scope_discipline"
+        },
+        {
+          "id": "no-opportunistic-cleanup",
+          "description": "Do not clean up, reorganize, or improve adjacent code that is not part of the task",
+          "check": "manual_review",
+          "severity": "warning",
+          "priority": "HIGH",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the plan or implementation touch code that is adjacent to but NOT required by the current task? Every changed line must trace directly to the user's request. If you notice unrelated dead code, mention it in a comment or task — do not delete it. Flag any change that cannot be traced to the task.",
+          "languages": [
+            "*"
+          ],
+          "message": "SURGICAL CHECK: Every changed line must trace directly to the task. If cleanup is needed, create a separate task. Do not bundle unrelated improvements.",
+          "category": "scope_discipline"
+        }
+      ]
+    },
+    "style_matching": {
+      "description": "Match the existing code style of the file being edited — do not impose a different style",
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "match-existing-quotes",
+          "description": "Use the same quote style as the existing file — do not convert single to double or vice versa",
+          "check": "manual_review",
+          "severity": "warning",
+          "priority": "HIGH",
+          "phase": [
+            "code"
+          ],
+          "design_check": "When editing an existing file, check which quote style it uses (single vs double). New code in the same file must match. Do not reformat existing quotes.",
+          "languages": [
+            "javascript",
+            "typescript",
+            "python"
+          ],
+          "message": "SURGICAL CHECK: Match the existing quote style in this file. Do not convert between single and double quotes unless that IS the task.",
+          "category": "style_matching"
+        },
+        {
+          "id": "match-existing-semicolons",
+          "description": "Match the existing semicolon convention — do not add or remove semicolons in files that use the opposite convention",
+          "check": "manual_review",
+          "severity": "warning",
+          "priority": "MEDIUM",
+          "phase": [
+            "code"
+          ],
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "SURGICAL CHECK: Match the existing semicolon convention in this file. If the file omits semicolons, do not add them. If the file uses them, include them.",
+          "category": "style_matching"
+        },
+        {
+          "id": "match-existing-spacing",
+          "description": "Match the existing indentation and spacing — do not reformat whitespace outside your changes",
+          "check": "manual_review",
+          "severity": "info",
+          "priority": "MEDIUM",
+          "phase": [
+            "code"
+          ],
+          "languages": [
+            "*"
+          ],
+          "message": "SURGICAL CHECK: Match the existing indentation (tabs vs spaces, indent width) and spacing conventions. Do not reformat lines you did not change.",
+          "category": "style_matching"
+        },
+        {
+          "id": "match-existing-patterns",
+          "description": "Match the existing code patterns — if the file uses callbacks, do not convert to async/await unless that IS the task",
+          "check": "manual_review",
+          "severity": "warning",
+          "priority": "HIGH",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the proposed change convert existing code patterns (callbacks→promises, var→const, require→import, class→function) in code outside the task scope? Pattern modernization is valid work — but it must be its own task. Flag any pattern change bundled into an unrelated task.",
+          "languages": [
+            "*"
+          ],
+          "message": "SURGICAL CHECK: Do not modernize or convert existing code patterns (callbacks→promises, var→const, require→import) unless that IS the task. Match what exists.",
+          "category": "style_matching"
+        }
+      ]
+    },
+    "orphan_management": {
+      "description": "Clean up only what YOUR changes made unused — do not clean up pre-existing dead code",
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "remove-own-orphans",
+          "description": "Remove imports, variables, and functions that YOUR changes made unused",
+          "check": "manual_review",
+          "severity": "warning",
+          "priority": "HIGH",
+          "phase": [
+            "code"
+          ],
+          "languages": [
+            "*"
+          ],
+          "message": "SURGICAL CHECK: If your changes made an import, variable, or function unused, remove it. But do NOT remove pre-existing dead code — that belongs in a separate cleanup task.",
+          "category": "orphan_management"
+        },
+        {
+          "id": "no-preexisting-dead-code-removal",
+          "description": "Do not remove pre-existing dead code, unused imports, or unused variables that were there before your changes",
+          "check": "manual_review",
+          "severity": "warning",
+          "priority": "HIGH",
+          "phase": [
+            "code"
+          ],
+          "design_check": "Does the implementation remove dead code, unused imports, or unused variables that existed BEFORE the current task's changes? Pre-existing dead code removal is valid maintenance — but it must be its own task. Flag any bundled dead code removal.",
+          "languages": [
+            "*"
+          ],
+          "message": "SURGICAL CHECK: Do not remove pre-existing dead code. If you notice it, mention it — do not delete it. Dead code cleanup is a separate task.",
+          "category": "orphan_management"
+        }
+      ]
+    },
+    "comment_discipline": {
+      "description": "Do not modify, add, or remove comments in code you did not change",
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-drive-by-comment-edits",
+          "description": "Do not edit, improve, or rewrite comments on code you did not change",
+          "check": "manual_review",
+          "severity": "warning",
+          "priority": "HIGH",
+          "phase": [
+            "code"
+          ],
+          "languages": [
+            "*"
+          ],
+          "message": "SURGICAL CHECK: Do not edit comments on code you did not change. If a comment is misleading, mention it — do not fix it as a side-effect of unrelated work.",
+          "category": "comment_discipline"
+        },
+        {
+          "id": "no-drive-by-comment-removal",
+          "description": "Do not remove comments from code outside your task scope",
+          "check": "manual_review",
+          "severity": "warning",
+          "priority": "HIGH",
+          "phase": [
+            "code"
+          ],
+          "languages": [
+            "*"
+          ],
+          "message": "SURGICAL CHECK: Do not remove comments from code you did not change. Even if a comment seems outdated, it may contain context that is not obvious.",
+          "category": "comment_discipline"
+        }
+      ]
+    }
+  },
+  "traceability_test": {
+    "description": "The single test for whether a change is surgical",
+    "version": "1.0.0",
+    "rule": "Every changed line should trace directly to the user's request. If a line cannot be traced, it is either scope creep (remove it) or a separate task (create one).",
+    "application": "Before committing, review the diff line by line. For each changed line, answer: 'Which part of the task required this change?' If you cannot answer, revert the line.",
+    "attribution": "Derived from Andrej Karpathy's observations on LLM coding pitfalls (https://x.com/karpathy/status/2015883857489522876)"
+  }
+}

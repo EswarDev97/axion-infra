@@ -1,0 +1,1 @@
+| Swarm orchestration, parallel agent delegation, multi-agent pipeline, DoD verification | `aicodepath-swarm-lead` |

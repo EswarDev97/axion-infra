@@ -1,0 +1,1 @@
+| CI/CD pipelines, Dockerfiles, Kubernetes manifests, IaC with Terraform/Pulumi, autoscaling, logging/alerting | `aicodepath-devops-architect` |

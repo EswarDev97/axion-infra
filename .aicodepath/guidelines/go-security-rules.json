@@ -1,0 +1,71 @@
+{
+  "$schema": "AICodePath Go Security Guidelines",
+  "version": "1.0.0",
+  "description": "Security rules for Go files — prevents SQL injection, unsafe package misuse, error suppression, and secrets",
+  "_classification": {
+    "component_types": ["security", "all"],
+    "default_phase": ["code"]
+  },
+  "categories": {
+    "injection": {
+      "description": "SQL and command injection prevention",
+      "component_types": ["security", "all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-sql-injection",
+          "description": "No SQL built with fmt.Sprintf — SQL injection risk",
+          "pattern": "fmt\\.Sprintf\\s*\\(\\s*['\"`][^'\"`]*(?:SELECT|INSERT|UPDATE|DELETE|WHERE)",
+          "severity": "error",
+          "file_patterns": ["*.go"],
+          "message": "Building SQL with fmt.Sprintf is vulnerable to injection — use db.Query with ? placeholders"
+        }
+      ]
+    },
+    "unsafe": {
+      "description": "Unsafe package usage rules",
+      "component_types": ["security", "all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-unsafe",
+          "description": "No unsafe package — bypasses Go's memory safety",
+          "pattern": "\"unsafe\"",
+          "severity": "warning",
+          "file_patterns": ["*.go"],
+          "message": "The unsafe package bypasses Go's type safety — document the justification with a comment"
+        }
+      ]
+    },
+    "error-handling": {
+      "description": "Error handling quality in Go",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "err-not-checked",
+          "description": "Errors must be checked — do not discard with _",
+          "pattern": "\\berr\\s*=\\s*[^=\\n]+\\n\\s*(?!if\\s+err)",
+          "severity": "info",
+          "file_patterns": ["*.go"],
+          "message": "Check the error return — use 'if err != nil' immediately after the call"
+        }
+      ]
+    },
+    "secrets": {
+      "description": "No hardcoded secrets in Go files",
+      "component_types": ["security", "all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-hardcoded-secrets",
+          "description": "No hardcoded API keys, tokens, or passwords",
+          "pattern": "(apiKey|api_key|password|secret|token|privateKey)\\s*(?::=|=)\\s*['\"`][A-Za-z0-9+/=_\\-]{12,}['\"`]",
+          "severity": "error",
+          "file_patterns": ["*.go"],
+          "message": "Hardcoded secret detected — use os.Getenv or a secrets manager"
+        }
+      ]
+    }
+  }
+}

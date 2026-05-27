@@ -1,0 +1,7 @@
+// C15 — aicodepath-cost-optimizer DOMAIN_MAPPING entries
+"cloud-cost-reduction": ["cost-optimizer"],
+"aws-costs": ["cost-optimizer"],
+"azure-costs": ["cost-optimizer"],
+"gcp-costs": ["cost-optimizer"],
+"cost-anomaly": ["cost-optimizer"],
+"spot-instance-strategy": ["cost-optimizer"],

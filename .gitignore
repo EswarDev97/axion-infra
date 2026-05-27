@@ -107,6 +107,10 @@ temp/
 # Test files
 *.test.js.snap
 
+# AICodePath secret-pattern test fixtures (contain dummy API keys)
+.aicodepath/guidelines/test-secret-patterns.js
+.aicodepath/guidelines/test-secret-patterns.sh
+
 # Misc
 *.bak
 *.backup

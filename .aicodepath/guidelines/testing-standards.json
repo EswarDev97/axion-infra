@@ -1,0 +1,455 @@
+{
+  "$schema": "AICodePath Testing Standards",
+  "version": "1.0.0",
+  "description": "Testing standards for quality assurance - naming, coverage, and patterns",
+  "_classification": {
+    "component_types": ["test"],
+    "default_phase": ["code"],
+    "design_applies": true,
+    "design_signals": ["test", "spec", "coverage", "mock", "unit test", "integration test", "e2e", "assertion", "tdd", "testing strategy"]
+  },
+  "categories": {
+    "naming": {
+      "description": "Test file and function naming conventions",
+      "component_types": ["test"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "test-file-naming",
+          "description": "Test files must use .test. or .spec. naming",
+          "file_pattern": "^(?!.*\\.(test|spec)\\.).*\\.(?:js|ts|jsx|tsx)$",
+          "context": "tests/",
+          "severity": "warning",
+          "message": "Test files should use .test.ts or .spec.ts naming"
+        },
+        {
+          "id": "test-describe-block",
+          "description": "Test files should have describe blocks",
+          "pattern": "^(?!.*describe\\()",
+          "severity": "info",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Organize tests with describe() blocks",
+          "file_patterns": [
+            "**/*.test.*",
+            "**/*.spec.*",
+            "!**/.aicodepath/__tests__/**"
+          ]
+        },
+        {
+          "id": "descriptive-test-names",
+          "description": "Test names should be descriptive",
+          "pattern": "(it|test)\\s*\\(['\"][^'\"]{1,15}['\"]",
+          "severity": "info",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Use descriptive test names that explain the expected behavior"
+        },
+        {
+          "id": "test-should-pattern",
+          "description": "Test names should start with 'should'",
+          "pattern": "(it|test)\\s*\\(['\"](?!should)",
+          "severity": "info",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Consider starting test names with 'should' for clarity"
+        }
+      ]
+    },
+    "structure": {
+      "description": "Test structure and organization",
+      "component_types": ["test"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "arrange-act-assert",
+          "description": "Tests should follow Arrange-Act-Assert pattern",
+          "check": "aaa_pattern",
+          "severity": "info",
+          "message": "Structure tests with clear Arrange, Act, and Assert sections",
+          "design_check": "Does the testing strategy describe Arrange-Act-Assert structure for tests?"
+        },
+        {
+          "id": "one-assert-per-test",
+          "description": "Tests should have a single logical assertion",
+          "pattern": "expect\\([^)]+\\)[^;]+;[^}]*expect\\(",
+          "severity": "info",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Consider splitting tests with multiple assertions"
+        },
+        {
+          "id": "no-test-dependencies",
+          "description": "Tests should not depend on each other",
+          "check": "test_isolation",
+          "severity": "warning",
+          "message": "Tests should be independent and run in any order",
+          "design_check": "Does the testing design ensure tests are independent and can run in any order? Flag any design that implies test ordering."
+        },
+        {
+          "id": "cleanup-after-test",
+          "description": "Tests should clean up after themselves",
+          "check": "test_cleanup",
+          "severity": "info",
+          "message": "Use afterEach/afterAll for cleanup"
+        }
+      ]
+    },
+    "coverage": {
+      "description": "Code coverage requirements",
+      "component_types": ["test"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "minimum-coverage",
+          "description": "Minimum code coverage threshold",
+          "check": "coverage_threshold",
+          "threshold": {
+            "lines": 70,
+            "branches": 60,
+            "functions": 70,
+            "statements": 70
+          },
+          "severity": "warning",
+          "message": "Code coverage is below threshold",
+          "design_check": "Does the plan specify minimum coverage thresholds (lines: 70%, branches: 60%, functions: 70%)? If missing, add coverage requirements to the definition of done."
+        }
+      ]
+    },
+    "mocking": {
+      "description": "Mocking and stubbing rules",
+      "component_types": ["test"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "mock-external-services",
+          "description": "Mock external service calls in unit tests",
+          "check": "external_mock",
+          "severity": "warning",
+          "message": "External services should be mocked in unit tests",
+          "design_check": "Does the design identify which external dependencies (APIs, DBs, queues) will be mocked in unit tests? Specify mocking strategy early."
+        },
+        {
+          "id": "no-mock-overuse",
+          "description": "Avoid excessive mocking",
+          "check": "mock_count",
+          "max": 5,
+          "severity": "info",
+          "message": "Too many mocks may indicate test is too coupled to implementation"
+        },
+        {
+          "id": "restore-mocks",
+          "description": "Restore mocks after tests",
+          "pattern": "jest\\.mock\\([^)]+\\)",
+          "severity": "info",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Ensure mocks are restored with jest.restoreAllMocks()",
+          "file_patterns": [
+            "!.aicodepath/__tests__/**"
+          ]
+        },
+        {
+          "id": "realistic-mock-data",
+          "description": "Use realistic mock data",
+          "check": "mock_data_quality",
+          "severity": "info",
+          "message": "Use factories or fixtures for realistic test data"
+        }
+      ]
+    },
+    "assertions": {
+      "description": "Assertion quality rules",
+      "component_types": ["test"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-empty-tests",
+          "description": "Tests must have assertions",
+          "pattern": "(it|test)\\s*\\([^)]+\\)\\s*=>\\s*\\{[^}]*\\}",
+          "severity": "info",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Tests must have at least one assertion",
+          "file_patterns": [
+            "!.aicodepath/__tests__/**"
+          ]
+        },
+        {
+          "id": "specific-assertions",
+          "description": "Use specific assertions over generic ones",
+          "pattern": "expect\\([^)]+\\)\\.toBeTruthy\\(\\)|expect\\([^)]+\\)\\.toBeFalsy\\(\\)",
+          "severity": "info",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Use specific assertions like toEqual(), toContain()",
+          "file_patterns": [
+            "!.aicodepath/__tests__/**"
+          ]
+        },
+        {
+          "id": "async-assertions",
+          "description": "Async tests must use await or return promise",
+          "check": "async_assertion",
+          "severity": "error",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Async tests must await assertions or return the promise"
+        }
+      ]
+    },
+    "stability": {
+      "description": "Test determinism and flakiness prevention",
+      "component_types": ["test"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-randomness",
+          "description": "Tests must not rely on unseeded randomness",
+          "pattern": "Math\\.random\\(|randomUUID\\(",
+          "severity": "warning",
+          "message": "Mock or seed randomness to make tests deterministic (faker.js with faker.seed() is acceptable)"
+        },
+        {
+          "id": "retry-only-flaky-tests",
+          "description": "Retries allowed only for known flaky tests",
+          "pattern": "retry\\(|jest\\.retryTimes",
+          "severity": "info",
+          "message": "Retries should be limited and documented"
+        }
+      ]
+    },
+    "ci_quality": {
+      "description": "CI enforcement and test discipline",
+      "component_types": ["test"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-skipped-tests",
+          "description": "No skipped tests in CI",
+          "pattern": "\\.(skip|xit|xdescribe)\\s*\\(",
+          "severity": "warning",
+          "priority": "MEDIUM",
+          "message": "Skipped tests should be temporary and documented"
+        }
+      ]
+    },
+    "testing_anti_patterns": {
+      "description": "Common testing mistakes and what NOT to do",
+      "critical": true,
+      "component_types": ["test"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "anti-testing-implementation-details",
+          "description": "NEVER test implementation details instead of behavior",
+          "pattern": "expect\\(.*\\.state\\.|expect\\(.*internal|expect\\(.*private|toHaveBeenCalledTimes\\(\\d+\\)|expect\\(spy\\)\\.toHaveBeenCalled",
+          "severity": "warning",
+          "priority": "HIGH",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Testing implementation details makes tests brittle. Test behavior and outcomes, not internal mechanics.",
+          "examples": {
+            "bad": "expect(component.state.loading).toBe(true)",
+            "good": "expect(screen.getByRole('progressbar')).toBeInTheDocument()"
+          }
+        },
+        {
+          "id": "anti-snapshot-abuse",
+          "description": "AVOID excessive snapshot testing",
+          "pattern": "toMatchSnapshot\\(\\)|toMatchInlineSnapshot",
+          "severity": "info",
+          "priority": "MEDIUM",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "CAUTION: Snapshots are easily approved without review. Use for stable UI components only, not logic. Test specific assertions instead.",
+          "examples": {
+            "bad": "expect(component).toMatchSnapshot() // entire component tree",
+            "good": "expect(component).toHaveTextContent('Welcome, User')"
+          }
+        },
+        {
+          "id": "anti-mock-everything",
+          "description": "AVOID mocking everything - test real interactions where possible",
+          "pattern": "jest\\.mock\\([^)]+\\)[^}]*jest\\.mock\\([^)]+\\)[^}]*jest\\.mock\\(",
+          "severity": "warning",
+          "priority": "MEDIUM",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Excessive mocking tests the mocks, not the code. Mock external dependencies, not your own modules."
+        },
+        {
+          "id": "anti-testing-library-code",
+          "description": "NEVER test framework/library behavior",
+          "pattern": "it\\(['\"]should (render|mount|create|initialize)",
+          "severity": "info",
+          "priority": "LOW",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Don't test that React renders components or Express creates routes. Test YOUR behavior on top of libraries."
+        },
+        {
+          "id": "anti-test-names-test-that",
+          "description": "AVOID generic test names like 'test that it works'",
+          "pattern": "(it|test)\\(['\"](?:test|should work|works|is correct|does something|behaves correctly)['\"]",
+          "severity": "warning",
+          "priority": "MEDIUM",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Vague test names hide what's being tested. Describe the specific behavior: 'should return 404 when user not found'."
+        },
+        {
+          "id": "anti-assertion-roulette",
+          "description": "AVOID multiple unrelated assertions in one test",
+          "pattern": "expect\\([^)]+\\)\\.[^;]+;[^}]*expect\\([^)]+\\)\\.[^;]+;[^}]*expect\\([^)]+\\)\\.[^;]+;[^}]*expect\\(",
+          "severity": "info",
+          "priority": "MEDIUM",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Multiple unrelated assertions make it unclear what failed. One logical assertion per test."
+        },
+        {
+          "id": "anti-hidden-test-setup",
+          "description": "AVOID hiding test setup in beforeAll that affects understanding",
+          "pattern": "beforeAll\\(\\s*async\\s*\\(\\s*\\)\\s*=>\\s*\\{[^}]{200,}\\}",
+          "severity": "info",
+          "priority": "LOW",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "CAUTION: Complex beforeAll setup hides test dependencies. Keep setup close to tests that need it for clarity."
+        },
+        {
+          "id": "anti-shared-mutable-state",
+          "description": "NEVER share mutable state between tests",
+          "pattern": "let\\s+\\w+;\\s*\\n\\s*beforeEach\\([^)]*\\)\\s*=>\\s*\\{[^}]*\\w+\\s*=",
+          "severity": "error",
+          "priority": "HIGH",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Shared mutable state causes test order dependencies and flakiness. Create fresh state in each test."
+        },
+        {
+          "id": "anti-sleeping-in-tests",
+          "description": "NEVER use fixed sleep/delays in tests",
+          "pattern": "await\\s+(sleep|delay|setTimeout|new Promise.*setTimeout)\\s*\\(\\s*\\d+",
+          "severity": "error",
+          "priority": "HIGH",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Fixed delays make tests slow and flaky. Use waitFor, polling, or mock timers instead."
+        },
+        {
+          "id": "anti-ignoring-async-errors",
+          "description": "NEVER ignore promise rejections in tests",
+          "pattern": "(it|test)\\([^)]+\\)\\s*=>\\s*\\{[^}]*\\.catch\\(\\s*\\(\\s*\\)\\s*=>\\s*\\{\\s*\\}\\)",
+          "severity": "error",
+          "priority": "HIGH",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Empty catch handlers hide failures. Let tests fail on unexpected errors."
+        },
+        {
+          "id": "anti-conditional-tests",
+          "description": "AVOID conditional logic in tests",
+          "pattern": "(it|test)\\([^)]+\\)\\s*=>\\s*\\{[^}]*(if\\s*\\(|switch\\s*\\()[^}]*\\}",
+          "severity": "warning",
+          "priority": "MEDIUM",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Conditional logic in tests hides which path was tested. Split into separate tests for each case."
+        },
+        {
+          "id": "anti-testing-getters-setters",
+          "description": "AVOID testing trivial getters and setters",
+          "pattern": "it\\(['\"]should (get|set|return)[^'\"]*['\"],\\s*\\(\\s*\\)\\s*=>\\s*\\{[^}]*expect\\([^)]+\\)\\.(toBe|toEqual)\\([^)]+\\)",
+          "severity": "info",
+          "priority": "LOW",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Testing trivial getters/setters tests JavaScript, not your code. Test meaningful behavior."
+        },
+        {
+          "id": "anti-brittle-string-matching",
+          "description": "AVOID exact string matching for error messages",
+          "pattern": "expect\\([^)]+\\.(message|error)\\)\\.(toBe|toEqual)\\(['\"][^'\"]{30,}['\"]\\)",
+          "severity": "info",
+          "priority": "LOW",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Exact error message matching breaks on rewording. Use toMatch or toContain for key phrases."
+        },
+        {
+          "id": "anti-coupling-to-database-ids",
+          "description": "AVOID hardcoding database IDs in tests",
+          "pattern": "expect\\([^)]+\\)\\.toBe\\(['\"]?\\d+['\"]?\\)|findById\\(['\"]?\\d+['\"]?\\)",
+          "severity": "warning",
+          "priority": "MEDIUM",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Hardcoded IDs couple tests to database state. Use factory-created entities or test the ID's existence."
+        },
+        {
+          "id": "anti-testing-against-clock",
+          "description": "AVOID testing against real system clock",
+          "pattern": "expect\\([^)]+\\)\\.(toBe|toEqual)\\((?:new Date\\(\\)|Date\\.now\\(\\))",
+          "severity": "error",
+          "priority": "HIGH",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "file_patterns": [
+            "*.test.*",
+            "*.spec.*",
+            "__tests__/**"
+          ],
+          "message": "ANTI-PATTERN: Tests against real time are flaky. Use fake timers or inject a clock abstraction."
+        }
+      ]
+    }
+  }
+}

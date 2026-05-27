@@ -1,0 +1,4 @@
+# using-aicodepath SKILL.md row for aicodepath-fintech-engineer
+# Batch: D2 | Pack: specialists
+
+| Financial systems — payment processing, banking APIs, PCI DSS compliance, double-entry ledger, KYC/AML, audit trails | `aicodepath-fintech-engineer` |

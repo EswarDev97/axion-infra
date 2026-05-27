@@ -1,0 +1,7 @@
+micro-frontend=frontend-architect
+module-federation=frontend-architect
+web-vitals=frontend-architect
+hydration=frontend-architect
+server-components=frontend-architect
+zustand=frontend-architect
+swr=frontend-architect

@@ -1,0 +1,2 @@
+// C13 — aicodepath-compliance-auditor row for using-aicodepath/SKILL.md Agents table
+| GDPR, SOC 2, HIPAA, PCI-DSS compliance audit | `aicodepath-compliance-auditor` |

@@ -1,0 +1,86 @@
+{
+  "$schema": "AICodePath Context State for Multi-Window Sessions",
+  "version": "1.1.0",
+  "lastUpdated": "{{ISO_TIMESTAMP}}",
+  "sessionId": "{{SESSION_ID}}",
+  "project": {
+    "name": "{{PROJECT_NAME}}",
+    "path": "{{PROJECT_PATH}}",
+    "type": "greenfield|brownfield",
+    "crNumber": "{{CR_NUMBER}}",
+    "techStack": {
+      "language": "",
+      "framework": "",
+      "database": "",
+      "cloud": ""
+    }
+  },
+  "workflow": {
+    "phase": "INCEPTION|CONSTRUCTION|OPERATIONS",
+    "stage": "",
+    "status": "in_progress|waiting_approval|completed|blocked"
+  },
+  "resumePoint": {
+    "file": "",
+    "step": "",
+    "lastCheckbox": 0,
+    "nextAction": ""
+  },
+  "knowledgeBase": {
+    "dbPath": "aicodepath-docs/aicodepath.db",
+    "initialized": false,
+    "lastSync": "{{ISO_TIMESTAMP}}",
+    "stats": {
+      "artifacts": 0,
+      "decisions": 0,
+      "links": 0,
+      "codeEntities": 0,
+      "validations": 0
+    },
+    "pendingSync": {
+      "artifacts": [],
+      "decisions": [],
+      "links": []
+    }
+  },
+  "recentDecisions": [
+    {
+      "timestamp": "{{ISO_TIMESTAMP}}",
+      "decision": "",
+      "rationale": "",
+      "impact": "",
+      "dbId": null
+    }
+  ],
+  "pendingQuestions": [
+    {
+      "id": "",
+      "question": "",
+      "options": [],
+      "file": ""
+    }
+  ],
+  "lastCommit": {
+    "hash": "",
+    "message": "",
+    "timestamp": ""
+  },
+  "contextWindowHistory": [
+    {
+      "windowNumber": 1,
+      "startedAt": "{{ISO_TIMESTAMP}}",
+      "endedAt": "",
+      "stagesCompleted": [],
+      "filesCreated": [],
+      "filesModified": [],
+      "kbArtifactsCreated": [],
+      "kbDecisionsRecorded": []
+    }
+  ],
+  "preferences": {
+    "cloud": "",
+    "techStack": "",
+    "costApproach": "",
+    "compliance": []
+  }
+}

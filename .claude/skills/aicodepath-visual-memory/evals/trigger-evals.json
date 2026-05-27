@@ -1,0 +1,82 @@
+[
+  {
+    "query": "ok i just cloned this repo and have no idea how its structured — can you generate some diagrams so I have something to look at while I start exploring?",
+    "should_trigger": true
+  },
+  {
+    "query": "visual memory please, i want to understand the db schema before touching anything",
+    "should_trigger": true
+  },
+  {
+    "query": "we are doing reverse engineering on this brownfield project, generate all the diagrams you can from what is in the repo",
+    "should_trigger": true
+  },
+  {
+    "query": "show me the ER diagram for the current schema, I want to see what tables we are working with",
+    "should_trigger": true
+  },
+  {
+    "query": "the auth sequence diagram is probably stale after last weeks refactor — how do I get it updated?",
+    "should_trigger": true
+  },
+  {
+    "query": "I added a new migration yesterday, does the ER diagram need to be regenerated or will it auto-update?",
+    "should_trigger": true
+  },
+  {
+    "query": "before we start this feature can you load in the most relevant diagrams so I have the architecture context",
+    "should_trigger": true
+  },
+  {
+    "query": "diagram the codebase — specifically the service layer, I want to see how the services relate",
+    "should_trigger": true
+  },
+  {
+    "query": "what diagrams do we have saved? show me what is in the visual memory",
+    "should_trigger": true
+  },
+  {
+    "query": "we need to set up eager sync on our ER diagram so it stays current with schema changes",
+    "should_trigger": true
+  },
+  {
+    "query": "draw me a sequence diagram for the checkout flow — ill describe the steps",
+    "should_trigger": true
+  },
+  {
+    "query": "create an ERD for the new billing module design I just described",
+    "should_trigger": true
+  },
+  {
+    "query": "can you generate a mermaid flowchart showing the authentication decision logic?",
+    "should_trigger": true
+  },
+  {
+    "query": "i want to understand how the auth middleware works, can you trace through auth.ts for me?",
+    "should_trigger": true
+  },
+  {
+    "query": "write a C4 architecture diagram for the system — we have a React frontend, Node API, and Postgres",
+    "should_trigger": true
+  },
+  {
+    "query": "can you read schema.prisma and tell me what tables exist and their relationships?",
+    "should_trigger": true
+  },
+  {
+    "query": "generate a class diagram for the payment domain — PaymentService, PaymentRepository, PaymentEntity",
+    "should_trigger": true
+  },
+  {
+    "query": "document our architecture — write a README section explaining how the services fit together",
+    "should_trigger": false
+  },
+  {
+    "query": "what does the UserService class do? can you explain its methods?",
+    "should_trigger": true
+  },
+  {
+    "query": "our ci just failed on the migration — can you look at the error and figure out what went wrong?",
+    "should_trigger": false
+  }
+]

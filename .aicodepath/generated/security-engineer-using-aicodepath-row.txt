@@ -1,0 +1,1 @@
+| Security audit, auth code, OWASP Top 10, threat modeling, API security | `aicodepath-security-engineer` |

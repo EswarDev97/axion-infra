@@ -1,0 +1,7 @@
+// C16b — aicodepath-qa DOMAIN_MAPPING entries
+"e2e-test": ["qa"],
+"playwright-test": ["qa"],
+"coverage-gaps": ["qa"],
+"test-implementation": ["qa"],
+"flaky-test": ["qa"],
+"test-bootstrap": ["qa"],

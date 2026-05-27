@@ -1,0 +1,1 @@
+| Performance profiling, N+1 detection, caching strategy, k6 load testing, flame graphs, Core Web Vitals | `aicodepath-performance-engineer` |

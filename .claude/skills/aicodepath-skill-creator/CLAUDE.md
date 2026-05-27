@@ -1,0 +1,264 @@
+# Claude AICodePath Workflow
+
+This project uses the **AI-Guided Development Path (AICodePath)** methodology for systematic software development.
+
+## 🚀 Automatic Activation
+
+**AICodePath is automatically active when you open this project.**
+
+On session start, you'll see:
+- ✅ Confirmation that AICodePath v2.0 is activated
+- 📍 Current workflow phase and stage (if exists)
+- 📚 Quick commands and getting started guidance
+
+**No manual setup required** - hooks, validators, and guidelines are already configured.
+
+## Project Information
+
+- **Project Name**: aicodepath-skill-creator
+- **Created**: 2026-03-16
+- **CR Number**: N/A
+- **AICodePath Version**: 2.0.0
+
+## Requirements & PRD
+
+{{PRD_SECTION}}
+
+**📝 How to provide requirements:**
+
+1. **Option 1 - Reference existing PRD:**
+   ```
+   "Review the PRD at @docs/requirements/PRD.md and start inception phase"
+   ```
+
+2. **Option 2 - Paste requirements directly:**
+   ```
+   "Here are the requirements: [paste content]"
+   "Start inception phase with these requirements"
+   ```
+
+3. **Option 3 - Conversational requirements:**
+   ```
+   "I want to build a task management app with user authentication,
+    real-time updates, and mobile support"
+   ```
+
+**📂 Documentation Directory Structure:**
+
+Two separate directories serve different purposes:
+
+1. **`docs/` - Your Input Documentation** (version controlled)
+   - `docs/requirements/` - PRDs, specifications, user stories you provide
+   - `docs/architecture/` - Architecture diagrams, design docs you create
+   - `docs/api/` - API specifications you define (OpenAPI, GraphQL)
+   - **Purpose**: Human-created documentation that defines what to build
+
+2. **`aicodepath-docs/` - AICodePath Generated Artifacts** (gitignored)
+   - `aicodepath-docs/inception/` - Generated requirements analysis, user stories
+   - `aicodepath-docs/construction/` - Generated designs, schemas, code artifacts
+   - `aicodepath-docs/memory/` - Visual diagrams (ER, Class, Sequence, C4, Journey)
+   - `aicodepath-docs/aicodepath.db` - SQLite knowledge base
+   - **Purpose**: AI-generated workflow artifacts and tracking
+
+**💡 Tips:**
+- Use `@` syntax to reference YOUR docs: `@docs/requirements/PRD.md`
+- Claude analyzes your docs and generates structured artifacts in `aicodepath-docs/`
+- `docs/` should be committed to git, `aicodepath-docs/` is auto-ignored
+
+## Workflow Rules
+
+Follow the AICodePath workflow defined in:
+- `.aicodepath/rules/core-workflow.md` - Master workflow orchestrator
+
+## How It Works
+
+AICodePath guides development through **adaptive phases**:
+
+### 1. PRE-FLIGHT
+Verify environment, plugins, and MCP servers are ready.
+
+### 2. INCEPTION
+Planning and requirements gathering:
+- Workspace detection
+- Reverse engineering (existing codebases)
+- Requirements analysis
+- User stories
+- Sprint/workflow planning
+
+### 3. CONSTRUCTION
+Design and implementation:
+- Functional design
+- NFR requirements
+- Database design
+- Infrastructure design
+- Code generation
+- Build and test
+
+### 4. OPERATIONS
+Deployment and tracking:
+- Deployment configuration
+- Sprint tracking
+- Production monitoring
+
+## Getting Started
+
+Simply describe what you want to build, and Claude will:
+
+1. Run pre-flight checks to verify environment
+2. Guide you through the appropriate workflow phases
+3. Generate design artifacts and code
+4. Validate against guidelines and best practices
+5. Create commits at appropriate checkpoints
+
+## Key Commands
+
+```bash
+# Initialize knowledge base
+bash .aicodepath/scripts/init-knowledge-base.sh
+
+# Run pre-flight check
+node .aicodepath/hooks/pre-flight-check.js
+
+# Auto-commit at checkpoints
+node .aicodepath/scripts/auto-commit.js --checkpoint=design|code|test --unit=unit-name
+
+# Check product readiness
+node .aicodepath/scripts/product-readiness-check.js
+
+# Sync knowledge base
+node .aicodepath/lib/kb-sync.js
+```
+
+## Visual Memory System
+
+Generate visual diagrams (ER, Class, Flowchart, Sequence, C4, etc.) from your codebase for architectural context.
+
+**Quick Start:**
+```bash
+# Generate all applicable diagrams
+/aicodepath-visual-memory --type all --scope global
+
+# Generate specific diagram type
+/aicodepath-visual-memory --type er
+/aicodepath-visual-memory --type class
+```
+
+**Python Generators (Optional, Recommended):**
+For higher confidence diagrams (85-95% vs 60-70%), install Python dependencies:
+```bash
+pip3 install -r .aicodepath/generators/requirements.txt
+```
+
+Diagrams are automatically loaded into Claude's context at session start based on relevance.
+
+## Project Structure
+
+```
+.
+├── .aicodepath/           # AICodePath v2.0 consolidated tooling
+│   ├── rules/             # Workflow rules by phase
+│   │   ├── core-workflow.md   # Master orchestrator
+│   │   ├── common/            # Cross-phase rules
+│   │   ├── inception/         # Phase 1 rules
+│   │   ├── construction/      # Phase 2 rules
+│   │   └── operations/        # Phase 3 rules
+│   ├── guidelines/        # Validation rules (JSON)
+│   ├── hooks/             # Pre/post tool hooks
+│   ├── scripts/           # Utility scripts
+│   ├── lib/               # Shared libraries
+│   └── db/                # Database schemas
+├── .claude/               # Claude Code configuration
+│   ├── hooks.json         # Hook definitions
+│   └── skills.json        # Skill definitions
+├── docs/                  # YOUR documentation (version controlled)
+│   ├── requirements/      # Your PRDs, specs, user stories
+│   ├── architecture/      # Your architecture diagrams, design docs
+│   └── api/               # Your API specifications
+└── aicodepath-docs/       # GENERATED artifacts (gitignored)
+    ├── inception/         # Generated requirements analysis
+    ├── construction/      # Generated designs, schemas
+    └── aicodepath.db      # SQLite knowledge base
+```
+
+**Key Distinction:**
+- **`docs/`** = Input you provide (commit to git ✓)
+- **`aicodepath-docs/`** = Output AICodePath generates (gitignored ✗)
+
+## Critical Configuration Rules
+
+**🔴 Environment Configuration (MUST FOLLOW):**
+
+For monorepo projects with multiple services (backend, frontend, microservices):
+
+1. **Single .env File**:
+   - Create ONLY ONE `.env` file at the project root
+   - All services must reference this root `.env` for configuration
+   - ❌ DO NOT create separate `.env` files in service subdirectories
+   - Example: `ROOT/.env` (not `backend/.env`, `frontend/.env`)
+
+2. **CORS Configuration**:
+   - All CORS allowed origins MUST be set in `.env`
+   - Example: `CORS_ORIGINS=http://localhost:3000,https://app.example.com`
+   - Load via `process.env.CORS_ORIGINS` in code
+
+3. **Ports and Hosts**:
+   - All ports and hosts MUST be configured in `.env` (not hardcoded)
+   - Applies to ALL services including Node.js, Python, Go services
+   - Example: `PORT=3000`, `HOST=0.0.0.0`, `DB_HOST=localhost`, `DB_PORT=5432`
+
+4. **Image Optimization**:
+   - Images stored in S3/CDN MUST use WebP format for faster loading (25-35% smaller)
+   - Convert images to WebP before upload using tools like Sharp, ImageMagick
+   - Set proper Content-Type headers (`image/webp`)
+
+**📋 Example .env Structure:**
+```bash
+# Server Configuration
+PORT=3000
+HOST=0.0.0.0
+NODE_ENV=development
+
+# CORS Configuration
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=myapp
+DB_USER=postgres
+
+# External Services
+API_URL=https://api.example.com
+CDN_URL=https://cdn.example.com
+```
+
+## Module-Specific Standards
+
+| Module/File Pattern | Applicable Guidelines |
+|---|---|
+| `*controller*`, `*routes*`, `*handler*` | `.aicodepath/guidelines/api-design-rules.json`, `.aicodepath/guidelines/architecture-rules.json` |
+| `*service*`, `*repository*`, `*entity*` | `.aicodepath/guidelines/architecture-rules.json`, `.aicodepath/guidelines/data-modeling-rules.json` |
+| `*migration*`, `*.sql`, `*schema*` | `.aicodepath/guidelines/data-modeling-rules.json` |
+| `Dockerfile*`, `docker-compose*`, `*.yml` | `.aicodepath/guidelines/devops-rules.json` |
+| `*.tf`, `*.hcl` | `.aicodepath/guidelines/devops-rules.json` |
+| `*` (all files) | `.aicodepath/guidelines/coding-standards.json`, `.aicodepath/guidelines/security-rules.json`, `.aicodepath/guidelines/testing-standards.json` |
+
+## Documentation
+
+**Your Documentation (version controlled):**
+- `README.md` - Project overview and setup instructions
+- `docs/requirements/` - Your PRDs, specifications, user stories
+- `docs/architecture/` - Your architecture diagrams and design docs
+- `docs/api/` - Your API specifications
+
+**AICodePath Documentation:**
+- `.aicodepath/rules/` - All workflow rules and phase definitions
+- `.aicodepath/README.md` - AICodePath structure documentation
+
+**Generated Artifacts (not version controlled):**
+- `aicodepath-docs/inception/` - AI-generated requirements analysis
+- `aicodepath-docs/construction/` - AI-generated designs and schemas
+- `aicodepath-docs/aicodepath.db` - SQLite knowledge base
+
+---
+*Generated by AICodePath v2.0 on 2026-03-16*

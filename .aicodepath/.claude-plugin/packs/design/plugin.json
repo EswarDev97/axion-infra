@@ -1,0 +1,17 @@
+{
+  "name": "aicodepath-design",
+  "version": "2.13.0",
+  "description": "Design and documentation specialists",
+  "author": { "name": "AICodePath", "url": "https://github.com/aicodepath/aicodepath-tool" },
+  "license": "MIT",
+  "agents": [
+    "../../../agents/aicodepath-api-designer.md",
+    "../../../agents/aicodepath-database-architect.md",
+    "../../../agents/aicodepath-frontend-architect.md",
+    "../../../agents/aicodepath-orm-selector.md",
+    "../../../agents/aicodepath-ui-designer.md",
+    "../../../agents/aicodepath-ux-designer.md",
+    "../../../agents/aicodepath-technical-writer.md",
+    "../../../agents/aicodepath-communication-coach.md"
+  ]
+}

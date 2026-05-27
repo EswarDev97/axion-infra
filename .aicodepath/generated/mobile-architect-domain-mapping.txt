@@ -1,0 +1,7 @@
+// C14 — aicodepath-mobile-architect DOMAIN_MAPPING entries
+"offline-first": ["mobile-architect"],
+"mobile-architecture": ["mobile-architect"],
+"cross-platform-mobile": ["mobile-architect"],
+"react-native-arch": ["mobile-architect"],
+"app-sync": ["mobile-architect"],
+"fluent-mobile": ["mobile-architect"],

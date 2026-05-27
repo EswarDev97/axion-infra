@@ -1,0 +1,9 @@
+# DOMAIN_MAPPING entries for aicodepath-seo-specialist
+# Batch: D3 | Pack: specialists
+
+"seo-audit": ["seo-specialist"],
+"core-web-vitals": ["seo-specialist"],
+"structured-data": ["seo-specialist"],
+"keyword-research": ["seo-specialist"],
+"technical-seo": ["seo-specialist"],
+"schema-org": ["seo-specialist"],

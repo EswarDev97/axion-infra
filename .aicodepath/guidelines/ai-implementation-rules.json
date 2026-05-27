@@ -1,0 +1,89 @@
+{
+  "$schema": "AICodePath AI Implementation Guidelines",
+  "version": "1.0.0",
+  "description": "AI/ML implementation rules for model selection, prompts, RAG, and agent patterns",
+  "_classification": {
+    "component_types": ["ai"],
+    "default_phase": ["code"],
+    "design_applies": true,
+    "design_signals": ["llm", "ai", "model", "prompt", "rag", "embedding", "vector", "agent", "gemini", "openai", "anthropic", "ml", "inference", "fine-tune", "context window", "token"]
+  },
+  "categories": {
+    "prompts": {
+      "description": "Prompt engineering best practices",
+      "component_types": ["ai"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "prompt-injection-prevention",
+          "description": "Prevent prompt injection attacks",
+          "pattern": "\\$\\{userInput\\}|`.*user.*input.*`|\\+ *user.*Input",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*prompt*", "*ai*", "*llm*"],
+          "message": "Potential prompt injection - sanitize and validate user input before including in prompts",
+          "component_types": ["ai"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design include user-supplied content directly in AI prompts without sanitization? If so, add an input sanitization step or use structured input formats to prevent prompt injection. BLOCK on unguarded user input in prompts."
+        }
+      ]
+    },
+    "model_selection": {
+      "description": "AI model selection and usage guidelines",
+      "component_types": ["ai"],
+      "phase": ["design"],
+      "rules": [
+        {
+          "id": "justify-model-choice",
+          "description": "AI model selection must be justified",
+          "severity": "info",
+          "message": "Document why this model was chosen over alternatives",
+          "component_types": ["ai"],
+          "phase": ["design"],
+          "design_check": "Does the design justify the AI model selection (why this model, cost vs capability tradeoff, latency requirements)? If not, add justification. Flag for review."
+        },
+        {
+          "id": "cost-aware-model",
+          "description": "Consider cost implications of model choice",
+          "severity": "info",
+          "message": "Document token cost estimates for the selected model",
+          "component_types": ["ai"],
+          "phase": ["design"],
+          "design_check": "Does the design include token/cost estimates for the chosen AI model? Especially important for high-frequency operations. Flag if cost analysis is missing."
+        }
+      ]
+    },
+    "data_privacy": {
+      "description": "Data privacy in AI pipelines",
+      "component_types": ["ai"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-pii-in-prompts",
+          "description": "Avoid sending PII to external AI models",
+          "severity": "error",
+          "message": "Do not send PII (names, emails, phone numbers, IDs) to external AI model APIs",
+          "component_types": ["ai"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design send personally identifiable information (PII) to external AI model APIs? If so, either anonymize/redact before sending or use a self-hosted model. BLOCK on PII sent to external models."
+        }
+      ]
+    },
+    "output_validation": {
+      "description": "AI output validation and safety",
+      "component_types": ["ai"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "validate-ai-output",
+          "description": "Validate and sanitize AI model outputs",
+          "severity": "warning",
+          "message": "AI model outputs must be validated before use in business logic",
+          "component_types": ["ai"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design include a validation step for AI model outputs before using them in business logic or storing them? AI outputs can be malformed or unexpected. Flag if no output validation is specified."
+        }
+      ]
+    }
+  }
+}

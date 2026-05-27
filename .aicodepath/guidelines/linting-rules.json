@@ -1,0 +1,303 @@
+{
+  "version": "1.0.0",
+  "description": "Language-specific linting rules aligned with CI/CD pipelines",
+  "lastUpdated": "2026-01-11",
+  "rules": {
+    "python": {
+      "description": "Python linting configuration",
+      "linters": {
+        "flake8": {
+          "enabled": true,
+          "priority": 1,
+          "description": "PEP 8 style guide enforcement",
+          "config": {
+            "max-line-length": 120,
+            "max-complexity": 10,
+            "ignore": ["E501", "W503", "E203"],
+            "per-file-ignores": {
+              "__init__.py": ["F401", "F403"],
+              "tests/*.py": ["S101"]
+            },
+            "exclude": [
+              ".git",
+              "__pycache__",
+              "build",
+              "dist",
+              "*.egg-info",
+              ".venv",
+              "venv"
+            ]
+          },
+          "configFile": ".flake8",
+          "ciPatterns": ["flake8", "py-actions/flake8"]
+        },
+        "pylint": {
+          "enabled": false,
+          "priority": 2,
+          "description": "Comprehensive Python static analysis",
+          "config": {
+            "max-line-length": 120,
+            "disable": [
+              "C0114",
+              "C0115",
+              "C0116",
+              "R0903",
+              "R0913"
+            ]
+          },
+          "configFile": ".pylintrc"
+        },
+        "mypy": {
+          "enabled": true,
+          "priority": 3,
+          "description": "Static type checking for Python",
+          "config": {
+            "python_version": "3.9",
+            "strict": false,
+            "ignore_missing_imports": true,
+            "warn_return_any": true,
+            "warn_unused_ignores": true,
+            "disallow_untyped_defs": false
+          },
+          "configFile": "mypy.ini"
+        },
+        "black": {
+          "enabled": true,
+          "priority": 4,
+          "description": "Opinionated code formatter",
+          "config": {
+            "line-length": 120,
+            "target-version": ["py39"],
+            "skip-string-normalization": false,
+            "exclude": "(\\.git|\\.venv|venv|build|dist)"
+          },
+          "configFile": "pyproject.toml"
+        },
+        "isort": {
+          "enabled": true,
+          "priority": 5,
+          "description": "Import sorter",
+          "config": {
+            "profile": "black",
+            "line_length": 120,
+            "multi_line_output": 3,
+            "include_trailing_comma": true,
+            "force_grid_wrap": 0,
+            "use_parentheses": true,
+            "ensure_newline_before_comments": true
+          },
+          "configFile": "pyproject.toml"
+        }
+      }
+    },
+    "javascript": {
+      "description": "JavaScript linting configuration",
+      "linters": {
+        "eslint": {
+          "enabled": true,
+          "priority": 1,
+          "description": "JavaScript/TypeScript linter",
+          "config": {
+            "extends": [
+              "eslint:recommended"
+            ],
+            "parserOptions": {
+              "ecmaVersion": 2022,
+              "sourceType": "module"
+            },
+            "env": {
+              "node": true,
+              "es2022": true
+            },
+            "rules": {
+              "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+              "no-console": "warn",
+              "eqeqeq": ["error", "always"],
+              "curly": ["error", "all"],
+              "prefer-const": "error",
+              "no-var": "error",
+              "no-multiple-empty-lines": ["error", { "max": 2 }],
+              "semi": ["error", "always"],
+              "quotes": ["error", "single", { "avoidEscape": true }]
+            }
+          },
+          "configFile": ".eslintrc.json",
+          "ciPatterns": ["eslint", "lint-action"]
+        },
+        "prettier": {
+          "enabled": true,
+          "priority": 2,
+          "description": "Opinionated code formatter",
+          "config": {
+            "semi": true,
+            "singleQuote": true,
+            "tabWidth": 2,
+            "useTabs": false,
+            "trailingComma": "es5",
+            "bracketSpacing": true,
+            "arrowParens": "always",
+            "printWidth": 100,
+            "endOfLine": "lf"
+          },
+          "configFile": ".prettierrc"
+        }
+      }
+    },
+    "typescript": {
+      "description": "TypeScript linting configuration",
+      "linters": {
+        "tsc": {
+          "enabled": true,
+          "priority": 1,
+          "description": "TypeScript type checking",
+          "config": {
+            "strict": true,
+            "noImplicitAny": true,
+            "strictNullChecks": true,
+            "noUnusedLocals": true,
+            "noUnusedParameters": true,
+            "noImplicitReturns": true,
+            "esModuleInterop": true,
+            "skipLibCheck": true,
+            "forceConsistentCasingInFileNames": true
+          },
+          "configFile": "tsconfig.json"
+        },
+        "eslint": {
+          "enabled": true,
+          "priority": 2,
+          "description": "TypeScript-aware ESLint",
+          "config": {
+            "extends": [
+              "eslint:recommended",
+              "plugin:@typescript-eslint/recommended"
+            ],
+            "parser": "@typescript-eslint/parser",
+            "plugins": ["@typescript-eslint"],
+            "rules": {
+              "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+              "@typescript-eslint/explicit-function-return-type": "off",
+              "@typescript-eslint/no-explicit-any": "warn",
+              "@typescript-eslint/no-non-null-assertion": "warn"
+            }
+          },
+          "configFile": ".eslintrc.json"
+        }
+      }
+    },
+    "go": {
+      "description": "Go linting configuration",
+      "linters": {
+        "golint": {
+          "enabled": true,
+          "priority": 1,
+          "description": "Go source code linter",
+          "config": {},
+          "configFile": null
+        },
+        "gofmt": {
+          "enabled": true,
+          "priority": 2,
+          "description": "Go code formatter",
+          "config": {},
+          "configFile": null
+        },
+        "govet": {
+          "enabled": true,
+          "priority": 3,
+          "description": "Go static analysis",
+          "config": {},
+          "configFile": null
+        }
+      }
+    },
+    "rust": {
+      "description": "Rust linting configuration",
+      "linters": {
+        "clippy": {
+          "enabled": true,
+          "priority": 1,
+          "description": "Rust linter",
+          "config": {
+            "warnings": "deny",
+            "clippy::all": "warn",
+            "clippy::pedantic": "warn"
+          },
+          "configFile": "clippy.toml"
+        },
+        "rustfmt": {
+          "enabled": true,
+          "priority": 2,
+          "description": "Rust code formatter",
+          "config": {
+            "edition": "2021",
+            "max_width": 100,
+            "tab_spaces": 4
+          },
+          "configFile": "rustfmt.toml"
+        }
+      }
+    },
+    "shell": {
+      "description": "Shell script linting configuration",
+      "linters": {
+        "shellcheck": {
+          "enabled": true,
+          "priority": 1,
+          "description": "Shell script static analysis",
+          "config": {
+            "shell": "bash",
+            "severity": "warning",
+            "exclude": ["SC1090", "SC1091"]
+          },
+          "configFile": ".shellcheckrc"
+        }
+      }
+    },
+    "markdown": {
+      "description": "Markdown linting configuration",
+      "linters": {
+        "markdownlint": {
+          "enabled": false,
+          "priority": 1,
+          "description": "Markdown style checker",
+          "config": {
+            "default": true,
+            "MD013": false,
+            "MD033": false,
+            "MD041": false
+          },
+          "configFile": ".markdownlint.json"
+        }
+      }
+    }
+  },
+  "ciIntegration": {
+    "description": "CI/CD integration settings",
+    "prePush": {
+      "enabled": true,
+      "failOnError": true,
+      "skipFile": ".ci-lint-skip"
+    },
+    "detection": {
+      "autoDetect": true,
+      "platforms": ["github", "gitlab", "azure", "circleci"]
+    },
+    "packageEnforcement": {
+      "enabled": true,
+      "autoInstall": false,
+      "warnOnMissing": true
+    }
+  },
+  "escapeHatches": {
+    "description": "Comments to disable specific checks",
+    "patterns": {
+      "flake8": "# noqa: {code}",
+      "eslint": "// eslint-disable-next-line {rule}",
+      "mypy": "# type: ignore",
+      "pylint": "# pylint: disable={rule}",
+      "typescript": "// @ts-ignore",
+      "prettier": "// prettier-ignore"
+    }
+  }
+}

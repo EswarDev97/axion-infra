@@ -1,0 +1,56 @@
+{
+  "$schema": "AICodePath Kotlin Lint Guidelines",
+  "version": "1.0.0",
+  "description": "Code quality lint rules for Kotlin — enforces val preference, null safety, and structured logging",
+  "_classification": {
+    "component_types": ["all"],
+    "default_phase": ["code"]
+  },
+  "categories": {
+    "logging": {
+      "description": "Enforce structured logging over println",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-println",
+          "description": "No println() in production Kotlin — use SLF4J or Kotlin logging",
+          "pattern": "\\bprintln\\s*\\(",
+          "severity": "warning",
+          "file_patterns": ["*.kt", "!*Test.kt", "!*Tests.kt", "!*Spec.kt"],
+          "message": "Replace println() with a structured logger: logger.info(\"{}\", value)"
+        }
+      ]
+    },
+    "null-safety": {
+      "description": "Kotlin null safety enforcement",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-force-unwrap",
+          "description": "Avoid !! (not-null assertion) — prefer safe calls or let",
+          "pattern": "!!\\.",
+          "severity": "warning",
+          "file_patterns": ["*.kt"],
+          "message": "!! throws NullPointerException — use ?. safe call, ?: elvis, or let { } instead"
+        }
+      ]
+    },
+    "variables": {
+      "description": "Variable declaration quality in Kotlin",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "prefer-val",
+          "description": "Prefer val over var for immutable values",
+          "pattern": "\\bvar\\s+\\w+\\s*=\\s*(?!null\\b)",
+          "severity": "info",
+          "file_patterns": ["*.kt"],
+          "message": "Consider using val if this variable is never reassigned"
+        }
+      ]
+    }
+  }
+}

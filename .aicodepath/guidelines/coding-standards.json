@@ -1,0 +1,1207 @@
+{
+  "$schema": "AICodePath Coding Standards Guidelines",
+  "version": "1.0.0",
+  "description": "Coding standards for AICodePath projects - naming, structure, and style rules",
+  "_classification": {
+    "component_types": [
+      "service",
+      "api",
+      "all"
+    ],
+    "default_phase": [
+      "code"
+    ],
+    "design_applies": true,
+    "design_signals": [
+      "class",
+      "function",
+      "module",
+      "service",
+      "component",
+      "naming",
+      "structure",
+      "pattern",
+      "abstraction",
+      "interface"
+    ]
+  },
+  "categories": {
+    "naming": {
+      "description": "Naming conventions for code elements",
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "class-pascal-case",
+          "description": "Classes must use PascalCase",
+          "pattern": "^class\\s+([a-z])",
+          "inverse": true,
+          "severity": "error",
+          "languages": [
+            "javascript",
+            "typescript",
+            "python",
+            "java",
+            "csharp"
+          ],
+          "message": "Class names must start with an uppercase letter (PascalCase)"
+        },
+        {
+          "id": "interface-pascal-case",
+          "description": "Interfaces must use PascalCase (optionally prefixed with I)",
+          "pattern": "^interface\\s+([a-z])",
+          "inverse": true,
+          "severity": "error",
+          "languages": [
+            "typescript",
+            "java",
+            "csharp"
+          ],
+          "message": "Interface names must start with an uppercase letter"
+        },
+        {
+          "id": "constant-screaming-snake",
+          "description": "Constants should use SCREAMING_SNAKE_CASE",
+          "pattern": "const\\s+[A-Z][a-z]",
+          "inverse": true,
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Consider using SCREAMING_SNAKE_CASE for constants"
+        },
+        {
+          "id": "function-camel-case",
+          "description": "Functions should use camelCase (or snake_case for Python)",
+          "pattern": "function\\s+[A-Z]",
+          "inverse": true,
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Function names should use camelCase"
+        },
+        {
+          "id": "file-matches-export",
+          "description": "File names should match their default export",
+          "check": "file_export_match",
+          "severity": "info",
+          "languages": [
+            "javascript",
+            "typescript"
+          ]
+        },
+        {
+          "id": "no-single-letter-vars",
+          "description": "Avoid single-letter variable names (except loop counters)",
+          "pattern": "\\b(let|const|var)\\s+[a-z]\\s*[=;]",
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Use descriptive variable names instead of single letters"
+        }
+      ]
+    },
+    "structure": {
+      "description": "Code structure and organization rules",
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "max-file-lines",
+          "description": "Files should not exceed 500 lines",
+          "check": "line_count",
+          "max": 500,
+          "severity": "warning",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does any proposed module or service seem likely to exceed 500 lines? Plan to split into focused sub-modules. Flag oversized designs.",
+          "message": "Consider splitting this file into smaller modules"
+        },
+        {
+          "id": "max-function-lines",
+          "description": "Functions should not exceed 50 lines",
+          "check": "function_line_count",
+          "max": 50,
+          "severity": "warning",
+          "message": "Consider extracting logic into smaller functions"
+        },
+        {
+          "id": "max-class-methods",
+          "description": "Classes should not have more than 15 public methods",
+          "check": "method_count",
+          "max": 15,
+          "severity": "info",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does any proposed class have more than 15 public methods? If so, apply Single Responsibility \u2014 split into focused classes. Flag.",
+          "message": "Consider if this class has too many responsibilities"
+        },
+        {
+          "id": "max-nesting-depth",
+          "description": "Code should not be nested more than 4 levels deep",
+          "check": "nesting_depth",
+          "max": 4,
+          "severity": "warning",
+          "message": "Reduce nesting by using early returns or extracting methods"
+        },
+        {
+          "id": "max-parameters",
+          "description": "Functions should not have more than 5 parameters",
+          "check": "parameter_count",
+          "max": 5,
+          "severity": "info",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Do any proposed functions or constructors accept more than 5 parameters? Use an options object pattern instead. Flag.",
+          "message": "Consider using an options object for many parameters"
+        }
+      ]
+    },
+    "imports": {
+      "description": "Import and dependency rules",
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-circular-imports",
+          "description": "Avoid circular imports between modules",
+          "check": "circular_dependency",
+          "severity": "error",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the proposed module dependency graph contain circular references? Break cycles by extracting shared utilities. BLOCK.",
+          "message": "Circular dependency detected - refactor to break the cycle"
+        },
+        {
+          "id": "prefer-named-exports",
+          "description": "Prefer named exports over default exports",
+          "pattern": "export default",
+          "severity": "info",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Consider using named exports for better refactoring support"
+        },
+        {
+          "id": "import-order",
+          "description": "Imports should be ordered: external, internal, relative",
+          "check": "import_order",
+          "severity": "info",
+          "message": "Organize imports: external packages, then internal modules, then relative imports"
+        }
+      ]
+    },
+    "comments": {
+      "description": "Documentation and comment rules",
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-commented-code",
+          "description": "Do not leave commented-out code",
+          "pattern": "^\\s*//\\s*(const|let|var|function|class|if|for|while|return)",
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Remove commented-out code - use version control instead"
+        },
+        {
+          "id": "todo-with-ticket",
+          "description": "TODO comments should reference a ticket number",
+          "pattern": "//\\s*TODO(?!.*[A-Z]+-\\d+)",
+          "severity": "warning",
+          "languages": [
+            "*"
+          ],
+          "message": "TODO comments should include a ticket reference (e.g., TODO [PROJ-123])"
+        },
+        {
+          "id": "public-method-jsdoc",
+          "description": "Public methods should have JSDoc comments",
+          "check": "jsdoc_coverage",
+          "severity": "info",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Consider adding JSDoc documentation for public methods"
+        }
+      ]
+    },
+    "errors": {
+      "description": "Error handling patterns",
+      "component_types": [
+        "service",
+        "api"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-empty-catch",
+          "description": "Catch blocks should not be empty",
+          "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+          "severity": "error",
+          "languages": [
+            "javascript",
+            "typescript",
+            "java"
+          ],
+          "message": "Empty catch blocks swallow errors - log or rethrow"
+        },
+        {
+          "id": "no-generic-catch",
+          "description": "Avoid catching generic Error without handling",
+          "pattern": "catch\\s*\\(\\s*(e|err|error)\\s*\\)\\s*\\{[^}]*console\\.log",
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Handle errors appropriately instead of just logging"
+        },
+        {
+          "id": "async-error-handling",
+          "description": "Async functions should have proper error handling",
+          "check": "async_try_catch",
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Wrap async operations in try-catch or use .catch()"
+        }
+      ]
+    },
+    "console": {
+      "description": "Console and logging rules",
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-console-log",
+          "description": "Remove console.log statements before commit",
+          "pattern": "console\\.log\\(",
+          "file_patterns": [
+            "**/*.js",
+            "**/*.ts",
+            "!**/__tests__/**",
+            "!**/test/**",
+            "!**/tests/**",
+            "!**/scripts/**"
+          ],
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Remove console.log - use a proper logger instead"
+        },
+        {
+          "id": "no-console-error-for-logging",
+          "description": "Use proper error logging instead of console.error",
+          "pattern": "console\\.error\\(",
+          "severity": "info",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Consider using a structured logger instead of console.error",
+          "file_patterns": [
+            "**/*.js",
+            "**/*.ts",
+            "!**/commands/**",
+            "!**/__tests__/**",
+            "!**/test/**",
+            "!**/tests/**",
+            "!**/scripts/**"
+          ]
+        },
+        {
+          "id": "no-print-statements",
+          "description": "Remove print statements before commit (Python)",
+          "pattern": "\\bprint\\s*\\(",
+          "severity": "warning",
+          "languages": [
+            "python"
+          ],
+          "message": "Remove print statements - use logging module instead"
+        }
+      ]
+    },
+    "mock_implementations": {
+      "description": "Detection of lazy/mock implementations that should be real code",
+      "critical": true,
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-todo-implement",
+          "description": "TODO comments indicating unfinished implementation",
+          "pattern": "(TODO|FIXME|XXX|HACK):\\s*(implement|add|fix|complete|finish|write)",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "Incomplete implementation detected - TODO indicates missing logic",
+          "category": "stub"
+        },
+        {
+          "id": "no-not-implemented-error",
+          "description": "Throwing NotImplementedError or similar",
+          "pattern": "throw\\s+(new\\s+)?(Error|NotImplementedError)\\s*\\(\\s*['\"`](not\\s*implemented|todo|stub|placeholder)",
+          "severity": "error",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "NotImplementedError thrown - real implementation required",
+          "category": "stub"
+        },
+        {
+          "id": "no-raise-not-implemented",
+          "description": "Python raise NotImplementedError",
+          "pattern": "raise\\s+NotImplementedError",
+          "severity": "error",
+          "languages": [
+            "python"
+          ],
+          "message": "NotImplementedError raised - real implementation required",
+          "category": "stub"
+        },
+        {
+          "id": "no-pass-placeholder",
+          "description": "Python pass statement as placeholder",
+          "pattern": "^\\s*pass\\s*(#.*)?$",
+          "severity": "warning",
+          "languages": [
+            "python"
+          ],
+          "message": "Empty pass statement - consider if implementation is missing",
+          "category": "stub"
+        },
+        {
+          "id": "no-ellipsis-placeholder",
+          "description": "Python ellipsis as placeholder (excludes .pyi stubs and protocol files)",
+          "pattern": "^\\s*\\.\\.\\.\\s*$",
+          "severity": "error",
+          "languages": [
+            "python"
+          ],
+          "message": "Ellipsis placeholder detected - real implementation required (use pass or return {} in Protocol methods)",
+          "category": "stub",
+          "file_patterns": [
+            "**/*.py",
+            "!**/*.pyi",
+            "!**/protocols/**",
+            "!**/types/**"
+          ]
+        },
+        {
+          "id": "no-hardcoded-mock-data",
+          "description": "Hardcoded mock/fake data arrays",
+          "pattern": "return\\s*\\[\\s*\\{\\s*['\"`]?id['\"`]?:\\s*[1-9]\\s*,\\s*['\"`]?(name|title|email)['\"`]?:\\s*['\"`](test|mock|fake|sample|example|dummy|john|jane)",
+          "severity": "error",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Hardcoded mock data detected - use real data source",
+          "category": "mock_data",
+          "file_patterns": [
+            "**/*.js",
+            "**/*.ts",
+            "!**/__tests__/**",
+            "!**/test/**",
+            "!**/tests/**",
+            "!**/*.test.js",
+            "!**/*.test.ts",
+            "!**/*.spec.js",
+            "!**/*.spec.ts"
+          ]
+        },
+        {
+          "id": "no-hardcoded-users-array",
+          "description": "Hardcoded users/items arrays instead of DB",
+          "pattern": "(const|let|var)\\s+(users|items|products|orders|data)\\s*=\\s*\\[\\s*\\{",
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Hardcoded data array - should this come from a database?",
+          "category": "mock_data",
+          "file_patterns": [
+            "**/*.js",
+            "**/*.ts",
+            "!**/__tests__/**",
+            "!**/test/**",
+            "!**/tests/**",
+            "!**/*.test.js",
+            "!**/*.test.ts",
+            "!**/*.spec.js",
+            "!**/*.spec.ts"
+          ]
+        },
+        {
+          "id": "no-fake-uuid",
+          "description": "Hardcoded fake UUIDs or IDs",
+          "pattern": "['\"`](00000000-0000-0000-0000-000000000|12345678-1234-1234-1234-|aaaaaaaa-bbbb-cccc-dddd-|test-uuid|fake-id|mock-id)",
+          "severity": "warning",
+          "languages": [
+            "*"
+          ],
+          "message": "Hardcoded fake ID detected - generate real IDs",
+          "category": "mock_data"
+        },
+        {
+          "id": "no-lorem-ipsum",
+          "description": "Lorem ipsum placeholder text",
+          "pattern": "lorem\\s+ipsum|dolor\\s+sit\\s+amet",
+          "severity": "warning",
+          "languages": [
+            "*"
+          ],
+          "message": "Lorem ipsum placeholder text - use real content or i18n",
+          "category": "mock_data"
+        },
+        {
+          "id": "no-return-true-stub",
+          "description": "Return true as stub validation",
+          "pattern": "(validate|check|verify|is[A-Z]|has[A-Z]).*\\{[\\s\\n]*return\\s+(true|false);?\\s*\\}",
+          "severity": "error",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Validation function returns constant - implement real validation",
+          "category": "fake_logic"
+        },
+        {
+          "id": "no-python-return-true-stub",
+          "description": "Python return True as stub validation",
+          "pattern": "def\\s+(validate|check|verify|is_|has_).*:\\s*\\n\\s*return\\s+(True|False)",
+          "severity": "error",
+          "languages": [
+            "python"
+          ],
+          "message": "Validation function returns constant - implement real validation",
+          "category": "fake_logic"
+        },
+        {
+          "id": "no-empty-function-body",
+          "description": "Empty function bodies (stub)",
+          "pattern": "\\)\\s*\\{\\s*\\}",
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript",
+            "java"
+          ],
+          "message": "Empty function body - implementation may be missing",
+          "category": "stub"
+        },
+        {
+          "id": "no-sleep-fake-async",
+          "description": "Using sleep/timeout to fake async operations",
+          "pattern": "(setTimeout|sleep|delay|wait)\\s*\\(.*\\b(1000|2000|3000|5000)\\b",
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript",
+            "python"
+          ],
+          "message": "Artificial delay detected - should this be a real async operation?",
+          "category": "fake_logic"
+        },
+        {
+          "id": "no-random-mock-response",
+          "description": "Using Math.random for fake data generation",
+          "pattern": "Math\\.random\\(\\).*\\*.*\\b(100|1000|id|price|count)\\b",
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Random data generation - should this be real data from a source?",
+          "category": "mock_data"
+        },
+        {
+          "id": "no-static-api-response",
+          "description": "Static API responses without real backend call",
+          "pattern": "(res|response)\\.(json|send)\\s*\\(\\s*\\{\\s*['\"`]?(success|status|message)['\"`]?:",
+          "severity": "info",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Static API response - verify this is connected to real business logic",
+          "category": "fake_logic"
+        },
+        {
+          "id": "no-mock-in-name",
+          "description": "Mock/Fake/Stub in production code names",
+          "pattern": "(Mock|Fake|Stub|Dummy|Test)[A-Z][a-zA-Z]*\\s*[=({:]",
+          "severity": "warning",
+          "languages": [
+            "*"
+          ],
+          "applies_to": [
+            "service",
+            "controller",
+            "repository",
+            "entity"
+          ],
+          "message": "Mock/Fake/Stub class in production code - use real implementation",
+          "category": "mock_data",
+          "file_patterns": [
+            "**/*.js",
+            "**/*.ts",
+            "!**/__tests__/**",
+            "!**/test/**",
+            "!**/tests/**",
+            "!**/*.test.js",
+            "!**/*.test.ts",
+            "!**/*.spec.js",
+            "!**/*.spec.ts"
+          ]
+        },
+        {
+          "id": "no-hardcoded-credentials",
+          "description": "Hardcoded test credentials",
+          "pattern": "(password|secret|token|api_key|apiKey)\\s*[=:]\\s*['\"`](test|demo|admin|password|123|secret|changeme)",
+          "severity": "error",
+          "languages": [
+            "*"
+          ],
+          "message": "Hardcoded test credential - use environment variables or secrets manager",
+          "category": "mock_data",
+          "file_patterns": [
+            "**/*.js",
+            "**/*.ts",
+            "!**/__tests__/**",
+            "!**/test/**",
+            "!**/tests/**",
+            "!**/*.test.js",
+            "!**/*.test.ts",
+            "!**/*.spec.js",
+            "!**/*.spec.ts"
+          ]
+        },
+        {
+          "id": "no-example-email-domains",
+          "description": "Example/test email domains in code",
+          "pattern": "@(example\\.com|test\\.com|fake\\.com|mock\\.com|dummy\\.com|mailinator\\.com)",
+          "severity": "warning",
+          "languages": [
+            "*"
+          ],
+          "message": "Test email domain in code - should this be dynamic?",
+          "category": "mock_data"
+        },
+        {
+          "id": "no-skip-implementation",
+          "description": "Comments indicating skipped implementation",
+          "pattern": "//\\s*(skip|skipping|skipped|ignore|ignored|temp|temporary|workaround|hack)\\s*(for now|implementation|this|todo)?",
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Skipped implementation comment - ensure this is intentional",
+          "category": "stub"
+        },
+        {
+          "id": "no-will-do-later",
+          "description": "Deferred implementation comments",
+          "pattern": "//\\s*(will|need to|should|must)\\s*(add|implement|fix|do)\\s*(later|soon|eventually|tomorrow)",
+          "severity": "warning",
+          "languages": [
+            "*"
+          ],
+          "message": "Deferred implementation - add to backlog or implement now",
+          "category": "stub"
+        },
+        {
+          "id": "no-mock-service-call",
+          "description": "Commented out service/API calls with mock return",
+          "pattern": "//.*\\.(get|post|put|delete|fetch|call|invoke).*\\n.*return\\s*\\{",
+          "severity": "error",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Commented out API call with mock return - implement real call",
+          "category": "fake_logic"
+        },
+        {
+          "id": "no-fake-success-response",
+          "description": "Always returning success without logic",
+          "pattern": "return\\s*\\{\\s*['\"`]?(success|ok|status)['\"`]?:\\s*(true|['\"`]ok['\"`]|200)",
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Always-success response - verify actual operation is performed",
+          "category": "fake_logic"
+        },
+        {
+          "id": "no-noop-function",
+          "description": "No-operation arrow functions",
+          "pattern": "=\\s*\\(\\s*\\)\\s*=>\\s*\\{\\s*\\}|=\\s*\\(\\s*\\)\\s*=>\\s*undefined|=\\s*\\(\\s*\\)\\s*=>\\s*null",
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "No-op function detected - is implementation missing?",
+          "category": "stub"
+        },
+        {
+          "id": "no-placeholder-comment-block",
+          "description": "Placeholder comment blocks",
+          "pattern": "/\\*\\s*(placeholder|todo|implement|stub|mock|fake|temporary)\\s*\\*/",
+          "severity": "warning",
+          "languages": [
+            "javascript",
+            "typescript",
+            "java"
+          ],
+          "message": "Placeholder comment block - implementation needed",
+          "category": "stub"
+        }
+      ]
+    },
+    "contracts": {
+      "description": "API and function contract enforcement",
+      "component_types": [
+        "service",
+        "api"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-untyped-returns",
+          "description": "Functions should not return untyped objects",
+          "pattern": "return\\s*\\{",
+          "check": "return_type",
+          "severity": "warning",
+          "languages": [
+            "typescript"
+          ],
+          "message": "Define explicit return types for functions"
+        },
+        {
+          "id": "no-any-type",
+          "description": "Avoid use of 'any' type",
+          "pattern": "\\bany\\b",
+          "severity": "warning",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design use 'any' types for important data structures or function signatures? Replace with specific types or interfaces. Flag.",
+          "languages": [
+            "typescript"
+          ],
+          "message": "Avoid 'any' \u2014 use explicit or unknown types"
+        },
+        {
+          "id": "response-shape-consistency",
+          "description": "API responses should be consistent",
+          "check": "response_contract",
+          "severity": "info",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Ensure API response shape matches contract/schema"
+        }
+      ]
+    },
+    "configuration": {
+      "description": "Environment and configuration management",
+      "component_types": [
+        "service",
+        "api",
+        "devops"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-hardcoded-urls",
+          "description": "Avoid hardcoded URLs",
+          "pattern": "https?://(localhost|127\\.0\\.0\\.1|api\\.)",
+          "severity": "warning",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design hardcode service URLs or API endpoints? All URLs must come from environment configuration. BLOCK.",
+          "languages": [
+            "*"
+          ],
+          "message": "Use configuration/env for URLs"
+        },
+        {
+          "id": "no-hardcoded-ports",
+          "description": "Avoid hardcoded port numbers",
+          "pattern": ":(3000|4000|5000|8000|8080)",
+          "severity": "info",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design hardcode port numbers? Use environment variables (process.env.PORT). Flag.",
+          "languages": [
+            "*"
+          ],
+          "message": "Use environment variables for ports"
+        },
+        {
+          "id": "config-access-layer",
+          "description": "Configuration should be accessed via a single module",
+          "check": "config_module",
+          "severity": "info",
+          "languages": [
+            "javascript",
+            "typescript",
+            "python"
+          ],
+          "message": "Centralize configuration access"
+        }
+      ]
+    },
+    "concurrency": {
+      "description": "Concurrency and state safety",
+      "component_types": [
+        "service"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-global-mutable-state",
+          "description": "Avoid mutable global variables",
+          "pattern": "(let|var)\\s+[A-Z_]+\\s*=",
+          "severity": "warning",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design use mutable global/module-level state? Replace with dependency-injected state or scoped instances. Flag.",
+          "languages": [
+            "javascript",
+            "typescript",
+            "python"
+          ],
+          "message": "Avoid mutable global state"
+        },
+        {
+          "id": "no-shared-mutation",
+          "description": "Avoid mutating shared objects",
+          "pattern": "\\.push\\(|\\.splice\\(|\\.pop\\(",
+          "check": "shared_mutation",
+          "severity": "info",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "Ensure shared objects are not mutated unsafely"
+        }
+      ]
+    },
+    "ci_integration": {
+      "description": "CI/CD integration and linting rules",
+      "component_types": [
+        "devops"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "ci-no-lint-skip",
+          "description": "Avoid committing .ci-lint-skip files",
+          "pattern": "\\.ci-lint-skip",
+          "severity": "warning",
+          "file_patterns": [
+            ".gitignore",
+            ".ci-lint-skip"
+          ],
+          "message": "Remove .ci-lint-skip file before merging to main"
+        }
+      ]
+    },
+    "ai_code_anti_patterns": {
+      "description": "Common mistakes in AI-generated code and what NOT to do",
+      "critical": true,
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "design",
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "anti-over-engineering",
+          "description": "AVOID over-engineering with unnecessary abstractions",
+          "pattern": "(Factory|Builder|Strategy|Observer|Facade|Adapter|Decorator)Pattern|AbstractBase[A-Z]|Generic[A-Z].*Factory",
+          "severity": "info",
+          "priority": "MEDIUM",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design introduce complex patterns (Factory, Builder, Strategy chains) without clear necessity? Apply YAGNI \u2014 use simple functions until the pattern is clearly needed. Flag over-engineered designs.",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: Design patterns are not always needed. Evaluate if a pattern adds value or just complexity. Simple functions often suffice.",
+          "examples": {
+            "bad": "class UserServiceFactoryBuilder { createFactory() { return new UserServiceFactory(); } }",
+            "good": "function createUserService(config) { return new UserService(config); }"
+          }
+        },
+        {
+          "id": "anti-premature-abstraction",
+          "description": "AVOID creating abstractions for single use cases",
+          "pattern": "(Base|Abstract|Generic|Common|Shared|Universal|Core)[A-Z]\\w*(Service|Handler|Manager|Controller|Processor)",
+          "severity": "info",
+          "priority": "MEDIUM",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does the design propose Base/Abstract/Generic classes with a single implementation? Wait for actual duplication (3+ instances) before abstracting. Flag premature abstractions.",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: Don't create 'Base' or 'Abstract' classes for a single implementation. Wait for actual duplication before abstracting."
+        },
+        {
+          "id": "anti-interface-explosion",
+          "description": "AVOID creating interfaces for every class",
+          "pattern": "interface I[A-Z]\\w+\\s*\\{[^}]{0,200}\\}.*class [A-Z]\\w+ implements I[A-Z]\\w+",
+          "severity": "info",
+          "priority": "LOW",
+          "languages": [
+            "typescript",
+            "java",
+            "csharp"
+          ],
+          "message": "ANTI-PATTERN: Interfaces for every class adds ceremony without benefit. Use interfaces when you have multiple implementations or need contracts."
+        },
+        {
+          "id": "anti-unnecessary-async-await",
+          "description": "AVOID unnecessary async/await wrappers",
+          "pattern": "async\\s+\\w+\\s*\\([^)]*\\)\\s*\\{\\s*return\\s+(await\\s+)?[^}]+\\}",
+          "severity": "info",
+          "priority": "LOW",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "CAUTION: If a function just returns a promise, you may not need async/await. Evaluate if the async keyword adds value."
+        },
+        {
+          "id": "anti-utility-class-bloat",
+          "description": "AVOID large utility classes with unrelated functions",
+          "pattern": "(Utils|Helpers|Common|Shared)\\.(\\w+\\(.*\\)[,;]\\s*){5,}",
+          "severity": "warning",
+          "priority": "MEDIUM",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: Large utility classes become dumping grounds. Group related functions into focused modules."
+        },
+        {
+          "id": "anti-god-object",
+          "description": "AVOID god objects that do everything",
+          "pattern": "class\\s+\\w*(Manager|Controller|Handler|Service)\\s*\\{[^}]{3000,}\\}",
+          "severity": "warning",
+          "priority": "HIGH",
+          "phase": [
+            "design",
+            "code"
+          ],
+          "design_check": "Does any proposed class/service handle many unrelated concerns? Split into focused components, each with a single responsibility. BLOCK on god objects.",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: Large classes with many responsibilities are hard to test and maintain. Split into focused components."
+        },
+        {
+          "id": "anti-config-driven-everything",
+          "description": "AVOID making everything configurable",
+          "pattern": "config\\.(\\w+\\s*\\|\\|\\s*['\"]\\w+['\"]\\s*[,;]\\s*){5,}",
+          "severity": "info",
+          "priority": "LOW",
+          "languages": [
+            "*"
+          ],
+          "message": "ANTI-PATTERN: Over-configuration adds complexity. Only make things configurable that genuinely vary between environments."
+        },
+        {
+          "id": "anti-wrapper-functions",
+          "description": "AVOID wrapper functions that add no logic",
+          "pattern": "function\\s+\\w+\\([^)]*\\)\\s*\\{\\s*return\\s+\\w+\\([^)]*\\);?\\s*\\}",
+          "severity": "info",
+          "priority": "LOW",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Wrapper functions that just call another function add indirection without value. Call the original directly."
+        },
+        {
+          "id": "anti-comments-for-bad-names",
+          "description": "AVOID using comments to explain poorly named code",
+          "pattern": "//\\s*(this|the)\\s+\\w+\\s+(is|does|represents|handles|processes).*\\n\\s*(const|let|var|function)",
+          "severity": "info",
+          "priority": "MEDIUM",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: If code needs a comment to explain what it is, rename it instead. Good names eliminate the need for comments."
+        },
+        {
+          "id": "anti-excessive-defensive-coding",
+          "description": "AVOID excessive null checks for impossible cases",
+          "pattern": "(if\\s*\\([^)]+\\s*[!=]==?\\s*(null|undefined)\\s*\\)\\s*\\{\\s*(return|throw|continue))[^}]*\\}\\s*){3,}",
+          "severity": "info",
+          "priority": "LOW",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Excessive defensive coding hides design issues. Use types to prevent null at boundaries, not everywhere."
+        },
+        {
+          "id": "anti-single-use-variables",
+          "description": "AVOID single-use variables that obscure intent",
+          "pattern": "(const|let)\\s+\\w+\\s*=\\s*[^;]+;\\s*\\n\\s*return\\s+\\w+;",
+          "severity": "info",
+          "priority": "LOW",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Variables used only once before return add noise. Return the expression directly if it's clear."
+        },
+        {
+          "id": "anti-dry-obsession",
+          "description": "AVOID over-DRYing code that's only coincidentally similar",
+          "pattern": "(shared|common|reusable|generic)\\w*\\s*=\\s*\\([^)]*\\)\\s*=>\\s*\\{[^}]*\\}",
+          "severity": "info",
+          "priority": "MEDIUM",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "CAUTION: Don't abstract just because code looks similar. Coincidental similarity often diverges. Duplicate for now, refactor later when patterns emerge."
+        },
+        {
+          "id": "anti-dependency-injection-everywhere",
+          "description": "AVOID dependency injection for everything",
+          "pattern": "constructor\\(\\s*(private|readonly)?\\s*\\w+:\\s*\\w+,\\s*(private|readonly)?\\s*\\w+:\\s*\\w+,\\s*(private|readonly)?\\s*\\w+:\\s*\\w+,\\s*(private|readonly)?\\s*\\w+:",
+          "severity": "info",
+          "priority": "LOW",
+          "languages": [
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Injecting many dependencies suggests a class has too many responsibilities. Not everything needs to be injectable."
+        },
+        {
+          "id": "anti-callback-pyramid",
+          "description": "AVOID deeply nested callbacks (callback hell)",
+          "pattern": "\\([^)]*\\)\\s*=>\\s*\\{[^}]*\\([^)]*\\)\\s*=>\\s*\\{[^}]*\\([^)]*\\)\\s*=>\\s*\\{",
+          "severity": "warning",
+          "priority": "MEDIUM",
+          "languages": [
+            "javascript",
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Deeply nested callbacks are hard to read and debug. Use async/await or extract named functions."
+        },
+        {
+          "id": "anti-magic-boolean-params",
+          "description": "AVOID boolean parameters that obscure intent",
+          "pattern": "function\\s+\\w+\\([^)]*,\\s*\\w+\\s*:\\s*boolean\\s*(,|\\))",
+          "severity": "info",
+          "priority": "LOW",
+          "languages": [
+            "typescript"
+          ],
+          "message": "ANTI-PATTERN: Boolean parameters obscure call-site meaning. Consider options object or separate functions: doThing({ verbose: true }) vs doThing(true)."
+        },
+        {
+          "id": "anti-primitive-obsession",
+          "description": "AVOID using primitives for domain concepts",
+          "pattern": "(userId|email|price|amount|quantity):\\s*(string|number)\\b",
+          "severity": "info",
+          "priority": "LOW",
+          "languages": [
+            "typescript"
+          ],
+          "message": "CAUTION: Using primitives for domain concepts loses type safety. Consider branded types or value objects for important domain concepts."
+        }
+      ]
+    }
+  },
+  "authenticity_scoring": {
+    "description": "Scoring system for implementation authenticity",
+    "version": "1.0.0",
+    "categories": {
+      "stub": {
+        "weight": 3,
+        "description": "Stub/placeholder code that needs implementation"
+      },
+      "mock_data": {
+        "weight": 2,
+        "description": "Hardcoded mock/fake data instead of real data sources"
+      },
+      "fake_logic": {
+        "weight": 3,
+        "description": "Fake business logic that doesn't perform real operations"
+      }
+    },
+    "thresholds": {
+      "authentic": {
+        "min_score": 90,
+        "status": "PASS",
+        "description": "Code is production-ready with real implementations"
+      },
+      "needs_review": {
+        "min_score": 70,
+        "status": "REVIEW",
+        "description": "Code has some mock elements that may need attention"
+      },
+      "incomplete": {
+        "min_score": 0,
+        "status": "FAIL",
+        "description": "Code contains significant mock/stub implementations"
+      }
+    }
+  },
+  "confidence_scoring": {
+    "description": "Confidence-based issue filtering (inspired by code-review and pr-review-toolkit plugins)",
+    "version": "1.0.0",
+    "purpose": "Filter low-confidence issues to reduce false positives in automated code review",
+    "scoring": {
+      "high_confidence": {
+        "threshold": 80,
+        "action": "report",
+        "description": "High confidence issues (80+) are always reported"
+      },
+      "medium_confidence": {
+        "threshold": 50,
+        "action": "flag",
+        "description": "Medium confidence issues (50-79) are flagged for review"
+      },
+      "low_confidence": {
+        "threshold": 0,
+        "action": "suppress",
+        "description": "Low confidence issues (<50) are suppressed by default"
+      }
+    },
+    "factors": {
+      "pattern_match": {
+        "description": "Issue matches a well-known anti-pattern",
+        "weight": 30
+      },
+      "context_relevance": {
+        "description": "Issue is relevant to the file type/context",
+        "weight": 25
+      },
+      "severity_alignment": {
+        "description": "Severity matches the type of violation",
+        "weight": 20
+      },
+      "code_path_analysis": {
+        "description": "Issue confirmed via code path analysis",
+        "weight": 25
+      }
+    },
+    "false_positive_patterns": {
+      "description": "Patterns that often produce false positives",
+      "patterns": [
+        {
+          "id": "test-file-mocks",
+          "description": "Mock patterns in test files are expected",
+          "applies_to": "*.test.ts, *.spec.ts, __tests__/*"
+        },
+        {
+          "id": "example-code",
+          "description": "Example/sample code may use placeholder data",
+          "applies_to": "examples/*, docs/*, *.example.ts"
+        },
+        {
+          "id": "type-definitions",
+          "description": "Type-only files don't need implementations",
+          "applies_to": "*.d.ts, types/*.ts"
+        },
+        {
+          "id": "config-files",
+          "description": "Config files may have hardcoded values",
+          "applies_to": "*.config.ts, *.config.js"
+        }
+      ]
+    }
+  }
+}

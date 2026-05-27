@@ -1,0 +1,1 @@
+rails, ruby-on-rails, activerecord, hotwire, turbo-rails, kamal

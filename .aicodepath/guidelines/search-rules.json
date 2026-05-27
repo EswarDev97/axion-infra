@@ -1,0 +1,37 @@
+{
+  "$schema": "AICodePath Search Design Guidelines",
+  "version": "1.0.0",
+  "description": "Search design rules for full-text search, vector search, indexing, and query optimization",
+  "categories": {
+    "queries": {
+      "description": "Search query patterns and optimization",
+      "rules": [
+        {
+          "id": "wildcard-query-caution",
+          "description": "Use wildcards cautiously",
+          "pattern": "wildcard|regexp|leading.*wildcard|\\*prefix",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": [
+            "*query*",
+            "*search*"
+          ],
+          "message": "Avoid leading wildcards (*term) - extremely slow. Use ngrams or reverse index instead"
+        }
+      ]
+    },
+    "cache_warming": {
+      "description": "Cache warm-up strategies",
+      "rules": [
+        {
+          "id": "fielddata-awareness",
+          "description": "Avoid accidental fielddata loading",
+          "pattern": "fielddata.*true",
+          "inverse": true,
+          "severity": "warning",
+          "message": "Avoid enabling fielddata on text fields due to heap pressure"
+        }
+      ]
+    }
+  }
+}

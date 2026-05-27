@@ -1,0 +1,82 @@
+[
+  {
+    "query": "hey can you draw me a sequence diagram showing how our auth service calls the user service and then the token service? we're building this in fastapi and i want to show the jwt issuance flow",
+    "should_trigger": true
+  },
+  {
+    "query": "we're starting the database-design phase for our b2b saas and i need an ERD — we have subscriptions, invoices, payment_methods, and line_items tables, need to show all the FK relationships",
+    "should_trigger": true
+  },
+  {
+    "query": "can you make a flowchart for our refund process? theres like 6 steps: customer submits request → our team validates → manager approves or rejects → if approved payment reversal → notification sent → ticket closed",
+    "should_trigger": true
+  },
+  {
+    "query": "i need a c4 diagram showing how our recommendation engine fits in the system — execs are asking for a system context view showing what it calls and who calls it",
+    "should_trigger": true
+  },
+  {
+    "query": "visualize our order state machine please — states are: draft, submitted, payment_pending, paid, processing, shipped, delivered, cancelled, refunded",
+    "should_trigger": true
+  },
+  {
+    "query": "we're doing nfr-design for our platform and i need a c4 container diagram — 4 services (api-gateway, auth-svc, order-svc, notification-svc), postgres, redis, and a kafka queue between order and notification",
+    "should_trigger": true
+  },
+  {
+    "query": "diagram the architecture for our new data pipeline — raw events land in s3, lambda transforms them, loads into redshift, then metabase queries it for the bi dashboards",
+    "should_trigger": true
+  },
+  {
+    "query": "class diagram for our payment domain — classes are PaymentGateway (abstract), StripeGateway, PaypalGateway, Payment, Refund, PaymentMethod. want to show inheritance + composition",
+    "should_trigger": true
+  },
+  {
+    "query": "show me the flow for user onboarding — signup, email verify, profile setup, workspace creation, first team invite, onboarding checklist done. need this for the functional-design doc",
+    "should_trigger": true
+  },
+  {
+    "query": "our erd is completely out of date, can you regenerate it? the prisma schema is at prisma/schema.prisma — specifically focus on the User, Account, Session, and VerificationToken models",
+    "should_trigger": true
+  },
+  {
+    "query": "i want to understand how our checkout flow works end to end, like what happens when a customer clicks pay — can you walk me through the steps without drawing anything?",
+    "should_trigger": false
+  },
+  {
+    "query": "can you write me a python script that takes a mermaid flowchart string as input and validates the syntax before we push it to our documentation site CI?",
+    "should_trigger": false
+  },
+  {
+    "query": "what's the difference between a sequence diagram and an activity diagram? im trying to decide which one to use for documenting our order processing workflow but i dont need an actual diagram yet",
+    "should_trigger": false
+  },
+  {
+    "query": "can you fix the bug in src/components/Flowchart.tsx around line 47 — the edges aren't rendering correctly on Safari when the label text has special characters",
+    "should_trigger": false
+  },
+  {
+    "query": "we want to add mermaid.js to our docusaurus docs site — whats the npm plugin called and how do i configure it in docusaurus.config.js to render diagrams in markdown?",
+    "should_trigger": false
+  },
+  {
+    "query": "help me think through the database schema design for our multi-tenant app — should we use row-level security in postgres or separate schemas per tenant? just want to discuss tradeoffs",
+    "should_trigger": false
+  },
+  {
+    "query": "can you review this ERD (see attached image) and tell me if the relationships between orders and line_items are normalized correctly? wondering if i need a junction table",
+    "should_trigger": false
+  },
+  {
+    "query": "write a github actions workflow that auto-generates architecture diagrams from our terraform files on every push to main and commits them back to the docs/ folder",
+    "should_trigger": false
+  },
+  {
+    "query": "i'm doing system design interview prep — can you explain conceptually what a microservices architecture looks like vs a monolith? no diagram needed, just the mental model",
+    "should_trigger": false
+  },
+  {
+    "query": "our confluence architecture diagram page is broken (404) — can you help me reconstruct what our system architecture probably looks like by reading the codebase and summarizing it in text?",
+    "should_trigger": false
+  }
+]

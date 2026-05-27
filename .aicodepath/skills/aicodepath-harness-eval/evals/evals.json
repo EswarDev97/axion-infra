@@ -1,0 +1,82 @@
+{
+  "skill": "aicodepath-harness-eval",
+  "description": "Test suite for the harness evaluator. Exercises all four major flows (full eval smoke test with drift analysis, asset eval, design mode, synthetic drift detection) against known targets with expected outputs verifiable against the golden fixture at references/golden-verdicts/aicodepath-tool.json.",
+  "notes": [
+    "Test 1 (smoke test) is the canonical integration test — runs the renderer against aicodepath-tool and expects a Clean drift analysis against the golden fixture. If it regresses, the skill is broken OR aicodepath-tool has drifted from baseline. Either way, investigate before re-pinning.",
+    "Test 2 (asset mode) verifies the permission_audit table at hooks/lib/permission-manager.js:91 is detected as EXCEEDS vs Claude Code's in-memory-only denialTracking.ts pattern.",
+    "Test 3 (design mode) checks that the 5 universal-minimum primitives always appear in Day One of any product-type plan, regardless of template.",
+    "Test 4 (synthetic drift) confirms the drift classifier correctly identifies Check Script Regression when a synthetic verdict differs from the fixture while rubric and gitSha match."
+  ],
+  "tests": [
+    {
+      "id": "smoke-full-eval-aicodepath",
+      "prompt": "Evaluate the aicodepath-tool framework against the 12 agentic harness primitives. Produce a full verdict report.",
+      "expected_behavior": "Skill should run in Evaluate Mode with --scope=full against current working directory. Report must contain: (a) executive summary line matching the expectedSummary from references/golden-verdicts/aicodepath-tool.json (currently 11 STRONG / 1 PARTIAL / 0 MISSING); (b) verdict table with all 15 primitive entries (1-11 + 12a/b/c/d) present; (c) at least one CC source anchor citation per primitive; (d) a Drift Analysis section showing Clean status with all 4 invariants passing.",
+      "must_contain": [
+        "11 STRONG",
+        "permission-manager.js",
+        "query/tokenBudget.ts",
+        "memoryFreshnessText",
+        "Drift Analysis — ✅ Clean",
+        "inv-11-exceeds",
+        "4/4 invariants passed"
+      ],
+      "must_not_contain": [
+        "permission_ledger",
+        "Check Script Regression",
+        "Codebase Changed",
+        "Rubric Evolved"
+      ],
+      "success_criteria": "Verdict summary matches the golden fixture expectedSummary exactly. All 15 primitive entries evaluated. CC anchors cited for ≥12 entries. Report file written to aicodepath-docs/harness-eval/ path. Drift Analysis section reports Clean case and all 4 invariants pass."
+    },
+    {
+      "id": "asset-mode-permission-manager",
+      "prompt": "Evaluate .aicodepath/hooks/lib/permission-manager.js against the primitives that apply to it.",
+      "expected_behavior": "Skill should run check-asset.js on the file, determine primitives 2 (Permission Trust Tiers) and 11 (Permission Audit Trail) apply, run per-primitive checks, and verdict both as PASS or EXCEEDS. Primitive 11 specifically should verdict EXCEEDS because Claude Code's reference (denialTracking.ts) is in-memory only while permission-manager.js has a persistent SQL audit trail at line 91.",
+      "must_contain": [
+        "permission_audit",
+        "denialTracking",
+        "EXCEEDS",
+        "line 91"
+      ],
+      "must_not_contain": [
+        "MISSING"
+      ],
+      "success_criteria": "Asset mode applicability matcher correctly identifies primitives 2 and 11 as applicable (not all 12). Primitive 11 verdicted EXCEEDS with citation of line 91 permission_audit CREATE TABLE. Primitive 2 verdicted PASS with citation of the CHECK constraint on decision IN ('allow','deny','ask')."
+    },
+    {
+      "id": "design-mode-code-review-bot",
+      "prompt": "Design a harness for a code review bot that reads pull request diffs, posts inline comments, and escalates security issues.",
+      "expected_behavior": "Skill should run in Design Mode, classify the product as a hybrid of Template A (Coding Agent, because it reads code) and Template B (Conversational Assistant, because it outputs comments). Day One must include the 5 universal-minimum primitives (#1, #3, #5, #6, #7) plus permission tiers (#2, because it posts to GitHub) plus verification (#8, because security escalations must be verified). Week One must include stop reason taxonomy (#12c, because escalations are a stop reason) and provenance (#12d, because comments must cite source lines). Every primitive in the plan must cite a CC source anchor from cc-source-map.md.",
+      "must_contain": [
+        "Day One",
+        "Week One",
+        "Tool Registry",
+        "Token Budget",
+        "permission",
+        "verification",
+        "src/"
+      ],
+      "must_not_contain": [
+        "all 12 primitives on Day One"
+      ],
+      "success_criteria": "Design doc written to aicodepath-docs/harness-design/ path. Day One contains 6-8 primitives (never all 12). Week One contains 3-5 primitives. Every primitive cites a src/ path from the cc-source-map.md reference file. Plan sequences primitives with explicit rationale (not just a flat list)."
+    },
+    {
+      "id": "drift-detection-synthetic",
+      "prompt": "Render a verdict JSON that intentionally differs from the golden fixture (via AICODEPATH_HARNESS_FIXTURE env var pointing to a synthetic fixture) and verify the Drift Analysis section correctly classifies the drift case and shows the per-primitive diff.",
+      "expected_behavior": "Skill should detect the synthetic drift, classify it into one of the 4 cases (clean / rubric-evolved / codebase-changed / check-script-regression), show per-primitive diff rows for any verdict that changed, and include the Recommended Action section appropriate for the detected case. Should NOT silently accept the new numbers or report Clean status.",
+      "must_contain": [
+        "Drift Analysis",
+        "Per-primitive diff",
+        "Recommended Action",
+        "Check Script Regression"
+      ],
+      "must_not_contain": [
+        "Drift Analysis — ✅ Clean",
+        "Baseline confirmed"
+      ],
+      "success_criteria": "Report correctly classifies the drift case as Check Script Regression when gitSha and rubricVersion match but verdicts differ. Per-primitive diff table lists the specific primitives that changed. Recommended Action instructs the user to investigate the check script bug rather than silently re-pin."
+    }
+  ]
+}

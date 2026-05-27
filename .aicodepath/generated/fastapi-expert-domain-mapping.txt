@@ -1,0 +1,1 @@
+fastapi, pydantic, pydantic-v2, async-python, uvicorn, starlette

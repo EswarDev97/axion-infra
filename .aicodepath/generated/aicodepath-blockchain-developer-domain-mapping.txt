@@ -1,0 +1,9 @@
+# DOMAIN_MAPPING entries for aicodepath-blockchain-developer
+# Batch: S2 | Pack: specialists
+
+"smart-contract": ["blockchain-developer"],
+"solidity": ["blockchain-developer"],
+"dapp": ["blockchain-developer"],
+"web3": ["blockchain-developer"],
+"erc20": ["blockchain-developer"],
+"defi-protocol": ["blockchain-developer"],

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "aicodepath-code-graph": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "D:\\Mindflow Project\\axion-infra\\.aicodepath\\generators\\mcp_graph_server.py"
+      ],
+      "env": {
+        "AICODEPATH_PROJECT_ROOT": "D:\\Mindflow Project\\axion-infra",
+        "AICODEPATH_DB_PATH": "D:\\Mindflow Project\\axion-infra\\aicodepath-docs\\aicodepath.db"
+      },
+      "_managed_by_aicodepath": true
+    }
+  }
+}

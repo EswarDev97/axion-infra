@@ -1,0 +1,321 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "cleanupPeriodDays": 365,
+  "enableAllProjectMcpServers": true,
+  "includeGitInstructions": false,
+  "showClearContextOnPlanAccept": true,
+  "autoUpdatesChannel": "stable",
+  "effortLevel": "xhigh",
+  "showThinkingSummaries": true,
+  "plansDirectory": "./aicodepath-docs/plans",
+  "attribution": {
+    "commit": "\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+    "pr": ""
+  },
+  "worktree": {
+    "symlinkDirectories": ["node_modules", ".cache"]
+  },
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "ENABLE_PROMPT_CACHING_1H": "1"
+  },
+  "_comment_sandbox": "Uncomment to block outbound requests to these domains",
+  "_sandbox_network_deniedDomains_example": ["pastebin.com", "ngrok.io"],
+  "_comment_autoScroll": "Set false to disable auto-scroll in terminal output",
+  "_autoScrollEnabled_example": true,
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/session-start-hook.js",
+            "statusMessage": "Initializing AICodePath workflow..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/visual-memory-loader.js",
+            "statusMessage": "Loading visual memory..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/session-auto-cleanup.js",
+            "statusMessage": "Running session cleanup..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/pre-flight-check.js",
+            "statusMessage": "Running pre-flight checks..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/plan-role-activator.js",
+            "statusMessage": "Resolving role from plan context..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/workflow-query-detector.js",
+            "statusMessage": "Checking for workflow query..."
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/permission-request-hook.js",
+            "statusMessage": "Evaluating permission request..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/checkpoint-guard-hook.js",
+            "statusMessage": "Checking worktree cleanliness..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/config-protection-hook.js",
+            "statusMessage": "Checking file protection..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/schema-context-hook.js",
+            "statusMessage": "Injecting schema context..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/guideline-validator.js",
+            "statusMessage": "Validating guidelines (API, arch, data, devops, security)..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/duplication-checker.js",
+            "statusMessage": "Checking for code duplication..."
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/mcp-health-check.js",
+            "statusMessage": "Checking MCP server health..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/safety-guardrails.js",
+            "statusMessage": "Safety guardrails check..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/pre-commit-validator.js",
+            "statusMessage": "Checking commit safety..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/spec-sync-validator.js",
+            "statusMessage": "Validating spec-code sync..."
+          }
+        ]
+      },
+      {
+        "matcher": "Glob|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/graph-context-nudge.js",
+            "statusMessage": "Injecting graph context..."
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/safety-guardrails.js",
+            "statusMessage": "Safety guardrails check..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/auto-artifact-creator.js",
+            "statusMessage": "Creating artifact entries..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/gicl-iteration-hook.js",
+            "statusMessage": "Running GICL quality gates..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/post-tool-security-scan.js",
+            "statusMessage": "Security pattern scan..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/test-tampering-detector.js",
+            "statusMessage": "Test integrity check..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/plans-watcher.js",
+            "statusMessage": "Checking plan file changes..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/tdd-order-check.js",
+            "statusMessage": "Checking TDD order..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/auto-test-runner.js",
+            "statusMessage": "Auto-running tests..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/construction-skill-suggester.js",
+            "statusMessage": "Checking for skill suggestions..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/document-skill-suggester.js",
+            "statusMessage": "Checking documentation suggestions..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/agent-audit-on-write.js",
+            "statusMessage": "Checking agent wiring..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/framework-asset-quality-hook.js",
+            "statusMessage": "Checking framework asset quality..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/ci-status-checker.js",
+            "statusMessage": "Monitoring CI status..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/post-commit-hook.js",
+            "statusMessage": "Checking post-commit actions..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/graph-git-hook.js",
+            "statusMessage": "Updating code graph..."
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/post-tool-failure-hook.js",
+            "statusMessage": "Handling tool failure..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/response-stop-hook.js",
+            "statusMessage": "Processing response completion..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/cost-tracker-hook.js",
+            "statusMessage": "Tracking session costs..."
+          },
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/desktop-notify-hook.js",
+            "statusMessage": "Sending desktop notification..."
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/pre-compact-hook.js",
+            "statusMessage": "Preparing for context compaction..."
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/session-end-hook.js",
+            "statusMessage": "Finalizing session..."
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/notification-hook.js",
+            "statusMessage": "Processing notification..."
+          }
+        ]
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.aicodepath/hooks/worktree-lifecycle.js",
+            "statusMessage": "Cleaning up worktree state..."
+          }
+        ]
+      }
+    ]
+  }
+}

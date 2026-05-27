@@ -1,0 +1,9 @@
+# DOMAIN_MAPPING entries for aicodepath-platform-engineer
+# Batch: D4 | Pack: specialists
+
+"internal-platform": ["platform-engineer"],
+"developer-portal": ["platform-engineer"],
+"golden-path": ["platform-engineer"],
+"backstage": ["platform-engineer"],
+"service-catalog": ["platform-engineer"],
+"gitops-platform": ["platform-engineer"],

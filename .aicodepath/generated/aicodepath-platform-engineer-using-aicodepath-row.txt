@@ -1,0 +1,4 @@
+# using-aicodepath SKILL.md row for aicodepath-platform-engineer
+# Batch: D4 | Pack: specialists
+
+| Internal developer platforms — Backstage portals, golden paths, service catalogs, GitOps workflows, developer self-service | `aicodepath-platform-engineer` |

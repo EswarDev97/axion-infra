@@ -1,0 +1,145 @@
+{
+  "$schema": "AICodePath TypeScript Lint Guidelines",
+  "version": "1.0.0",
+  "description": "Code quality lint rules for TypeScript — enforces explicit types, const preference, and clean logging",
+  "_classification": {
+    "component_types": [
+      "all"
+    ],
+    "default_phase": [
+      "code"
+    ]
+  },
+  "categories": {
+    "logging": {
+      "description": "Enforce structured logging over console output",
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-console-log",
+          "description": "No console.log in production TypeScript — use a structured logger",
+          "pattern": "console\\.log\\(",
+          "severity": "warning",
+          "file_patterns": [
+            "*.ts",
+            "*.tsx",
+            "!**/__tests__/**",
+            "!**/*.test.ts",
+            "!**/*.spec.ts",
+            "!**/scripts/**"
+          ],
+          "message": "Replace console.log with your project's structured logger"
+        }
+      ]
+    },
+    "type-quality": {
+      "description": "TypeScript type quality rules",
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "explicit-return-type",
+          "description": "Public functions should declare explicit return types",
+          "pattern": "^\\s*(?:export\\s+)?(?:async\\s+)?function\\s+\\w+\\s*\\([^)]*\\)\\s*\\{",
+          "severity": "info",
+          "file_patterns": [
+            "*.ts",
+            "!**/*.test.ts",
+            "!**/*.spec.ts"
+          ],
+          "message": "Consider adding an explicit return type to exported functions"
+        },
+        {
+          "id": "no-non-null-assertion",
+          "description": "Avoid non-null assertion operator (!) — signals possible null-safety issue",
+          "pattern": "\\w!\\.",
+          "severity": "warning",
+          "file_patterns": [
+            "*.ts",
+            "*.tsx",
+            "!**/*.test.ts",
+            "!**/*.spec.ts"
+          ],
+          "message": "Non-null assertion hides potential null errors — use optional chaining or a null check"
+        }
+      ]
+    },
+    "variables": {
+      "description": "Variable declaration quality",
+      "component_types": [
+        "all"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "prefer-const",
+          "description": "Prefer const over let for values that are never reassigned",
+          "pattern": "\\blet\\s+\\w+\\s*=\\s*(?!.*\\+\\+|.*\\-\\-|.*\\+?=|.*-?=)",
+          "severity": "info",
+          "file_patterns": [
+            "*.ts",
+            "*.tsx"
+          ],
+          "message": "Consider using const if this variable is never reassigned"
+        }
+      ]
+    },
+    "react-nextjs": {
+      "description": "React and Next.js App Router patterns",
+      "component_types": [
+        "frontend"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "nextjs15-use-search-params-suspense",
+          "description": "useSearchParams() must be inside a Suspense-wrapped component in Next.js 15 App Router",
+          "pattern": "\\buseSearchParams\\s*\\(",
+          "severity": "error",
+          "file_patterns": [
+            "*.tsx",
+            "!**/*.test.tsx",
+            "!**/*.spec.tsx"
+          ],
+          "message": "useSearchParams() causes a prerender failure in Next.js 15 App Router unless the calling component is wrapped by <Suspense>. Extract into an inner component (e.g. function PageContent()) and render as <Suspense fallback={...}><PageContent /></Suspense> inside the page default export."
+        }
+      ]
+    },
+    "exact-optional-types": {
+      "description": "Patterns required when exactOptionalPropertyTypes is enabled",
+      "component_types": [
+        "frontend"
+      ],
+      "phase": [
+        "code"
+      ],
+      "rules": [
+        {
+          "id": "no-undefined-passthrough-to-optional-prop",
+          "description": "Do not pass T|undefined directly to an optional prop when exactOptionalPropertyTypes is enabled",
+          "pattern": "\\w+\\s*=\\{[^}]*(?:undefined)[^}]*\\}",
+          "severity": "warning",
+          "file_patterns": [
+            "*.tsx",
+            "!**/*.test.tsx",
+            "!**/*.spec.tsx"
+          ],
+          "message": "With exactOptionalPropertyTypes:true, passing 'string|undefined' to an optional prop 'prop?: string' is a type error. Use conditional rendering: {v !== undefined ? <Component prop={v} /> : <Component />} or conditional spread: {...(v !== undefined ? { prop: v } : {})}. Never suppress with 'as' cast."
+        }
+      ]
+    }
+  }
+}

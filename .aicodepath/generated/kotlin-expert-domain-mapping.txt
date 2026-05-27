@@ -1,0 +1,6 @@
+kotlin=kotlin-expert
+coroutine=kotlin-expert
+kmp=kotlin-expert
+kotlin-multiplatform=kotlin-expert
+jetpack-compose=kotlin-expert
+flow-kotlin=kotlin-expert

@@ -1,0 +1,9 @@
+# DOMAIN_MAPPING entries for aicodepath-azure-infra-expert
+# Batch: D3 | Pack: specialists
+
+"bicep-iac": ["azure-infra-expert"],
+"entra-id": ["azure-infra-expert"],
+"azure-landing-zone": ["azure-infra-expert"],
+"azure-rbac": ["azure-infra-expert"],
+"azure-key-vault": ["azure-infra-expert"],
+"conditional-access": ["azure-infra-expert"],

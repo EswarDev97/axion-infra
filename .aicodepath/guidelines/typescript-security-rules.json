@@ -1,0 +1,80 @@
+{
+  "$schema": "AICodePath TypeScript Security Guidelines",
+  "version": "1.0.0",
+  "description": "Security rules for TypeScript files — prevents unsafe type usage, XSS, SQL injection, and secrets",
+  "_classification": {
+    "component_types": ["security", "all"],
+    "default_phase": ["code"]
+  },
+  "categories": {
+    "type-safety": {
+      "description": "Rules preventing unsafe TypeScript type usage",
+      "component_types": ["all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-any-cast",
+          "description": "Avoid explicit any type annotation — use unknown or a concrete type",
+          "pattern": ":\\s*any[\\s,\\)\\[]",
+          "severity": "warning",
+          "file_patterns": ["*.ts", "*.tsx"],
+          "message": "Avoid ': any' — use 'unknown' and narrow the type, or provide a concrete type"
+        },
+        {
+          "id": "no-type-assertion-any",
+          "description": "Avoid casting to any with 'as any'",
+          "pattern": "\\bas\\s+any\\b",
+          "severity": "warning",
+          "file_patterns": ["*.ts", "*.tsx"],
+          "message": "Avoid 'as any' — use a specific type assertion or unknown"
+        }
+      ]
+    },
+    "injection": {
+      "description": "Rules preventing injection vulnerabilities in TypeScript",
+      "component_types": ["security", "all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-eval",
+          "description": "No eval() — code injection risk",
+          "pattern": "\\beval\\s*\\(",
+          "severity": "error",
+          "file_patterns": ["*.ts", "*.tsx", "!**/__tests__/**", "!**/*.test.ts", "!**/*.spec.ts"],
+          "message": "eval() is a code injection vector — use JSON.parse or a safer alternative"
+        },
+        {
+          "id": "no-innerhtml",
+          "description": "No direct innerHTML assignment — XSS risk",
+          "pattern": "\\.innerHTML\\s*=",
+          "severity": "error",
+          "file_patterns": ["*.ts", "*.tsx"],
+          "message": "Direct innerHTML assignment is an XSS vector — use textContent or a sanitizer"
+        },
+        {
+          "id": "no-sql-template-injection",
+          "description": "No raw SQL with template literals — SQL injection risk",
+          "pattern": "\\.(query|execute|raw)\\s*\\(\\s*[`'\"].*?\\$\\{",
+          "severity": "error",
+          "file_patterns": ["*.ts"],
+          "message": "SQL built with template literals is vulnerable to injection — use parameterized queries"
+        }
+      ]
+    },
+    "secrets": {
+      "description": "No hardcoded secrets in TypeScript files",
+      "component_types": ["security", "all"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "no-hardcoded-secrets",
+          "description": "No hardcoded API keys, tokens, or passwords",
+          "pattern": "(apiKey|api_key|password|secret|token|privateKey)\\s*[:=]\\s*['\"][A-Za-z0-9+/=_\\-]{12,}['\"]",
+          "severity": "error",
+          "file_patterns": ["*.ts", "*.tsx"],
+          "message": "Hardcoded secret detected — use environment variables or a secrets manager"
+        }
+      ]
+    }
+  }
+}

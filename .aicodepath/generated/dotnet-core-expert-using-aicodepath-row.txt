@@ -1,0 +1,1 @@
+| .NET 8+ minimal APIs, EF Core compiled queries, native AOT, IHostedService, Aspire orchestration | `aicodepath-dotnet-core-expert` |

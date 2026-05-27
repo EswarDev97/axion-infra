@@ -1,0 +1,132 @@
+{
+  "$schema": "AICodePath Fluent Design Guidelines",
+  "version": "1.0.0",
+  "description": "Fluent 2 design system compliance rules — token usage, FluentProvider, JSX pragma, Field wrapping, and style patterns",
+  "_classification": {
+    "component_types": ["frontend", "ui"],
+    "default_phase": ["code"],
+    "design_applies": true,
+    "design_signals": ["fluent", "fluentui", "react-components", "makeStyles", "griffel", "FluentProvider", "tokens", "Button", "Input", "Dialog", "Drawer", "Field", "TabList", "DataGrid", "Tree", "Menu", "Popover"]
+  },
+  "categories": {
+    "tokens": {
+      "description": "Design token usage — alias tokens only, never hardcoded values or global imports",
+      "component_types": ["frontend", "ui"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "fluent-no-hardcoded-hex",
+          "description": "No hardcoded hex color values in Fluent component files — use alias tokens",
+          "pattern": "(?:color|background|border|fill|stroke)\\s*:\\s*['\"]#[0-9a-fA-F]{3,8}['\"]",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.styles.ts", "*.tsx", "*.ts"],
+          "message": "Use alias tokens instead of hardcoded hex values (e.g., tokens.colorNeutralForeground1 not '#242424'). Hardcoded colors break dark/high-contrast themes.",
+          "component_types": ["frontend", "ui"],
+          "phase": ["code"],
+          "design_check": "Does any component use hardcoded hex color values? All colors must come from tokens.* alias tokens so they adapt to light, dark, and high-contrast themes automatically."
+        },
+        {
+          "id": "fluent-no-global-token-import",
+          "description": "Never import from @fluentui/tokens/global — use alias tokens from @fluentui/tokens",
+          "pattern": "from\\s+['\"]@fluentui/tokens/global['\"]",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.ts", "*.tsx"],
+          "message": "Import from '@fluentui/tokens' (alias layer), never from '@fluentui/tokens/global'. Global tokens bypass theming and produce hardcoded values.",
+          "component_types": ["frontend", "ui"],
+          "phase": ["code"],
+          "design_check": "Are global tokens imported directly? Use: import { tokens } from '@fluentui/tokens' — the alias layer that adapts to all themes."
+        }
+      ]
+    },
+    "provider": {
+      "description": "FluentProvider setup — required at app root for token resolution",
+      "component_types": ["frontend", "ui"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "fluent-provider-required",
+          "description": "FluentProvider must be present at application root",
+          "pattern": "ReactDOM\\.render|createRoot\\([^)]+\\)\\.render",
+          "inverse": false,
+          "severity": "warning",
+          "file_patterns": ["*main*", "*index*", "*App*"],
+          "message": "Ensure FluentProvider wraps your app root. Without it, all token references produce blank values: <FluentProvider theme={webLightTheme} dir=\"ltr\" lang=\"en-US\"><App /></FluentProvider>",
+          "component_types": ["frontend", "ui"],
+          "phase": ["code"],
+          "design_check": "Is FluentProvider wrapping the app root with a theme, dir, and lang prop? Missing FluentProvider causes all design tokens to resolve to blank values."
+        }
+      ]
+    },
+    "component_pattern": {
+      "description": "5-file component pattern compliance — JSX pragma, assertSlots, styles file naming",
+      "component_types": ["frontend", "ui"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "fluent-jsx-pragma-required",
+          "description": "render*.tsx files must include both @jsxRuntime automatic and @jsxImportSource pragmas",
+          "pattern": "@jsxImportSource\\s+@fluentui/react-jsx-runtime",
+          "inverse": false,
+          "severity": "error",
+          "file_patterns": ["render*.tsx"],
+          "message": "Both JSX pragma lines are required in render*.tsx files:\n  /** @jsxRuntime automatic */\n  /** @jsxImportSource @fluentui/react-jsx-runtime */\nMissing them causes silently broken slot prop spreading and ref forwarding.",
+          "component_types": ["frontend", "ui"],
+          "phase": ["code"],
+          "design_check": "Does every render*.tsx file include both @jsxRuntime automatic and @jsxImportSource @fluentui/react-jsx-runtime pragma comments?"
+        },
+        {
+          "id": "fluent-no-get-slots",
+          "description": "Use assertSlots instead of deprecated getSlots in render functions",
+          "pattern": "getSlots\\s*<",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["render*.tsx", "*.tsx"],
+          "message": "Replace getSlots with assertSlots. getSlots is deprecated and removed in v10. assertSlots provides TypeScript type narrowing: assertSlots<ButtonSlots>(state)",
+          "component_types": ["frontend", "ui"],
+          "phase": ["code"],
+          "design_check": "Does any render function use getSlots? Replace with assertSlots<SlotType>(state) which provides type narrowing and is not deprecated."
+        }
+      ]
+    },
+    "forms": {
+      "description": "Form input wrapping — Field component required for all form controls",
+      "component_types": ["frontend", "ui"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "fluent-field-required",
+          "description": "Form inputs must be wrapped in Field for automatic ARIA wiring",
+          "pattern": "<(Input|Textarea|Combobox|Dropdown|Select|Slider|SpinButton|RadioGroup|Checkbox|Switch)[^>]*\\s+aria-label",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": ["*.tsx"],
+          "message": "Wrap form inputs in <Field> instead of manually setting aria-label. Field auto-wires: label→htmlFor, hint→aria-describedby, validationMessage→aria-invalid. Example: <Field label=\"Email\"><Input type=\"email\" /></Field>",
+          "component_types": ["frontend", "ui"],
+          "phase": ["code"],
+          "design_check": "Are any form inputs (Input, Textarea, Combobox, etc.) used without a Field wrapper? Field auto-wires all ARIA attributes — label→htmlFor, hint→aria-describedby, validationMessage→aria-invalid."
+        }
+      ]
+    },
+    "styling": {
+      "description": "Griffel CSS-in-JS required — no inline styles on Fluent components",
+      "component_types": ["frontend", "ui"],
+      "phase": ["code"],
+      "rules": [
+        {
+          "id": "fluent-no-inline-styles",
+          "description": "Never use inline styles on Fluent components — use makeStyles or makeResetStyles",
+          "pattern": "<(?:Button|Input|Dialog|Drawer|Field|TabList|Tree|Menu|Popover|Card|Badge|Avatar)[^>]+style=\\{\\{",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": ["*.tsx"],
+          "message": "Use makeStyles/makeResetStyles instead of inline styles on Fluent components. Inline styles override slot className and cannot be overridden by consumers downstream.",
+          "component_types": ["frontend", "ui"],
+          "phase": ["code"],
+          "design_check": "Are inline styles applied to any Fluent component? Use makeStyles for variants and makeResetStyles for base styles — inline styles on Fluent components break the override chain."
+        }
+      ]
+    }
+  }
+}

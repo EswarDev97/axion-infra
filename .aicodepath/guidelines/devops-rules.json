@@ -1,0 +1,221 @@
+{
+  "$schema": "AICodePath DevOps Guidelines",
+  "version": "1.0.0",
+  "description": "DevOps rules for containerization, CI/CD pipelines, Kubernetes, and deployment practices",
+  "_classification": {
+    "component_types": ["devops"],
+    "default_phase": ["code"],
+    "design_applies": true,
+    "design_signals": ["docker", "container", "kubernetes", "k8s", "ci", "cd", "pipeline", "deploy", "deployment", "dockerfile", "image", "registry", "secret", "env", "helm", "workflow", "github actions"]
+  },
+  "categories": {
+    "docker": {
+      "description": "Docker and containerization best practices",
+      "component_types": ["devops"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "non-root-user",
+          "description": "Run containers as non-root user for security",
+          "pattern": "USER\\s+(root|0)",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["Dockerfile*"],
+          "message": "Container must run as non-root user. Add 'USER nonroot' or 'USER 1000'",
+          "component_types": ["devops"],
+          "phase": ["design", "code"],
+          "design_check": "Does the deployment design specify running containers as non-root users? Ensure Dockerfiles include a USER directive with a non-root user. Flag if missing."
+        },
+        {
+          "id": "no-latest-tag",
+          "description": "Avoid using :latest tag in base images",
+          "pattern": "FROM\\s+\\S+:latest",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": ["Dockerfile*"],
+          "message": "Use specific version tags instead of :latest for reproducible builds",
+          "component_types": ["devops"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design reference container images? Ensure specific version tags are used (e.g., node:20.11-alpine) not :latest. Flag :latest usage."
+        },
+        {
+          "id": "no-apt-cache",
+          "description": "Clean apt cache after installing packages",
+          "pattern": "apt-get install(?!.*&&.*rm -rf /var/lib/apt/lists)",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": ["Dockerfile*"],
+          "message": "Add '&& rm -rf /var/lib/apt/lists/*' after apt-get install to reduce image size",
+          "component_types": ["devops"],
+          "phase": ["code"]
+        },
+        {
+          "id": "workdir-absolute-path",
+          "description": "Use absolute paths for WORKDIR",
+          "pattern": "WORKDIR\\s+[^/]",
+          "inverse": true,
+          "severity": "warning",
+          "file_patterns": ["Dockerfile*"],
+          "message": "WORKDIR should use absolute paths (e.g., /app)",
+          "component_types": ["devops"],
+          "phase": ["code"]
+        }
+      ]
+    },
+    "kubernetes": {
+      "description": "Kubernetes manifest best practices",
+      "component_types": ["devops"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-privileged-containers",
+          "description": "Containers should not run in privileged mode",
+          "pattern": "privileged:\\s*true",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.yaml", "*.yml"],
+          "message": "Container must not run in privileged mode",
+          "component_types": ["devops"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design specify privileged containers? Deny unless there is an explicitly documented and approved need. BLOCK."
+        },
+        {
+          "id": "no-host-network",
+          "description": "Pods should not use host network",
+          "pattern": "hostNetwork:\\s*true",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["*.yaml", "*.yml"],
+          "message": "Pod should not use host network unless absolutely necessary",
+          "component_types": ["devops"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design use host networking for pods? Deny unless explicitly justified. BLOCK."
+        }
+      ]
+    },
+    "cicd": {
+      "description": "CI/CD pipeline best practices",
+      "component_types": ["devops"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-secrets-in-workflow",
+          "description": "Secrets should not be hardcoded in workflows",
+          "pattern": "(password|secret|api_key|token)\\s*[:=]\\s*['\"][^${}]+['\"]",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": [".github/workflows/*.yml", ".gitlab-ci.yml"],
+          "message": "Do not hardcode secrets. Use GitHub Secrets or environment variables",
+          "component_types": ["devops"],
+          "phase": ["design", "code"],
+          "design_check": "Does the CI/CD design reference secrets or credentials? Ensure all are injected via GitHub Secrets, vault, or env var injection — never hardcoded in pipeline files. BLOCK on hardcoded secrets."
+        }
+      ]
+    },
+    "registry": {
+      "description": "Container registry best practices",
+      "component_types": ["devops"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-mutable-tags",
+          "description": "Avoid mutable tags like latest in production",
+          "pattern": "image:.*:latest",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["k8s/overlays/prod/*.yaml", "k8s/overlays/production/*.yaml"],
+          "message": "Do not use :latest tag in production. Use immutable version tags",
+          "component_types": ["devops"],
+          "phase": ["design", "code"],
+          "design_check": "Does the production deployment design use :latest image tags? Replace with SHA-pinned or semantic version tags for reproducibility. BLOCK in production contexts."
+        }
+      ]
+    },
+    "secrets_management": {
+      "description": "Secrets handling and lifecycle management",
+      "component_types": ["devops"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-secrets-in-images",
+          "description": "Secrets must not be baked into container images",
+          "pattern": "ENV\\s+(PASSWORD|SECRET|TOKEN|API_KEY)",
+          "inverse": true,
+          "severity": "error",
+          "file_patterns": ["Dockerfile*"],
+          "message": "Do not bake secrets into images. Use runtime secret injection",
+          "component_types": ["devops"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design bake secrets into container images (via ENV instructions with actual values)? Replace with runtime injection via secrets manager or environment vars at deployment time. BLOCK."
+        }
+      ]
+    },
+    "configuration_management": {
+      "description": "Configuration separation and environment control",
+      "component_types": ["devops", "service"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-env-specific-logic",
+          "description": "Avoid environment-specific branching in code",
+          "pattern": "if.*(prod|production|staging|dev)",
+          "severity": "warning",
+          "file_patterns": ["*config*", "*service*"],
+          "message": "Avoid environment-specific logic in code. Use config instead",
+          "component_types": ["devops", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design include environment-specific branching in application code (if prod / if staging)? Replace with configuration-driven behavior. Flag for discussion."
+        },
+        {
+          "id": "env-vars-for-ports-hosts",
+          "description": "Use environment variables for all ports and hosts",
+          "pattern": "listen\\(\\d+\\)|port:\\s*\\d+|PORT\\s*=\\s*\\d+[^\\d]",
+          "severity": "warning",
+          "file_patterns": ["*server*", "*app*", "*config*", "*main*"],
+          "message": "Use environment variables for ports and hosts instead of hardcoding (e.g., process.env.PORT, process.env.HOST). Apply to all services including Node.js services.",
+          "component_types": ["devops", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design hardcode ports or hostnames? All ports and hosts should come from environment variables. Flag any hardcoded values."
+        },
+        {
+          "id": "no-hardcoded-config",
+          "description": "Avoid hardcoding configuration values",
+          "pattern": "const\\s+(PORT|HOST|DB_HOST|API_URL|BASE_URL)\\s*=\\s*['\"]",
+          "severity": "error",
+          "file_patterns": ["*config*", "*server*", "*app*"],
+          "message": "Do not hardcode configuration values. Use environment variables from .env file",
+          "component_types": ["devops", "service"],
+          "phase": ["design", "code"],
+          "design_check": "Does the design specify configuration values inline? All configuration (URLs, hosts, ports, feature flags) must come from environment variables. BLOCK on hardcoded config."
+        },
+        {
+          "id": "immutable-config",
+          "description": "Avoid mutable config in running pods",
+          "pattern": "kubectl\\s+edit|exec.*vi",
+          "severity": "error",
+          "message": "Do not mutate config in running pods",
+          "component_types": ["devops"],
+          "phase": ["code"]
+        }
+      ]
+    },
+    "release_strategy": {
+      "description": "Safe deployment and release practices",
+      "component_types": ["devops"],
+      "phase": ["design", "code"],
+      "rules": [
+        {
+          "id": "no-direct-prod-deploy",
+          "description": "Production deployments must go through pipeline",
+          "pattern": "kubectl\\s+apply|helm\\s+upgrade",
+          "severity": "error",
+          "file_patterns": ["*.sh", "*.md"],
+          "message": "Do not deploy directly to production clusters",
+          "component_types": ["devops"],
+          "phase": ["design", "code"],
+          "design_check": "Does the deployment design include any direct kubectl apply or helm upgrade commands to production outside of a CI/CD pipeline? If so, route through pipeline with approval gates. BLOCK."
+        }
+      ]
+    }
+  }
+}
