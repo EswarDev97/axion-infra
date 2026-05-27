@@ -65,6 +65,7 @@ const skipBodyParserPaths = [
   '/api/v1/mindmaps',
   '/api/v1/billing',
   '/api/v1/public',
+  '/api/v1/crm',
 ];
 app.use((req, res, next) => {
   if (skipBodyParserPaths.some(path => req.path.startsWith(path))) {

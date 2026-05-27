@@ -19,6 +19,7 @@ import trainingRoutes from './training.routes';
 import reportsRoutes from './reports.routes';
 import mindmapsRoutes from './mindmaps.routes';
 import billingRoutes from './billing.routes';
+import crmRoutes from './crm.routes';
 
 const router = Router();
 
@@ -47,5 +48,6 @@ router.use('/training', trainingRoutes);
 router.use('/reports', reportsRoutes);
 router.use('/mindmaps', mindmapsRoutes);
 router.use('/billing', billingRoutes);
+router.use('/crm/leads', crmRoutes);
 
 export default router;
