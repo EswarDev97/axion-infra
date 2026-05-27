@@ -10,6 +10,7 @@ from .attendance_service import AttendanceService
 from .holiday_service import HolidayService
 from .payroll_service import PayrollService
 from .candidate_service import CandidateService
+from .crm_lead_service import CrmLeadService
 
 __all__ = [
     "DepartmentService",
@@ -20,4 +21,5 @@ __all__ = [
     "HolidayService",
     "PayrollService",
     "CandidateService",
+    "CrmLeadService",
 ]

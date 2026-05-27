@@ -19,6 +19,7 @@ from .holiday import Holiday
 from .weekly_off_config import WeeklyOffConfig
 from .payroll import PayrollReference
 from .candidate import Candidate
+from .crm_lead import CrmLead, CrmLeadContact, DiscussionSummary, InterestLevel
 
 __all__ = [
     "Department",
@@ -33,4 +34,8 @@ __all__ = [
     "WeeklyOffConfig",
     "PayrollReference",
     "Candidate",
+    "CrmLead",
+    "CrmLeadContact",
+    "DiscussionSummary",
+    "InterestLevel",
 ]

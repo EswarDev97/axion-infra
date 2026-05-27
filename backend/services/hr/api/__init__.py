@@ -13,6 +13,7 @@ from .attendance import router as attendance_router
 from .holidays import router as holidays_router
 from .payroll import router as payroll_router
 from .candidates import router as candidates_router
+from .crm_leads import router as crm_leads_router
 
 router = APIRouter(prefix="/api/v1/hr")
 
@@ -25,5 +26,6 @@ router.include_router(attendance_router)
 router.include_router(holidays_router)
 router.include_router(payroll_router)
 router.include_router(candidates_router)
+router.include_router(crm_leads_router)
 
 __all__ = ["router"]

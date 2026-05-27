@@ -65,6 +65,14 @@ from .payroll import (
     PayrollResponse,
     PayrollListResponse,
 )
+from .crm_lead import (
+    CrmLeadCreateRequest,
+    CrmLeadUpdateRequest,
+    CrmLeadResponse,
+    CrmLeadListResponse,
+    ContactPersonCreate,
+    ContactPersonResponse,
+)
 from .candidate import (
     CandidateCreateRequest,
     CandidateUpdateRequest,
@@ -135,4 +143,11 @@ __all__ = [
     "CandidateResponse",
     "CandidateListResponse",
     "CandidateConvertRequest",
+    # CRM
+    "CrmLeadCreateRequest",
+    "CrmLeadUpdateRequest",
+    "CrmLeadResponse",
+    "CrmLeadListResponse",
+    "ContactPersonCreate",
+    "ContactPersonResponse",
 ]
