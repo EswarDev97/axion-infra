@@ -84,20 +84,21 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        const [deptResponse, posResponse, empResponse, rolesResponse] = await Promise.all([
-          departmentService.list({ pageSize: 100 }),
-          positionService.list({ pageSize: 100 }),
-          employeeService.list({ pageSize: 100, status: 'ACTIVE' }),
-          roleService.list({ pageSize: 100 }),
-        ]);
-        setDepartments(deptResponse.items);
-        setPositions(posResponse.items);
-        setManagers(empResponse.items.filter((e) => e.id !== employee?.id));
-        setRoles(rolesResponse.items);
-      } catch (err) {
-        console.error('Failed to load form data:', err);
-      }
+      const [deptResult, posResult, empResult, rolesResult] = await Promise.allSettled([
+        departmentService.list({ pageSize: 100 }),
+        positionService.list({ pageSize: 100 }),
+        employeeService.list({ pageSize: 100, status: 'ACTIVE' }),
+        roleService.list({ pageSize: 100 }),
+      ]);
+      if (deptResult.status === 'fulfilled') setDepartments(deptResult.value.items);
+      else console.error('Failed to load departments:', deptResult.reason);
+      if (posResult.status === 'fulfilled') setPositions(posResult.value.items);
+      else console.error('Failed to load positions:', posResult.reason);
+      if (empResult.status === 'fulfilled')
+        setManagers(empResult.value.items.filter((e) => e.id !== employee?.id));
+      else console.error('Failed to load managers:', empResult.reason);
+      if (rolesResult.status === 'fulfilled') setRoles(rolesResult.value.items);
+      else console.error('Failed to load roles:', rolesResult.reason);
     };
     fetchData();
   }, [employee?.id]);
