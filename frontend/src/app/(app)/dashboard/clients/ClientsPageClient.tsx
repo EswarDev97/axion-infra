@@ -18,14 +18,28 @@ import {
   type ClientUpdateRequest,
 } from '@/services/complaint/clientService';
 
+const TAX_TYPES = [
+  { value: 'NONE', label: 'No Tax' },
+  { value: 'IGST', label: 'IGST (Interstate)' },
+  { value: 'CGST_SGST', label: 'CGST + SGST (Intrastate)' },
+];
+
+const CLIENT_TYPES = [
+  { value: 'CLIENT', label: 'Client' },
+  { value: 'FINANCER', label: 'Financer' },
+];
+
 const emptyForm = {
   name: '',
   code: '',
+  type: 'CLIENT',
   contactPerson: '',
   email: '',
   phone: '',
   address: '',
   isActive: true,
+  defaultTaxType: 'NONE',
+  defaultTaxRate: '0',
 };
 
 export function ClientsPageClient() {
@@ -75,11 +89,14 @@ export function ClientsPageClient() {
     setFormData({
       name: client.name,
       code: client.code,
+      type: client.type || 'CLIENT',
       contactPerson: client.contactPerson || '',
       email: client.email || '',
       phone: client.phone || '',
       address: client.address || '',
       isActive: client.isActive,
+      defaultTaxType: client.defaultTaxType || 'NONE',
+      defaultTaxRate: String(client.defaultTaxRate ?? 0),
     });
     setFormError(null);
     setShowForm(true);
@@ -102,22 +119,28 @@ export function ClientsPageClient() {
         const updateData: ClientUpdateRequest = {
           name: formData.name,
           code: formData.code,
+          type: formData.type as ClientUpdateRequest['type'],
           contactPerson: formData.contactPerson || null,
           email: formData.email || null,
           phone: formData.phone || null,
           address: formData.address || null,
           isActive: formData.isActive,
+          defaultTaxType: formData.defaultTaxType || 'NONE',
+          defaultTaxRate: parseFloat(formData.defaultTaxRate) || 0,
         };
         await clientService.update(editing.id, updateData);
       } else {
         const createData: ClientCreateRequest = {
           name: formData.name,
           code: formData.code,
+          type: formData.type as ClientCreateRequest['type'],
           contactPerson: formData.contactPerson || undefined,
           email: formData.email || undefined,
           phone: formData.phone || undefined,
           address: formData.address || undefined,
           isActive: formData.isActive,
+          defaultTaxType: formData.defaultTaxType || 'NONE',
+          defaultTaxRate: parseFloat(formData.defaultTaxRate) || 0,
         };
         await clientService.create(createData);
       }
@@ -187,6 +210,7 @@ export function ClientsPageClient() {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact Person</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
@@ -197,11 +221,11 @@ export function ClientsPageClient() {
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">Loading...</td>
+                <td colSpan={8} className="px-6 py-8 text-center text-gray-500">Loading...</td>
               </tr>
             ) : clients.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                   No clients found. Click "Add Client" to create one.
                 </td>
               </tr>
@@ -210,6 +234,9 @@ export function ClientsPageClient() {
                 <tr key={client.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-mono text-gray-900">{client.code}</td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{client.name}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {client.type === 'FINANCER' ? 'Financer' : 'Client'}
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{client.contactPerson || '-'}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{client.email || '-'}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{client.phone || '-'}</td>
@@ -273,6 +300,16 @@ export function ClientsPageClient() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
+            <FormField label="Type" required>
+              <Select
+                value={formData.type}
+                onChange={(e) => handleChange('type', e.target.value)}
+              >
+                {CLIENT_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </Select>
+            </FormField>
             <FormField label="Contact Person">
               <Input
                 value={formData.contactPerson}
@@ -280,6 +317,9 @@ export function ClientsPageClient() {
                 placeholder="Primary contact name"
               />
             </FormField>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <FormField label="Email">
               <Input
                 type="email"
@@ -316,6 +356,32 @@ export function ClientsPageClient() {
               <option value="false">Inactive</option>
             </Select>
           </FormField>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Default Tax Type">
+              <Select
+                value={formData.defaultTaxType}
+                onChange={(e) => handleChange('defaultTaxType', e.target.value)}
+              >
+                {TAX_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </Select>
+            </FormField>
+            {formData.defaultTaxType !== 'NONE' && (
+              <FormField label="Tax Rate (%)">
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={formData.defaultTaxRate}
+                  onChange={(e) => handleChange('defaultTaxRate', e.target.value)}
+                  placeholder="e.g. 18"
+                />
+              </FormField>
+            )}
+          </div>
 
           <ModalFooter>
             <Button type="button" variant="outline" onClick={() => setShowForm(false)}>

@@ -7,15 +7,20 @@ import { get, post, put, del } from '@/services/api/client';
 
 const BASE = '/complaints/clients';
 
+export type ClientType = 'CLIENT' | 'FINANCER';
+
 export interface Client {
   id: string;
   name: string;
   code: string;
+  type: ClientType;
   contactPerson?: string | null;
   email?: string | null;
   phone?: string | null;
   address?: string | null;
   isActive: boolean;
+  defaultTaxType?: string | null;
+  defaultTaxRate?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,21 +28,27 @@ export interface Client {
 export interface ClientCreateRequest {
   name: string;
   code: string;
+  type?: ClientType;
   contactPerson?: string;
   email?: string;
   phone?: string;
   address?: string;
   isActive?: boolean;
+  defaultTaxType?: string;
+  defaultTaxRate?: number;
 }
 
 export interface ClientUpdateRequest {
   name?: string;
   code?: string;
+  type?: ClientType;
   contactPerson?: string | null;
   email?: string | null;
   phone?: string | null;
   address?: string | null;
   isActive?: boolean;
+  defaultTaxType?: string | null;
+  defaultTaxRate?: number | null;
 }
 
 export interface ClientListResponse {

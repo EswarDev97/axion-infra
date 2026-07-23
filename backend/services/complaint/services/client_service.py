@@ -27,6 +27,7 @@ class ClientService:
             tenant_id=tenant_id,
             name=data.name,
             code=data.code,
+            type=data.type.value,
             contact_person=data.contact_person,
             email=data.email,
             phone=data.phone,
