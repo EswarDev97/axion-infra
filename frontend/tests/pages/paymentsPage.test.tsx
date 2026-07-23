@@ -4,10 +4,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PaymentsPageClient } from '@/app/(app)/dashboard/payments/PaymentsPageClient';
 import { paymentService, type Payment } from '@/services/complaint/paymentService';
+import { clientService } from '@/services/complaint/clientService';
+import { employeeService } from '@/services/hr/hrService';
 
 vi.mock('@/services/complaint/paymentService', async () => {
   const actual = await vi.importActual<typeof import('@/services/complaint/paymentService')>(
@@ -25,7 +27,38 @@ vi.mock('@/services/complaint/paymentService', async () => {
   };
 });
 
+vi.mock('@/services/complaint/clientService', async () => {
+  const actual = await vi.importActual<typeof import('@/services/complaint/clientService')>(
+    '@/services/complaint/clientService'
+  );
+  return {
+    ...actual,
+    clientService: {
+      list: vi.fn(),
+      getById: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+  };
+});
+
+vi.mock('@/services/hr/hrService', async () => {
+  const actual = await vi.importActual<typeof import('@/services/hr/hrService')>(
+    '@/services/hr/hrService'
+  );
+  return {
+    ...actual,
+    employeeService: {
+      ...actual.employeeService,
+      list: vi.fn(),
+    },
+  };
+});
+
 const mockedList = paymentService.list as unknown as ReturnType<typeof vi.fn>;
+const mockedClientList = clientService.list as unknown as ReturnType<typeof vi.fn>;
+const mockedEmployeeList = employeeService.list as unknown as ReturnType<typeof vi.fn>;
 
 const makePayment = (overrides: Partial<Payment> = {}): Payment => ({
   id: 'pay-1',
@@ -54,6 +87,36 @@ describe('PaymentsPageClient', () => {
       page: 1,
       limit: 200,
       pages: 0,
+    });
+    mockedClientList.mockResolvedValue({
+      items: [
+        { id: 'client-1', name: 'Acme Insurance', code: 'ACME', type: 'CLIENT', isActive: true, createdAt: '', updatedAt: '' },
+      ],
+      total: 1,
+      page: 1,
+      limit: 200,
+      pages: 1,
+    });
+    mockedEmployeeList.mockResolvedValue({
+      items: [
+        {
+          id: 'emp-1',
+          tenantId: 't-1',
+          employeeCode: 'E001',
+          firstName: 'Jane',
+          lastName: 'Doe',
+          fullName: 'Jane Doe',
+          email: 'jane@example.com',
+          positionId: 'pos-1',
+          positionTitle: 'Surveyor',
+          dateOfJoining: '2026-01-01',
+          status: 'ACTIVE',
+          employmentType: 'FULL_TIME',
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+      pagination: { page: 1, pageSize: 200, totalItems: 1, totalPages: 1, hasNext: false, hasPrev: false },
     });
   });
 
@@ -98,6 +161,114 @@ describe('PaymentsPageClient', () => {
           expect.objectContaining({ search: 'CASE-1001' })
         );
       });
+    });
+  });
+
+  describe('conditional form fields', () => {
+    const openAddModal = async (user: ReturnType<typeof userEvent.setup>) => {
+      render(<PaymentsPageClient />);
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalled();
+      });
+      const addButton = screen.getByRole('button', { name: /add payment/i });
+      await user.click(addButton);
+      await waitFor(() => {
+        expect(mockedClientList).toHaveBeenCalled();
+        expect(mockedEmployeeList).toHaveBeenCalled();
+      });
+      // Wait for the dropdown options to actually be populated in the DOM
+      // before proceeding, so subsequent state updates don't leak past act().
+      await waitFor(() => {
+        expect(screen.getAllByRole('option', { name: 'Acme Insurance' }).length).toBeGreaterThan(0);
+        expect(screen.getByRole('option', { name: 'Jane Doe' })).toBeInTheDocument();
+      });
+    };
+
+    const setBillingStatus = async (
+      user: ReturnType<typeof userEvent.setup>,
+      value: 'COMPANY_BILLING' | 'CUSTOMER_BILLING'
+    ) => {
+      const billingStatusSelect = screen.getByLabelText(/billing status/i);
+      await user.selectOptions(billingStatusSelect, value);
+    };
+
+    it('hides Payment Mode/UTR/Transaction Date/Amount fields when Billing Status = Company Billing', async () => {
+      const user = userEvent.setup();
+      await openAddModal(user);
+
+      await setBillingStatus(user, 'COMPANY_BILLING');
+
+      expect(screen.queryByText(/payment mode/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/utr number/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/transaction date/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/^amount/i)).not.toBeInTheDocument();
+    });
+
+    it('reveals the Payment Mode radio when Billing Status = Customer Billing', async () => {
+      const user = userEvent.setup();
+      await openAddModal(user);
+
+      await setBillingStatus(user, 'CUSTOMER_BILLING');
+
+      expect(screen.getByText(/payment mode/i)).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: /cash/i })).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: /transfer/i })).toBeInTheDocument();
+      // Neither mode selected yet -> no amount/UTR/date fields shown
+      expect(screen.queryByLabelText(/utr number/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/transaction date/i)).not.toBeInTheDocument();
+    });
+
+    it('reveals only Amount (not UTR/Transaction Date) when Payment Mode = Cash', async () => {
+      const user = userEvent.setup();
+      await openAddModal(user);
+
+      await setBillingStatus(user, 'CUSTOMER_BILLING');
+      await user.click(screen.getByRole('radio', { name: /cash/i }));
+
+      expect(screen.getByLabelText(/^amount/i)).toBeInTheDocument();
+      expect(screen.queryByLabelText(/utr number/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/transaction date/i)).not.toBeInTheDocument();
+    });
+
+    it('reveals UTR Number, Transaction Date&Time, AND Amount when Payment Mode = Transfer', async () => {
+      const user = userEvent.setup();
+      await openAddModal(user);
+
+      await setBillingStatus(user, 'CUSTOMER_BILLING');
+      await user.click(screen.getByRole('radio', { name: /transfer/i }));
+
+      expect(screen.getByLabelText(/utr number/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/transaction date/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^amount/i)).toBeInTheDocument();
+    });
+
+    it('calls clientService.list only with type=CLIENT for the Client dropdown and type=FINANCER for the Finance dropdown', async () => {
+      const user = userEvent.setup();
+      await openAddModal(user);
+
+      await waitFor(() => {
+        expect(mockedClientList).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'CLIENT' })
+        );
+        expect(mockedClientList).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'FINANCER' })
+        );
+      });
+
+      const calledWithClient = mockedClientList.mock.calls.some(
+        (call: unknown[]) => (call[0] as { type?: string })?.type === 'CLIENT'
+      );
+      const calledWithFinancer = mockedClientList.mock.calls.some(
+        (call: unknown[]) => (call[0] as { type?: string })?.type === 'FINANCER'
+      );
+      expect(calledWithClient).toBe(true);
+      expect(calledWithFinancer).toBe(true);
+
+      // No call should be made without a type filter (e.g. fetching all clients unfiltered)
+      const calledWithoutType = mockedClientList.mock.calls.some(
+        (call: unknown[]) => !(call[0] as { type?: string })?.type
+      );
+      expect(calledWithoutType).toBe(false);
     });
   });
 });
