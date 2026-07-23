@@ -7,7 +7,15 @@ import { get, post, put, del } from '@/services/api/client';
 
 const BASE = '/complaints/payments';
 
-export type PaymentCaseStatus = 'ASSIGNED' | 'IN_PROGRESS' | 'CLOSED';
+export type PaymentCaseStatus =
+  | 'ASSIGNED'
+  | 'SCHEDULED'
+  | 'COMPLETED'
+  | 'REPORT_SUBMITTED'
+  | 'INVOICE_GENERATED'
+  | 'PAYMENT_PENDING'
+  | 'PAYMENT_RECEIVED'
+  | 'CANCELLED';
 export type PaymentBillingStatus = 'COMPANY_BILLING' | 'CUSTOMER_BILLING';
 export type PaymentMode = 'CASH' | 'TRANSFER';
 
