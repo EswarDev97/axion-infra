@@ -102,14 +102,12 @@ class AuthzInsufficientPermissionException(MindFlowException):
         required: Optional[str] = None,
         actual: Optional[List[str]] = None
     ):
-        details = None
-        if required or actual:
-            details = [{"required": required, "actual": actual}]
+        if required:
+            message = f"{message} (requires: {required})"
         super().__init__(
             message=message,
             code="AUTHZ_INSUFFICIENT_PERMISSION",
-            status_code=status.HTTP_403_FORBIDDEN,
-            details=details
+            status_code=status.HTTP_403_FORBIDDEN
         )
 
 
