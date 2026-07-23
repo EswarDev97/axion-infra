@@ -14,6 +14,7 @@ from .complaint import Complaint
 from .complaint_action import ComplaintAction
 from .complaint_attachment import ComplaintAttachment
 from .client import Client
+from .payment import Payment
 
 __all__ = [
     "ComplaintCategory",
@@ -23,4 +24,5 @@ __all__ = [
     "ComplaintAction",
     "ComplaintAttachment",
     "Client",
+    "Payment",
 ]

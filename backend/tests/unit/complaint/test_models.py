@@ -722,3 +722,40 @@ class TestComplaintAttachmentModel:
         assert attachment.id is not None
         assert attachment.file_name == "evidence.jpg"
         assert attachment.content_type == "image/jpeg"
+
+
+class TestPaymentModel:
+    """Tests for Payment model."""
+
+    async def test_payment_creation(self, db_session, test_tenant, test_user):
+        """Test payment creation."""
+        from services.complaint.models.client import Client
+        from services.complaint.models.payment import Payment
+
+        client = Client(
+            tenant_id=test_tenant.id,
+            name="Acme Insurer",
+            code="ACME",
+            type="CLIENT",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add(client)
+        await db_session.commit()
+
+        payment = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-2026-0001",
+            client_id=client.id,
+            vehicle_registration_number="KA01AB1234",
+            executive_employee_id=uuid4(),
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add(payment)
+        await db_session.commit()
+        await db_session.refresh(payment)
+
+        assert payment.id is not None
+        assert payment.case_status == "ASSIGNED"
