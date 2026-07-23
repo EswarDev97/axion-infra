@@ -111,6 +111,9 @@ temp/
 .aicodepath/guidelines/test-secret-patterns.js
 .aicodepath/guidelines/test-secret-patterns.sh
 
+# Local pre-sync backups
+.local-backup-pre-sync/
+
 # Misc
 *.bak
 *.backup
