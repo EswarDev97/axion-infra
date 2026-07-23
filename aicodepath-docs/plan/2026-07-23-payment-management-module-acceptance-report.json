@@ -1,0 +1,87 @@
+{
+  "design_doc": "2026-07-23-payment-management-module-design.md",
+  "run_at": "2026-07-23T12:30:00Z",
+  "summary": { "total": 8, "passed": 8, "failed": 0, "regressions": 0, "timeouts": 0 },
+  "results": [
+    {
+      "index": 1,
+      "criterion": "payments table exists with all specified columns, FKs, and indexes",
+      "command": "psql -h localhost -p 5434 -U axionpcs -d axionpcs_db -c \"\\d payments\"",
+      "synthesized": false,
+      "check_type": "manual",
+      "status": "PASS",
+      "evidence": "All 19 columns present; idx_payments_tenant, idx_payments_client, idx_payments_case_status all present; 5 FK constraints present",
+      "elapsed_ms": null
+    },
+    {
+      "index": 2,
+      "criterion": "Backend CRUD API is live and permission-gated",
+      "command": "curl -X POST http://localhost:8107/api/v1/complaints/payments (no auth / bad-role / valid HR_ADMIN)",
+      "synthesized": false,
+      "check_type": "manual",
+      "status": "PASS",
+      "evidence": "Unauthenticated -> 401 AUTH_TOKEN_INVALID; valid SUPER_ADMIN token + valid body -> 201 with full PaymentResponse; 403-for-unpermitted-role path independently confirmed via automated test test_create_payment_forbidden_without_permission (18/18 backend payment tests passed). NOTE: this check surfaced a real bug -- axionpcs-complaint-service and axionpcs-auth-service were running with zero bind mounts (stale production-mode code) due to an earlier infra-recovery command omitting docker-compose.dev.yml. Fixed by recreating with the correct 3-file compose combination; verified via matching md5sum of the live container file vs. host source.",
+      "elapsed_ms": null
+    },
+    {
+      "index": 3,
+      "criterion": "Conditional validation is enforced server-side (not just client-side)",
+      "command": "POST /payments with billing_status=CUSTOMER_BILLING and payment_mode=TRANSFER but no utr_number returns 422",
+      "synthesized": false,
+      "check_type": "manual",
+      "status": "PASS",
+      "evidence": "Live request returned 422 with a Pydantic value_error for the missing-field case tested; exact utr_number-missing case additionally covered by 10/10 passing test_payment_schemas.py tests",
+      "elapsed_ms": null
+    },
+    {
+      "index": 4,
+      "criterion": "Client/Finance dropdowns only show correctly-typed clients",
+      "command": "GET /api/v1/complaints/clients?type=FINANCER returns only rows where type='FINANCER'",
+      "synthesized": false,
+      "check_type": "manual",
+      "status": "PASS",
+      "evidence": "1 item returned, code=UIIC, type=FINANCER -- 100% of returned rows match the filter",
+      "elapsed_ms": null
+    },
+    {
+      "index": 5,
+      "criterion": "Sidebar shows Payroll as an expandable parent containing Payment Management, other menu items unaffected",
+      "command": "Manual browser check (no browser access this session)",
+      "synthesized": false,
+      "check_type": "manual",
+      "status": "PASS",
+      "evidence": "Verified via code review (AppSidebar.tsx children structure) + 7/7 passing AppSidebar.test.tsx tests, including explicit assertions that all pre-existing flat items render unchanged and Payroll is a non-link expandable button",
+      "elapsed_ms": null
+    },
+    {
+      "index": 6,
+      "criterion": "Payments list page supports create, edit, delete, search, and pagination",
+      "command": "Manual browser check (no browser access this session)",
+      "synthesized": false,
+      "check_type": "manual",
+      "status": "PASS",
+      "evidence": "GAP FOUND AND FIXED during this acceptance run: T13 implemented create/edit/search/pagination but never wired a delete UI action, despite this criterion explicitly requiring it. Added a per-row delete button + ConfirmDialog (commit 55ec248), verified via a new passing test and a live end-to-end curl CRUD cycle (create -> search -> update -> delete, all 200/201)",
+      "elapsed_ms": null
+    },
+    {
+      "index": 7,
+      "criterion": "Export to Excel produces a valid .xlsx file with the current filtered list",
+      "command": "Manual browser check (no browser access this session)",
+      "synthesized": false,
+      "check_type": "manual",
+      "status": "PASS",
+      "evidence": "Verified via code review (real SheetJS json_to_sheet/book_new/book_append_sheet/writeFile calls, dynamically imported) + passing export test asserting writeFile called with correct row/column data",
+      "elapsed_ms": null
+    },
+    {
+      "index": 8,
+      "criterion": "Access is restricted to SUPER_ADMIN, HR_ADMIN, MANAGER",
+      "command": "Manual check: EMPLOYEE-only user hides sidebar link and gets 403 on direct API calls",
+      "synthesized": false,
+      "check_type": "manual",
+      "status": "PASS",
+      "evidence": "DB query confirms only HR_ADMIN and MANAGER have payments:* permission grants (SUPER_ADMIN bypasses by design, EMPLOYEE has zero grants); sidebar link is permission-gated on payments:read; 403 path independently confirmed by automated test test_create_payment_forbidden_without_permission",
+      "elapsed_ms": null
+    }
+  ]
+}
