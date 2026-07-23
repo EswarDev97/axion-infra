@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Edit, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -97,6 +97,31 @@ export function PaymentsPageClient() {
   const handleSearch = () => {
     setPage(1);
     fetchPayments();
+  };
+
+  const handleExport = async () => {
+    // Dynamically imported so the (fairly large) SheetJS library is only
+    // pulled into a separate chunk when the user actually exports, rather
+    // than bloating the main payments page bundle.
+    const XLSX = await import('xlsx');
+
+    const rows = payments.map((payment) => ({
+      'Case Reference': payment.caseReference,
+      Client: payment.clientId,
+      'Vehicle Reg No': payment.vehicleRegistrationNumber,
+      Executive: payment.executiveEmployeeId,
+      'Case Status': payment.caseStatus,
+      'Billing Status': payment.billingStatus,
+      'Payment Mode': payment.paymentMode ?? '',
+      'UTR Number': payment.utrNumber ?? '',
+      'Transaction Date': payment.transactionDatetime ?? '',
+      Amount: payment.amount ?? '',
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Payments');
+    XLSX.writeFile(workbook, 'payments.xlsx');
   };
 
   const fetchDropdownData = useCallback(async () => {
@@ -250,10 +275,16 @@ export function PaymentsPageClient() {
           <h1 className="text-2xl font-bold">Payment Management</h1>
           <p className="text-gray-600">Track case-level payments, billing and finance references</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Payment
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-2" />
+            Export to Excel
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Payment
+          </Button>
+        </div>
       </div>
 
       {error && (

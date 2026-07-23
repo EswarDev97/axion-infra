@@ -56,6 +56,24 @@ vi.mock('@/services/hr/hrService', async () => {
   };
 });
 
+type WorkSheet = Record<string, unknown>;
+type WorkBook = { SheetNames: string[]; Sheets: Record<string, WorkSheet> };
+
+const mockedJsonToSheet = vi.fn((_rows: Record<string, unknown>[]): WorkSheet => ({}));
+const mockedBookNew = vi.fn((): WorkBook => ({ SheetNames: [], Sheets: {} }));
+const mockedBookAppendSheet = vi.fn((_wb: WorkBook, _ws: WorkSheet, _name?: string) => undefined);
+const mockedWriteFile = vi.fn((_wb: WorkBook, _filename: string) => undefined);
+
+vi.mock('xlsx', () => ({
+  utils: {
+    json_to_sheet: (rows: Record<string, unknown>[]) => mockedJsonToSheet(rows),
+    book_new: () => mockedBookNew(),
+    book_append_sheet: (wb: WorkBook, ws: WorkSheet, name?: string) =>
+      mockedBookAppendSheet(wb, ws, name),
+  },
+  writeFile: (wb: WorkBook, filename: string) => mockedWriteFile(wb, filename),
+}));
+
 const mockedList = paymentService.list as unknown as ReturnType<typeof vi.fn>;
 const mockedClientList = clientService.list as unknown as ReturnType<typeof vi.fn>;
 const mockedEmployeeList = employeeService.list as unknown as ReturnType<typeof vi.fn>;
@@ -269,6 +287,99 @@ describe('PaymentsPageClient', () => {
         (call: unknown[]) => !(call[0] as { type?: string })?.type
       );
       expect(calledWithoutType).toBe(false);
+    });
+  });
+
+  describe('export', () => {
+    it('exports the currently-loaded payments to an Excel workbook with expected columns', async () => {
+      const user = userEvent.setup();
+      const payments = [
+        makePayment({
+          id: 'pay-1',
+          caseReference: 'CASE-1001',
+          clientId: 'client-abc-123',
+          vehicleRegistrationNumber: 'KA01AB1234',
+          executiveEmployeeId: 'emp-xyz-789',
+          caseStatus: 'ASSIGNED',
+          billingStatus: 'COMPANY_BILLING',
+          amount: 5000,
+        }),
+        makePayment({
+          id: 'pay-2',
+          caseReference: 'CASE-1002',
+          clientId: 'client-def-456',
+          vehicleRegistrationNumber: 'KA02CD5678',
+          executiveEmployeeId: 'emp-uvw-321',
+          caseStatus: 'PAYMENT_RECEIVED',
+          billingStatus: 'CUSTOMER_BILLING',
+          paymentMode: 'TRANSFER',
+          utrNumber: 'UTR123456',
+          transactionDatetime: '2026-07-10T10:00:00Z',
+          amount: 12000,
+        }),
+      ];
+      mockedList.mockResolvedValue({
+        items: payments,
+        total: 2,
+        page: 1,
+        limit: 200,
+        pages: 1,
+      });
+
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('CASE-1001')).toBeInTheDocument();
+      });
+
+      const exportButton = screen.getByRole('button', { name: /export to excel/i });
+      await user.click(exportButton);
+
+      await waitFor(() => {
+        expect(mockedJsonToSheet).toHaveBeenCalledTimes(1);
+      });
+
+      const rows = mockedJsonToSheet.mock.calls[0][0] as Record<string, unknown>[];
+      expect(rows).toHaveLength(2);
+
+      const expectedHeaders = [
+        'Case Reference',
+        'Client',
+        'Vehicle Reg No',
+        'Executive',
+        'Case Status',
+        'Billing Status',
+        'Payment Mode',
+        'UTR Number',
+        'Transaction Date',
+        'Amount',
+      ];
+      expect(Object.keys(rows[0])).toEqual(expectedHeaders);
+
+      expect(rows[0]).toMatchObject({
+        'Case Reference': 'CASE-1001',
+        Client: 'client-abc-123',
+        'Vehicle Reg No': 'KA01AB1234',
+        Executive: 'emp-xyz-789',
+        'Case Status': 'ASSIGNED',
+        'Billing Status': 'COMPANY_BILLING',
+        Amount: 5000,
+      });
+      expect(rows[1]).toMatchObject({
+        'Case Reference': 'CASE-1002',
+        'Billing Status': 'CUSTOMER_BILLING',
+        'Payment Mode': 'TRANSFER',
+        'UTR Number': 'UTR123456',
+        Amount: 12000,
+      });
+
+      expect(mockedBookNew).toHaveBeenCalledTimes(1);
+      expect(mockedBookAppendSheet).toHaveBeenCalledTimes(1);
+      expect(mockedWriteFile).toHaveBeenCalledTimes(1);
+      expect(mockedWriteFile).toHaveBeenCalledWith(
+        mockedBookNew.mock.results[0]?.value,
+        'payments.xlsx'
+      );
     });
   });
 });
