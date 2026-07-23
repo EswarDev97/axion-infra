@@ -139,8 +139,33 @@ describe('PaymentsPageClient', () => {
   });
 
   describe('list rendering', () => {
-    it('renders table rows for returned payments', async () => {
-      const payment = makePayment();
+    it('renders table rows for returned payments, resolving client/executive ids to names', async () => {
+      const payment = makePayment({ clientId: 'client-1', executiveEmployeeId: 'emp-1' });
+      mockedList.mockResolvedValue({
+        items: [payment],
+        total: 1,
+        page: 1,
+        limit: 200,
+        pages: 1,
+      });
+
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('CASE-1001')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('1')).toBeInTheDocument();
+      expect(screen.getByText('Acme Insurance')).toBeInTheDocument();
+      expect(screen.getByText('KA01AB1234')).toBeInTheDocument();
+      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+      expect(screen.getByText('ASSIGNED')).toBeInTheDocument();
+      expect(screen.getByText('COMPANY_BILLING')).toBeInTheDocument();
+      expect(screen.getByText('5000')).toBeInTheDocument();
+    });
+
+    it('falls back to the raw id when a client/executive lookup is unavailable', async () => {
+      const payment = makePayment({ clientId: 'client-abc-123', executiveEmployeeId: 'emp-xyz-789' });
       mockedList.mockResolvedValue({
         items: [payment],
         total: 1,
@@ -156,11 +181,7 @@ describe('PaymentsPageClient', () => {
       });
 
       expect(screen.getByText('client-abc-123')).toBeInTheDocument();
-      expect(screen.getByText('KA01AB1234')).toBeInTheDocument();
       expect(screen.getByText('emp-xyz-789')).toBeInTheDocument();
-      expect(screen.getByText('ASSIGNED')).toBeInTheDocument();
-      expect(screen.getByText('COMPANY_BILLING')).toBeInTheDocument();
-      expect(screen.getByText('5000')).toBeInTheDocument();
     });
 
     it('re-calls paymentService.list with the search term on Enter', async () => {
@@ -254,7 +275,7 @@ describe('PaymentsPageClient', () => {
       await user.selectOptions(billingStatusSelect, value);
     };
 
-    it('hides Payment Mode/UTR/Transaction Date/Amount fields when Billing Status = Company Billing', async () => {
+    it('hides Payment Mode/UTR/Transaction Date but shows an optional Amount field when Billing Status = Company Billing', async () => {
       const user = userEvent.setup();
       await openAddModal(user);
 
@@ -263,7 +284,10 @@ describe('PaymentsPageClient', () => {
       expect(screen.queryByText(/payment mode/i)).not.toBeInTheDocument();
       expect(screen.queryByLabelText(/utr number/i)).not.toBeInTheDocument();
       expect(screen.queryByLabelText(/transaction date/i)).not.toBeInTheDocument();
-      expect(screen.queryByLabelText(/^amount/i)).not.toBeInTheDocument();
+
+      const amountField = screen.getByLabelText(/^amount/i);
+      expect(amountField).toBeInTheDocument();
+      expect(amountField).not.toBeRequired();
     });
 
     it('reveals the Payment Mode radio when Billing Status = Customer Billing', async () => {
@@ -341,12 +365,13 @@ describe('PaymentsPageClient', () => {
         makePayment({
           id: 'pay-1',
           caseReference: 'CASE-1001',
-          clientId: 'client-abc-123',
+          clientId: 'client-1',
           vehicleRegistrationNumber: 'KA01AB1234',
-          executiveEmployeeId: 'emp-xyz-789',
+          executiveEmployeeId: 'emp-1',
           caseStatus: 'ASSIGNED',
           billingStatus: 'COMPANY_BILLING',
           amount: 5000,
+          createdAt: '2026-07-01T00:00:00Z',
         }),
         makePayment({
           id: 'pay-2',
@@ -360,6 +385,7 @@ describe('PaymentsPageClient', () => {
           utrNumber: 'UTR123456',
           transactionDatetime: '2026-07-10T10:00:00Z',
           amount: 12000,
+          createdAt: '2026-07-05T00:00:00Z',
         }),
       ];
       mockedList.mockResolvedValue({
@@ -387,6 +413,7 @@ describe('PaymentsPageClient', () => {
       expect(rows).toHaveLength(2);
 
       const expectedHeaders = [
+        'S.No',
         'Case Reference',
         'Client',
         'Vehicle Reg No',
@@ -397,24 +424,29 @@ describe('PaymentsPageClient', () => {
         'UTR Number',
         'Transaction Date',
         'Amount',
+        'Lead Created Date',
       ];
       expect(Object.keys(rows[0])).toEqual(expectedHeaders);
 
       expect(rows[0]).toMatchObject({
+        'S.No': 1,
         'Case Reference': 'CASE-1001',
-        Client: 'client-abc-123',
+        Client: 'Acme Insurance',
         'Vehicle Reg No': 'KA01AB1234',
-        Executive: 'emp-xyz-789',
+        Executive: 'Jane Doe',
         'Case Status': 'ASSIGNED',
         'Billing Status': 'COMPANY_BILLING',
         Amount: 5000,
+        'Lead Created Date': '2026-07-01T00:00:00Z',
       });
       expect(rows[1]).toMatchObject({
+        'S.No': 2,
         'Case Reference': 'CASE-1002',
         'Billing Status': 'CUSTOMER_BILLING',
         'Payment Mode': 'TRANSFER',
         'UTR Number': 'UTR123456',
         Amount: 12000,
+        'Lead Created Date': '2026-07-05T00:00:00Z',
       });
 
       expect(mockedBookNew).toHaveBeenCalledTimes(1);

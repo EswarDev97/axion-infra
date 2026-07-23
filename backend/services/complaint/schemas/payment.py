@@ -50,10 +50,14 @@ def _validate_billing_matrix(
 
     | Condition                          | Required                              | Must be null                                          |
     |-------------------------------------|----------------------------------------|--------------------------------------------------------|
-    | billing_status = COMPANY_BILLING    | -                                      | payment_mode, utr_number, transaction_datetime, amount |
+    | billing_status = COMPANY_BILLING    | -                                      | payment_mode, utr_number, transaction_datetime         |
     | billing_status = CUSTOMER_BILLING   | payment_mode, amount                   | -                                                        |
     | payment_mode = CASH                 | amount (inherited from billing rule)   | utr_number, transaction_datetime                        |
     | payment_mode = TRANSFER             | amount, utr_number, transaction_datetime | -                                                      |
+
+    amount is optional (not required, not forbidden) under COMPANY_BILLING —
+    payment_mode/utr_number/transaction_datetime remain forbidden since they
+    only make sense once a customer payment mode has actually been chosen.
     """
     if billing_status == BillingStatus.COMPANY_BILLING:
         if payment_mode is not None:
@@ -67,10 +71,6 @@ def _validate_billing_matrix(
         if transaction_datetime is not None:
             raise ValueError(
                 "transaction_datetime must be null when billing_status is COMPANY_BILLING"
-            )
-        if amount is not None:
-            raise ValueError(
-                "amount must be null when billing_status is COMPANY_BILLING"
             )
         return
 

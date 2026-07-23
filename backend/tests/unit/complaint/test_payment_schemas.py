@@ -57,6 +57,18 @@ class TestBillingMatrix:
         assert payment.utr_number is None
         assert payment.transaction_datetime is None
 
+    def test_company_billing_allows_optional_amount(self):
+        """billing_status=COMPANY_BILLING with an amount set is valid (amount
+        is optional, not forbidden, under company billing)."""
+        payment = PaymentCreateRequest(
+            **_base_kwargs(billing_status="COMPANY_BILLING", amount=Decimal("2500.00"))
+        )
+        assert payment.billing_status == "COMPANY_BILLING"
+        assert payment.amount == Decimal("2500.00")
+        assert payment.payment_mode is None
+        assert payment.utr_number is None
+        assert payment.transaction_datetime is None
+
     def test_customer_billing_requires_payment_mode(self):
         """billing_status=CUSTOMER_BILLING with no payment_mode must raise."""
         with pytest.raises(ValidationError):

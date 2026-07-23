@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -67,6 +67,20 @@ export function PaymentsPageClient() {
   const [financers, setFinancers] = useState<Client[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
 
+  // ID -> display name lookups for rendering payments.clientId/executiveEmployeeId
+  // as names in the table and export (the backend only returns raw FK ids).
+  const clientNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of [...clients, ...financers]) map.set(c.id, c.name);
+    return map;
+  }, [clients, financers]);
+
+  const employeeNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of employees) map.set(e.id, e.fullName);
+    return map;
+  }, [employees]);
+
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<Payment | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -110,17 +124,19 @@ export function PaymentsPageClient() {
     // than bloating the main payments page bundle.
     const XLSX = await import('xlsx');
 
-    const rows = payments.map((payment) => ({
+    const rows = payments.map((payment, index) => ({
+      'S.No': index + 1,
       'Case Reference': payment.caseReference,
-      Client: payment.clientId,
+      Client: clientNameById.get(payment.clientId) ?? payment.clientId,
       'Vehicle Reg No': payment.vehicleRegistrationNumber,
-      Executive: payment.executiveEmployeeId,
+      Executive: employeeNameById.get(payment.executiveEmployeeId) ?? payment.executiveEmployeeId,
       'Case Status': payment.caseStatus,
       'Billing Status': payment.billingStatus,
       'Payment Mode': payment.paymentMode ?? '',
       'UTR Number': payment.utrNumber ?? '',
       'Transaction Date': payment.transactionDatetime ?? '',
       Amount: payment.amount ?? '',
+      'Lead Created Date': payment.createdAt,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
@@ -143,6 +159,10 @@ export function PaymentsPageClient() {
       setFormError((e as Error).message || 'Failed to load form reference data');
     }
   }, []);
+
+  useEffect(() => {
+    fetchDropdownData();
+  }, [fetchDropdownData]);
 
   const openCreate = () => {
     setEditing(null);
@@ -176,12 +196,12 @@ export function PaymentsPageClient() {
     setFormData((prev) => {
       const next = { ...prev, [field]: value };
       // Clear dependent fields when a parent selection changes, so hidden
-      // fields never get submitted stale.
+      // fields never get submitted stale. Amount is NOT cleared here since
+      // it's shown (optionally) for both Company and Customer Billing.
       if (field === 'billingStatus') {
         next.paymentMode = '';
         next.utrNumber = '';
         next.transactionDatetime = '';
-        next.amount = '';
       }
       if (field === 'paymentMode') {
         if (value === 'CASH') {
@@ -193,10 +213,13 @@ export function PaymentsPageClient() {
     });
   };
 
+  const isCompanyBilling = formData.billingStatus === 'COMPANY_BILLING';
   const isCustomerBilling = formData.billingStatus === 'CUSTOMER_BILLING';
   const isCash = isCustomerBilling && formData.paymentMode === 'CASH';
   const isTransfer = isCustomerBilling && formData.paymentMode === 'TRANSFER';
-  const showAmount = isCash || isTransfer;
+  // Amount is always shown once a billing status is picked: required for
+  // Customer Billing (Cash or Transfer), optional for Company Billing.
+  const showAmount = isCompanyBilling || isCash || isTransfer;
 
   const isFormValid = () => {
     if (!formData.caseReference.trim() || !formData.clientId || !formData.vehicleRegistrationNumber.trim()) {
@@ -227,6 +250,11 @@ export function PaymentsPageClient() {
       transactionDatetime: undefined,
       amount: undefined,
     };
+
+    if (formData.billingStatus === 'COMPANY_BILLING') {
+      // Amount is optional for Company Billing — send it only if provided.
+      base.amount = formData.amount ? parseFloat(formData.amount) : undefined;
+    }
 
     if (formData.billingStatus === 'CUSTOMER_BILLING') {
       base.paymentMode = formData.paymentMode;
@@ -333,6 +361,7 @@ export function PaymentsPageClient() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">S.No</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Case Reference</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vehicle Reg. No.</th>
@@ -346,21 +375,22 @@ export function PaymentsPageClient() {
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={8} className="px-6 py-8 text-center text-gray-500">Loading...</td>
+                <td colSpan={9} className="px-6 py-8 text-center text-gray-500">Loading...</td>
               </tr>
             ) : payments.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                   No payments found.
                 </td>
               </tr>
             ) : (
-              payments.map((payment) => (
+              payments.map((payment, index) => (
                 <tr key={payment.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 text-sm text-gray-600">{(page - 1) * PAGE_SIZE + index + 1}</td>
                   <td className="px-6 py-4 text-sm font-mono text-gray-900">{payment.caseReference}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{payment.clientId}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{clientNameById.get(payment.clientId) ?? payment.clientId}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{payment.vehicleRegistrationNumber}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{payment.executiveEmployeeId}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{employeeNameById.get(payment.executiveEmployeeId) ?? payment.executiveEmployeeId}</td>
                   <td className="px-6 py-4">
                     <Badge variant="neutral">{payment.caseStatus}</Badge>
                   </td>
@@ -571,7 +601,7 @@ export function PaymentsPageClient() {
           )}
 
           {showAmount && (
-            <FormField label="Amount" htmlFor="amount" required>
+            <FormField label="Amount" htmlFor="amount" required={isCustomerBilling}>
               <Input
                 id="amount"
                 type="number"
