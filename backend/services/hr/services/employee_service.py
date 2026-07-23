@@ -128,8 +128,8 @@ class EmployeeService:
             role_code = role or "EMPLOYEE"
             await self.db.execute(
                 text("""
-                    INSERT INTO user_tenant_roles (id, user_id, tenant_id, role_id, assigned_at, is_active, created_at)
-                    SELECT gen_random_uuid(), CAST(:user_id AS UUID), CAST(:tenant_id AS UUID), r.id, NOW(), true, NOW()
+                    INSERT INTO user_tenant_roles (id, user_id, tenant_id, role_id, assigned_at, assigned_by, created_at, updated_at)
+                    SELECT gen_random_uuid(), CAST(:user_id AS UUID), CAST(:tenant_id AS UUID), r.id, NOW(), CAST(:assigned_by AS UUID), NOW(), NOW()
                     FROM roles r
                     WHERE r.code = :role_code AND r.tenant_id = CAST(:tenant_id AS UUID)
                     ON CONFLICT DO NOTHING
@@ -138,6 +138,7 @@ class EmployeeService:
                     "user_id": str(new_user_id),
                     "tenant_id": str(tenant_id),
                     "role_code": role_code,
+                    "assigned_by": str(created_by),
                 }
             )
 
