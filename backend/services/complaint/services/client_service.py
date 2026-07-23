@@ -67,11 +67,15 @@ class ClientService:
         limit: int = 50,
         is_active: Optional[bool] = None,
         search: Optional[str] = None,
+        type_filter: Optional[str] = None,
     ) -> ClientListResponse:
         query = select(Client).where(Client.tenant_id == tenant_id)
 
         if is_active is not None:
             query = query.where(Client.is_active == is_active)
+
+        if type_filter:
+            query = query.where(Client.type == type_filter)
 
         if search:
             term = f"%{search}%"

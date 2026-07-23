@@ -57,6 +57,7 @@ async def list_clients(
     limit: int = Query(50, ge=1, le=200),
     is_active: Optional[bool] = Query(None, alias="isActive"),
     search: Optional[str] = Query(None),
+    type: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db_session),
     current_user: CurrentUser = Depends(get_current_user),
     tenant_id: UUID = Depends(get_tenant_id),
@@ -64,7 +65,7 @@ async def list_clients(
 ):
     request_id = UUID(x_request_id) if x_request_id else uuid4()
     service = ClientService(db)
-    result = await service.list(tenant_id, page, limit, is_active, search)
+    result = await service.list(tenant_id, page, limit, is_active, search, type)
     return ApiResponse(
         success=True,
         data=result,
