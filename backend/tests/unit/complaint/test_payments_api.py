@@ -51,16 +51,26 @@ async def payments_client(db_session, test_tenant, test_user) -> AsyncClient:
     the test's `db_session`/`test_tenant`/`test_user` fixtures directly.
     """
     from services.complaint.api.payments import router as payments_router
+    from shared.middleware import setup_exception_handlers
 
     app = FastAPI()
     app.include_router(payments_router, prefix="/api/v1/complaints")
+    # Register the shared MindFlowException handler so authz/auth exceptions
+    # raised inside require_permission map to 403/401 JSON responses (the
+    # standalone test app has no lifespan/middleware setup otherwise).
+    setup_exception_handlers(app)
 
     current_user = CurrentUser(
         user_id=test_user.id,
         tenant_id=test_tenant.id,
         email=test_user.email,
         roles=["HR_ADMIN"],
-        permissions=[],
+        permissions=[
+            "payments:create",
+            "payments:read",
+            "payments:update",
+            "payments:delete",
+        ],
         jti="test-jti",
     )
 
@@ -131,3 +141,127 @@ class TestCreatePayment:
         assert data["amount"] is None
         assert "createdAt" in data
         assert "updatedAt" in data
+
+
+@pytest_asyncio.fixture
+async def forbidden_payments_client(db_session, test_tenant, test_user) -> AsyncClient:
+    """
+    Variant of `payments_client` whose `get_current_user` override returns a
+    `CurrentUser` with a non-privileged role and NO payment permissions
+    (roles=["EMPLOYEE"], permissions=[]). Used to assert that the
+    `require_permission` gating rejects authenticated-but-unpermitted users
+    with a 403.
+    """
+    from services.complaint.api.payments import router as payments_router
+    from shared.middleware import setup_exception_handlers
+
+    app = FastAPI()
+    app.include_router(payments_router, prefix="/api/v1/complaints")
+    setup_exception_handlers(app)
+
+    unprivileged_user = CurrentUser(
+        user_id=test_user.id,
+        tenant_id=test_tenant.id,
+        email=test_user.email,
+        roles=["EMPLOYEE"],
+        permissions=[],
+        jti="test-jti",
+    )
+
+    async def override_get_db_session():
+        yield db_session
+
+    async def override_get_current_user():
+        return unprivileged_user
+
+    async def override_get_tenant_id():
+        return test_tenant.id
+
+    app.dependency_overrides[get_db_session] = override_get_db_session
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_tenant_id] = override_get_tenant_id
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        yield client
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def unauthenticated_payments_client() -> AsyncClient:
+    """
+    Variant of `payments_client` that does NOT override `get_current_user`,
+    so the real dependency chain executes. With no valid `Authorization`
+    header, `extract_token_from_header` raises `AuthTokenInvalidException`
+    (401). `get_db_session`/`get_tenant_id` are NOT overridden either since
+    they themselves depend on `get_current_user` and are never reached once
+    auth fails. This exercises the genuine unauthenticated rejection path.
+    """
+    from services.complaint.api.payments import router as payments_router
+    from shared.middleware import setup_exception_handlers
+
+    app = FastAPI()
+    app.include_router(payments_router, prefix="/api/v1/complaints")
+    setup_exception_handlers(app)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        yield client
+
+
+class TestPaymentAuthorization:
+    """Tests for `require_permission` gating on the payments router (T7b)."""
+
+    async def test_create_payment_forbidden_without_permission(
+        self, forbidden_payments_client
+    ):
+        """An authenticated user lacking `payments:create` (roles=["EMPLOYEE"],
+        permissions=[]) must be rejected with 403 before any route logic runs."""
+        payload = {
+            "caseReference": "CASE-2026-0002",
+            "clientId": str(uuid4()),
+            "vehicleRegistrationNumber": "KA01AB1234",
+            "executiveEmployeeId": str(uuid4()),
+            "caseStatus": "ASSIGNED",
+            "billingStatus": "COMPANY_BILLING",
+        }
+
+        response = await forbidden_payments_client.post(
+            "/api/v1/complaints/payments",
+            json=payload,
+        )
+
+        assert response.status_code == 403
+        body = response.json()
+        assert body["success"] is False
+        assert body["error"]["code"] == "AUTHZ_INSUFFICIENT_PERMISSION"
+
+    async def test_create_payment_unauthenticated(
+        self, unauthenticated_payments_client
+    ):
+        """A request with no valid auth (no Authorization header) must be
+        rejected with 401 by the real dependency chain, never reaching the
+        route body."""
+        payload = {
+            "caseReference": "CASE-2026-0003",
+            "clientId": str(uuid4()),
+            "vehicleRegistrationNumber": "KA01AB1234",
+            "executiveEmployeeId": str(uuid4()),
+            "caseStatus": "ASSIGNED",
+            "billingStatus": "COMPANY_BILLING",
+        }
+
+        response = await unauthenticated_payments_client.post(
+            "/api/v1/complaints/payments",
+            json=payload,
+        )
+
+        assert response.status_code == 401
+        body = response.json()
+        assert body["success"] is False
+        assert body["error"]["code"] == "AUTH_TOKEN_INVALID"

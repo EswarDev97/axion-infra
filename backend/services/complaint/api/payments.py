@@ -2,9 +2,13 @@
 MindFlow Complaint Service - Payment API Endpoints
 CRUD for case-level payment records (design doc Section 5).
 
-Route logic only (T7a) — permission gating (`require_permission`) is
-added in T7b. For now this mirrors `clients.py`'s current baseline of
-`Depends(get_current_user)` only.
+Permission gating (T7b): every route is restricted via
+`require_permission("payments:<action>")`. Per the approved design,
+Payment Management is limited to SUPER_ADMIN (bypasses all checks) /
+HR_ADMIN / MANAGER (the roles seeded with the `payments:*` permissions) —
+stricter than sibling `clients.py`. `require_permission` internally
+depends on `get_current_user`, so the returned value is still a
+`CurrentUser`; we simply swap which dependency factory produces it.
 """
 
 from typing import Annotated, Optional
@@ -13,7 +17,12 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared.dependencies import get_current_user, get_tenant_id, get_db_session, CurrentUser
+from shared.dependencies import (
+    CurrentUser,
+    get_db_session,
+    get_tenant_id,
+    require_permission,
+)
 from shared.schemas import ApiResponse
 
 from ..schemas.payment import (
@@ -36,7 +45,7 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 async def create_payment(
     data: PaymentCreateRequest,
     db: AsyncSession = Depends(get_db_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("payments:create")),
     tenant_id: UUID = Depends(get_tenant_id),
     x_request_id: Annotated[str | None, Header()] = None,
 ):
@@ -64,7 +73,7 @@ async def list_payments(
     billing_status: Optional[str] = Query(None, alias="billingStatus"),
     client_id: Optional[UUID] = Query(None, alias="clientId"),
     db: AsyncSession = Depends(get_db_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("payments:read")),
     tenant_id: UUID = Depends(get_tenant_id),
     x_request_id: Annotated[str | None, Header()] = None,
 ):
@@ -89,7 +98,7 @@ async def list_payments(
 async def get_payment(
     payment_id: UUID,
     db: AsyncSession = Depends(get_db_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("payments:read")),
     tenant_id: UUID = Depends(get_tenant_id),
     x_request_id: Annotated[str | None, Header()] = None,
 ):
@@ -115,7 +124,7 @@ async def update_payment(
     payment_id: UUID,
     data: PaymentUpdateRequest,
     db: AsyncSession = Depends(get_db_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("payments:update")),
     tenant_id: UUID = Depends(get_tenant_id),
     x_request_id: Annotated[str | None, Header()] = None,
 ):
@@ -141,7 +150,7 @@ async def update_payment(
 async def delete_payment(
     payment_id: UUID,
     db: AsyncSession = Depends(get_db_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("payments:delete")),
     tenant_id: UUID = Depends(get_tenant_id),
     x_request_id: Annotated[str | None, Header()] = None,
 ):
