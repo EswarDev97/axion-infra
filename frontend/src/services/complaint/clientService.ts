@@ -60,7 +60,7 @@ export interface ClientListResponse {
 }
 
 export const clientService = {
-  async list(params?: { page?: number; limit?: number; isActive?: boolean; search?: string }): Promise<ClientListResponse> {
+  async list(params?: { page?: number; limit?: number; isActive?: boolean; search?: string; type?: ClientType }): Promise<ClientListResponse> {
     return get<ClientListResponse>(BASE, params);
   },
 
