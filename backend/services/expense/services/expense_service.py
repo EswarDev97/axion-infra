@@ -32,6 +32,19 @@ from ..models import (
 from ..schemas.expense_request import ExpenseRequestFilters
 
 
+# Receipts (bills/invoices) can be attached/removed while a request is active.
+# They are locked only once the request reaches a terminal state. This keeps
+# uploads usable under the AUTO_FINANCE_APPROVAL workflow, where requests are
+# created directly as FINANCE_APPROVED rather than DRAFT.
+RECEIPT_LOCKED_STATES = {
+    "PAID",
+    "CANCELLED",
+    "REJECTED",
+    "MANAGER_REJECTED",
+    "FINANCE_REJECTED",
+}
+
+
 class ExpenseService:
     """Expense management service."""
 
@@ -926,11 +939,11 @@ class ExpenseService:
         """Add receipt to expense request."""
         expense_request = await self.get_request(request_id, tenant_id)
 
-        if expense_request.status != "DRAFT":
+        if expense_request.status in RECEIPT_LOCKED_STATES:
             raise ResourceStateConflictException(
-                "Can only add receipts to DRAFT requests",
+                f"Cannot add receipts to a {expense_request.status} request",
                 current_state=expense_request.status,
-                target_state="DRAFT"
+                target_state="FINANCE_APPROVED"
             )
 
         # Validate item if provided
@@ -1005,11 +1018,11 @@ class ExpenseService:
         receipt = await self.get_receipt(receipt_id, tenant_id)
         expense_request = await self.get_request(receipt.expense_request_id, tenant_id)
 
-        if expense_request.status != "DRAFT":
+        if expense_request.status in RECEIPT_LOCKED_STATES:
             raise ResourceStateConflictException(
-                "Can only delete receipts from DRAFT requests",
+                f"Cannot delete receipts from a {expense_request.status} request",
                 current_state=expense_request.status,
-                target_state="DRAFT"
+                target_state="FINANCE_APPROVED"
             )
 
         await self.db.delete(receipt)

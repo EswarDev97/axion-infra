@@ -12,6 +12,7 @@ import { Modal } from '@/components/feedback/Modal';
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
+import { ReceiptsSection } from '@/components/expenses/ReceiptsSection';
 import { useAuthStore } from '@/stores/authStore';
 import type { ExpenseRequestStatus, ExpenseItem } from '@/services/expense/types';
 
@@ -361,6 +362,14 @@ export default function ExpenseDetailPage() {
           <p className="text-gray-500 text-center py-8">No items added yet</p>
         )}
       </div>
+
+      {/* Receipts & Documents */}
+      <ReceiptsSection
+        requestId={requestId}
+        canEdit={!['PAID', 'CANCELLED', 'REJECTED', 'MANAGER_REJECTED', 'FINANCE_REJECTED'].includes(
+          request.status
+        )}
+      />
 
       {/* Approval History */}
       <div className="bg-white rounded-lg shadow-sm border p-6">

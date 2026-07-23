@@ -23,6 +23,7 @@ DEFAULT_CATEGORIES = [
     {"code": "JIO_BILL", "name": "Jio Bill", "description": "Jio telecom bills"},
     {"code": "AIRTEL_BILL", "name": "Airtel Bill", "description": "Airtel telecom bills"},
     {"code": "SURVEYOR_BILL", "name": "Surveyor Bill", "description": "Surveyor service bills"},
+    {"code": "SURVEYOR_FEES", "name": "Surveyor Fees", "description": "Surveyor professional fees"},
     {"code": "PETROL", "name": "Petrol Amount", "description": "Fuel and petrol expenses"},
     {"code": "FOOD", "name": "Food", "description": "Food and meal expenses"},
     {"code": "RAPIDO_UBER", "name": "Rapido / Uber Bill", "description": "Ride-sharing service bills"},

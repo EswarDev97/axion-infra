@@ -171,7 +171,7 @@ class DepartmentService:
             department.is_active = is_active
 
         department.updated_by = updated_by
-        department.updated_at = datetime.now(timezone.utc)
+        department.updated_at = datetime.utcnow()
 
         await self.db.commit()
 

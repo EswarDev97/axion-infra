@@ -199,7 +199,7 @@ class PayrollService:
             payroll.tax_id = tax_id
 
         payroll.updated_by = updated_by
-        payroll.updated_at = datetime.now(timezone.utc)
+        payroll.updated_at = datetime.utcnow()
 
         await self.db.commit()
         await self.db.refresh(payroll)
@@ -288,4 +288,4 @@ class PayrollService:
             # Close the previous record one day before new one starts
             from datetime import timedelta
             previous.effective_to = new_effective_from - timedelta(days=1)
-            previous.updated_at = datetime.now(timezone.utc)
+            previous.updated_at = datetime.utcnow()

@@ -323,7 +323,9 @@ class StorageService:
         file_metadata = await self.get_file(file_id, tenant_id)
 
         file_metadata.is_deleted = True
-        file_metadata.deleted_at = datetime.now(timezone.utc)
+        # deleted_at is a TIMESTAMP WITHOUT TIME ZONE column, so store a naive
+        # (UTC) datetime to avoid asyncpg offset-aware/naive comparison errors.
+        file_metadata.deleted_at = datetime.now(timezone.utc).replace(tzinfo=None)
         file_metadata.deletion_reason = reason
         file_metadata.updated_by = user_id
 
@@ -331,6 +333,25 @@ class StorageService:
 
         # Note: Actual file in MinIO is not deleted (soft delete only)
         # A background job could clean up orphaned files periodically
+
+    def get_file_content(self, file_metadata: FileMetadata) -> bytes:
+        """
+        Read the raw object bytes from MinIO.
+
+        Used by the authenticated content-streaming endpoint so files can be
+        viewed/downloaded through the gateway without exposing MinIO directly.
+        """
+        response = None
+        try:
+            response = self.minio_client.get_object(
+                bucket_name=file_metadata.bucket_name,
+                object_name=file_metadata.object_key,
+            )
+            return response.read()
+        finally:
+            if response is not None:
+                response.close()
+                response.release_conn()
 
     def generate_download_url(
         self,

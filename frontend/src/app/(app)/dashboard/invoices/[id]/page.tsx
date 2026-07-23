@@ -53,7 +53,10 @@ export default function InvoiceDetailPage() {
   const [description, setDescription] = useState('');
   const [clientId, setClientId] = useState('');
   const [currency, setCurrency] = useState<CurrencyCode>('INR');
-  const [taxPercentage, setTaxPercentage] = useState('0');
+  const [taxType, setTaxType] = useState<'NONE' | 'IGST' | 'CGST_SGST'>('NONE');
+  const [igstPercentage, setIgstPercentage] = useState('0');
+  const [cgstPercentage, setCgstPercentage] = useState('0');
+  const [sgstPercentage, setSgstPercentage] = useState('0');
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
   const [terms, setTerms] = useState('');
@@ -75,7 +78,15 @@ export default function InvoiceDetailPage() {
       setCurrency((invoice.currency as CurrencyCode) || 'INR');
       setPoNumber(invoice.poNumber || '');
       setPoDate(invoice.poDate || '');
-      setTaxPercentage(String(invoice.taxPercentage ?? 0));
+      const igst = Number((invoice as any).igstPercentage ?? 0);
+      const cgst = Number((invoice as any).cgstPercentage ?? 0);
+      const sgst = Number((invoice as any).sgstPercentage ?? 0);
+      setIgstPercentage(String(igst));
+      setCgstPercentage(String(cgst));
+      setSgstPercentage(String(sgst));
+      if (igst > 0) setTaxType('IGST');
+      else if (cgst > 0 || sgst > 0) setTaxType('CGST_SGST');
+      else setTaxType('NONE');
       setDueDate(invoice.dueDate || '');
       setNotes(invoice.notes || '');
       setTerms(invoice.terms || '');
@@ -144,8 +155,14 @@ export default function InvoiceDetailPage() {
   const isDraft = status === 'DRAFT';
   const symbol = getCurrencySymbol(currency);
 
+  const igst = parseFloat(igstPercentage) || 0;
+  const cgst = parseFloat(cgstPercentage) || 0;
+  const sgst = parseFloat(sgstPercentage) || 0;
   const subtotal = items.reduce((sum, i) => sum + (i.quantity || 0) * (i.rate || 0), 0);
-  const taxAmt = subtotal * (parseFloat(taxPercentage) || 0) / 100;
+  const igstAmt = subtotal * igst / 100;
+  const cgstAmt = subtotal * cgst / 100;
+  const sgstAmt = subtotal * sgst / 100;
+  const taxAmt = igstAmt + cgstAmt + sgstAmt;
   const total = subtotal + taxAmt;
 
   const handleSave = () => {
@@ -161,7 +178,10 @@ export default function InvoiceDetailPage() {
       billToEmail: billToEmail || null,
       billToPhone: billToPhone || null,
       currency,
-      taxPercentage: parseFloat(taxPercentage) || 0,
+      taxPercentage: igst + cgst + sgst,
+      igstPercentage: igst,
+      cgstPercentage: cgst,
+      sgstPercentage: sgst,
       dueDate: dueDate || null,
       notes: notes || null,
       terms: terms || null,
@@ -292,10 +312,41 @@ export default function InvoiceDetailPage() {
                 </Select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tax %</label>
-                <Input type="number" step="0.01" min="0" value={taxPercentage}
-                  onChange={(e) => { setTaxPercentage(e.target.value); markChanged(); }} />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tax Type</label>
+                <select className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  value={taxType}
+                  onChange={(e) => {
+                    const t = e.target.value as 'NONE' | 'IGST' | 'CGST_SGST';
+                    setTaxType(t);
+                    if (t === 'NONE') { setIgstPercentage('0'); setCgstPercentage('0'); setSgstPercentage('0'); }
+                    markChanged();
+                  }}>
+                  <option value="NONE">No Tax</option>
+                  <option value="IGST">IGST (Interstate)</option>
+                  <option value="CGST_SGST">CGST + SGST (Intrastate)</option>
+                </select>
               </div>
+              {taxType === 'IGST' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">IGST %</label>
+                  <Input type="number" step="0.01" min="0" value={igstPercentage}
+                    onChange={(e) => { setIgstPercentage(e.target.value); markChanged(); }} />
+                </div>
+              )}
+              {taxType === 'CGST_SGST' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">CGST %</label>
+                    <Input type="number" step="0.01" min="0" value={cgstPercentage}
+                      onChange={(e) => { setCgstPercentage(e.target.value); markChanged(); }} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">SGST %</label>
+                    <Input type="number" step="0.01" min="0" value={sgstPercentage}
+                      onChange={(e) => { setSgstPercentage(e.target.value); markChanged(); }} />
+                  </div>
+                </>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
                 <Input type="date" value={dueDate}
@@ -478,16 +529,15 @@ export default function InvoiceDetailPage() {
         )}
 
         {/* Totals */}
-        <div className="border-t pt-4 space-y-2 text-right">
-          <div className="text-sm text-gray-600">
-            Subtotal: <span className="font-mono font-medium">{symbol} {subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-          </div>
-          <div className="text-sm text-gray-600">
-            Tax ({taxPercentage}%): <span className="font-mono font-medium">{symbol} {taxAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-          </div>
-          <div className="text-lg font-bold">
-            Total: <span className="font-mono">{symbol} {total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-          </div>
+        <div className="border-t pt-4 space-y-1.5 text-right">
+          <div className="text-sm text-gray-600">Subtotal: <span className="font-mono font-medium">{symbol} {subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+          {igst > 0 && <div className="text-sm text-gray-600">IGST ({igst}%): <span className="font-mono font-medium">{symbol} {igstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>}
+          {cgst > 0 && <div className="text-sm text-gray-600">CGST ({cgst}%): <span className="font-mono font-medium">{symbol} {cgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>}
+          {sgst > 0 && <div className="text-sm text-gray-600">SGST ({sgst}%): <span className="font-mono font-medium">{symbol} {sgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>}
+          {igst === 0 && cgst === 0 && sgst === 0 && taxAmt > 0 && (
+            <div className="text-sm text-gray-600">Tax: <span className="font-mono font-medium">{symbol} {taxAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+          )}
+          <div className="text-lg font-bold">Total: <span className="font-mono">{symbol} {total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
         </div>
       </div>
 

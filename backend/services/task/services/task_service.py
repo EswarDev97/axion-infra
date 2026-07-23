@@ -3,6 +3,8 @@ MindFlow Task Service - Task Business Logic
 Per API_CONTRACT.md Section 8.3.1
 """
 
+import secrets
+import string
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import List, Optional, Set, Tuple
@@ -36,6 +38,11 @@ class TaskService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    def _generate_task_number(self) -> str:
+        """Generate a human-friendly task number, e.g. TASK-12345678."""
+        random_part = ''.join(secrets.choice(string.digits) for _ in range(8))
+        return f"TASK-{random_part}"
 
     # ==================== Task CRUD ====================
 
@@ -95,6 +102,7 @@ class TaskService:
 
         task = Task(
             tenant_id=tenant_id,
+            task_number=self._generate_task_number(),
             title=title,
             description=description,
             status_id=status_id,

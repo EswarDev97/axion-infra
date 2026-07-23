@@ -278,7 +278,7 @@ class TaskStatusService:
             status.is_active = is_active
 
         status.updated_by = updated_by
-        status.updated_at = datetime.now(timezone.utc)
+        status.updated_at = datetime.utcnow()
 
         await self.db.commit()
 

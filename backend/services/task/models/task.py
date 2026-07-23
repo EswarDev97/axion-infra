@@ -67,6 +67,13 @@ class Task(Base):
         index=True
     )
 
+    # Human-friendly identifier (e.g., TASK-12345678), shown in the UI
+    task_number: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        index=True
+    )
+
     # Core fields
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

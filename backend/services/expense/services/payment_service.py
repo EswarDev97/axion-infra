@@ -81,9 +81,9 @@ class PaymentService:
 
         # Update expense request status
         expense_request.status = "PAID"
-        expense_request.paid_at = datetime.now(timezone.utc)
+        expense_request.paid_at = datetime.utcnow()
         expense_request.updated_by = processed_by
-        expense_request.updated_at = datetime.now(timezone.utc)
+        expense_request.updated_at = datetime.utcnow()
 
         await self.db.commit()
 

@@ -11,9 +11,10 @@ Endpoints:
 """
 
 from typing import Annotated, Optional
+from urllib.parse import quote
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, File, Form, Header, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, Query, Response, UploadFile
 
 from shared.database import db_manager
 from shared.dependencies import (
@@ -213,6 +214,35 @@ async def get_download_url(
             ),
             message="Download URL generated successfully",
             requestId=request_id
+        )
+
+
+@router.get("/{file_id}/content")
+async def get_file_content(
+    file_id: UUID,
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    x_request_id: Annotated[str | None, Header()] = None
+):
+    """
+    Stream the raw file content through the (authenticated) API.
+
+    Unlike the presigned-URL endpoint, this proxies the bytes via the gateway,
+    so it works in the browser even when MinIO is only reachable internally.
+    Used for viewing/downloading expense receipts and other attachments.
+    """
+    async with db_manager.session(tenant_id=user.tenant_id) as db:
+        storage_service = StorageService(db)
+        file_metadata = await storage_service.get_file(file_id, user.tenant_id)
+        content = storage_service.get_file_content(file_metadata)
+
+        filename = quote(file_metadata.original_filename or "document")
+        return Response(
+            content=content,
+            media_type=file_metadata.content_type or "application/octet-stream",
+            headers={
+                "Content-Disposition": f"inline; filename*=UTF-8''{filename}",
+                "Cache-Control": "private, max-age=0, no-cache",
+            },
         )
 
 

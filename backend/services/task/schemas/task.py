@@ -75,6 +75,7 @@ class TaskAssigneeInfo(BaseModel):
 class TaskResponse(BaseModel):
     """Task response schema."""
     id: UUID
+    task_number: Optional[str] = Field(None, alias="taskNumber")
     title: str
     description: Optional[str] = None
     status_id: UUID = Field(alias="statusId")

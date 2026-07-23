@@ -103,6 +103,7 @@ def _task_to_response(
 
     return TaskResponse(
         id=task.id,
+        taskNumber=task.task_number,
         title=task.title,
         description=task.description,
         statusId=task.status_id,

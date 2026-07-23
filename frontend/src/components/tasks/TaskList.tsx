@@ -89,6 +89,9 @@ export function TaskList({ filters, onTaskClick }: TaskListProps) {
       render: (_, row) => (
         <div className="max-w-md">
           <p className="font-medium text-gray-900 truncate">{row.title}</p>
+          {row.taskNumber && (
+            <p className="text-xs text-gray-400 font-mono">{row.taskNumber}</p>
+          )}
           {row.description && (
             <p className="text-sm text-gray-500 truncate">{row.description}</p>
           )}

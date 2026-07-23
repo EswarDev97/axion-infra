@@ -235,7 +235,7 @@ class QuoteService:
         """Soft delete a quote."""
         quote = await self.get_quote(quote_id, tenant_id)
         quote.is_deleted = True
-        quote.deleted_at = datetime.now(timezone.utc)
+        quote.deleted_at = datetime.utcnow()
         quote.deletion_reason = reason
         quote.updated_by = user_id
         await self.db.commit()
@@ -321,7 +321,7 @@ class QuoteService:
             raise BusinessRuleViolationException("Cannot send a quote with no items.")
 
         quote.status = "SENT"
-        quote.issued_at = datetime.now(timezone.utc)
+        quote.issued_at = datetime.utcnow()
         quote.updated_by = user_id
         await self.db.commit()
         await self.db.refresh(quote)
@@ -335,7 +335,7 @@ class QuoteService:
                 "Quote", str(quote_id), "Only SENT quotes can be accepted."
             )
         quote.status = "ACCEPTED"
-        quote.accepted_at = datetime.now(timezone.utc)
+        quote.accepted_at = datetime.utcnow()
         quote.updated_by = user_id
         await self.db.commit()
         await self.db.refresh(quote)
@@ -351,7 +351,7 @@ class QuoteService:
                 "Quote", str(quote_id), "Only SENT quotes can be rejected."
             )
         quote.status = "REJECTED"
-        quote.rejected_at = datetime.now(timezone.utc)
+        quote.rejected_at = datetime.utcnow()
         quote.rejection_reason = reason
         quote.updated_by = user_id
         await self.db.commit()

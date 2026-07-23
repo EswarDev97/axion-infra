@@ -82,6 +82,9 @@ class InvoiceService:
         items_to_create = list(data.items)
         currency = data.currency
 
+        # Bill date = invoice date printed on the document; default to today
+        bill_date = data.bill_date or date.today()
+
         # Quote reference fields (auto-populated when converting)
         quote_date = data.quote_date
         po_number = data.po_number
@@ -150,6 +153,7 @@ class InvoiceService:
             invoice_number=data.invoice_number or await self._generate_invoice_number(tenant_id),
             client_id=data.client_id,
             quote_id=data.quote_id,
+            bill_date=bill_date,
             quote_date=quote_date,
             po_number=po_number,
             po_date=po_date,
@@ -161,6 +165,9 @@ class InvoiceService:
             bill_to_phone=bill_to_phone,
             currency=currency,
             tax_percentage=data.tax_percentage,
+            igst_percentage=getattr(data, 'igst_percentage', Decimal("0.00")),
+            cgst_percentage=getattr(data, 'cgst_percentage', Decimal("0.00")),
+            sgst_percentage=getattr(data, 'sgst_percentage', Decimal("0.00")),
             due_date=data.due_date,
             notes=data.notes,
             terms=data.terms,
@@ -308,7 +315,7 @@ class InvoiceService:
         """Soft delete an invoice."""
         invoice = await self.get_invoice(invoice_id, tenant_id)
         invoice.is_deleted = True
-        invoice.deleted_at = datetime.now(timezone.utc)
+        invoice.deleted_at = datetime.utcnow()
         invoice.deletion_reason = reason
         invoice.updated_by = user_id
         await self.db.commit()
@@ -394,7 +401,7 @@ class InvoiceService:
             raise BusinessRuleViolationException("Cannot send an invoice with no items.")
 
         invoice.status = "SENT"
-        invoice.issued_at = datetime.now(timezone.utc)
+        invoice.issued_at = datetime.utcnow()
         invoice.updated_by = user_id
         await self.db.commit()
         await self.db.refresh(invoice)
@@ -408,7 +415,7 @@ class InvoiceService:
                 "Invoice", str(invoice_id), "Only SENT invoices can be marked as paid."
             )
         invoice.status = "PAID"
-        invoice.paid_at = datetime.now(timezone.utc)
+        invoice.paid_at = datetime.utcnow()
         invoice.updated_by = user_id
         await self.db.commit()
         await self.db.refresh(invoice)
@@ -425,7 +432,7 @@ class InvoiceService:
                 f"Cannot cancel an invoice in '{invoice.status}' status."
             )
         invoice.status = "CANCELLED"
-        invoice.cancelled_at = datetime.now(timezone.utc)
+        invoice.cancelled_at = datetime.utcnow()
         invoice.cancellation_reason = reason
         invoice.updated_by = user_id
         await self.db.commit()

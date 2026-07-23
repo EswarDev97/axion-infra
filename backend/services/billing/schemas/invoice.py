@@ -14,34 +14,25 @@ from shared.schemas import PaginatedData
 from .currency import VALID_CURRENCY_CODES
 
 
-# ============================================================================
-# Invoice Item Schemas
-# ============================================================================
-
 class InvoiceItemCreateRequest(BaseModel):
-    """Create a line item in an invoice."""
     item_name: str = Field(max_length=255, alias="itemName")
     description: Optional[str] = Field(None, max_length=500)
     quantity: Decimal = Field(default=Decimal("1.00"), gt=0)
     rate: Decimal = Field(gt=0)
     sort_order: int = Field(default=0, ge=0)
-
     model_config = ConfigDict(populate_by_name=True)
 
 
 class InvoiceItemUpdateRequest(BaseModel):
-    """Update a line item in an invoice."""
     item_name: Optional[str] = Field(None, max_length=255, alias="itemName")
     description: Optional[str] = Field(None, max_length=500)
     quantity: Optional[Decimal] = Field(None, gt=0)
     rate: Optional[Decimal] = Field(None, gt=0)
     sort_order: Optional[int] = Field(None, ge=0)
-
     model_config = ConfigDict(populate_by_name=True)
 
 
 class InvoiceItemResponse(BaseModel):
-    """Invoice item response."""
     id: UUID
     item_name: Optional[str] = Field(None, alias="itemName")
     description: Optional[str] = None
@@ -49,19 +40,14 @@ class InvoiceItemResponse(BaseModel):
     rate: Decimal
     amount: Decimal
     sort_order: int = Field(alias="sortOrder")
-
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
 
-# ============================================================================
-# Invoice Schemas
-# ============================================================================
-
 class InvoiceCreateRequest(BaseModel):
-    """POST /invoices request body."""
     invoice_number: Optional[str] = Field(None, max_length=50, alias="invoiceNumber")
     client_id: UUID = Field(alias="clientId")
     quote_id: Optional[UUID] = Field(None, alias="quoteId")
+    bill_date: Optional[date] = Field(None, alias="billDate")
     quote_date: Optional[date] = Field(None, alias="quoteDate")
     po_number: Optional[str] = Field(None, max_length=50, alias="poNumber")
     po_date: Optional[date] = Field(None, alias="poDate")
@@ -73,11 +59,13 @@ class InvoiceCreateRequest(BaseModel):
     bill_to_phone: Optional[str] = Field(None, max_length=50, alias="billToPhone")
     currency: str = Field(default="INR", max_length=3)
     tax_percentage: Decimal = Field(default=Decimal("0.00"), ge=0, alias="taxPercentage")
+    igst_percentage: Decimal = Field(default=Decimal("0.00"), ge=0, alias="igstPercentage")
+    cgst_percentage: Decimal = Field(default=Decimal("0.00"), ge=0, alias="cgstPercentage")
+    sgst_percentage: Decimal = Field(default=Decimal("0.00"), ge=0, alias="sgstPercentage")
     due_date: Optional[date] = Field(None, alias="dueDate")
     notes: Optional[str] = None
     terms: Optional[str] = None
     items: List[InvoiceItemCreateRequest] = Field(default_factory=list)
-
     model_config = ConfigDict(populate_by_name=True)
 
     @field_validator("currency")
@@ -90,9 +78,9 @@ class InvoiceCreateRequest(BaseModel):
 
 
 class InvoiceUpdateRequest(BaseModel):
-    """PUT /invoices/{invoice_id} request body."""
     invoice_number: Optional[str] = Field(None, max_length=50, alias="invoiceNumber")
     client_id: Optional[UUID] = Field(None, alias="clientId")
+    bill_date: Optional[date] = Field(None, alias="billDate")
     po_number: Optional[str] = Field(None, max_length=50, alias="poNumber")
     po_date: Optional[date] = Field(None, alias="poDate")
     quote_date: Optional[date] = Field(None, alias="quoteDate")
@@ -104,10 +92,12 @@ class InvoiceUpdateRequest(BaseModel):
     bill_to_phone: Optional[str] = Field(None, max_length=50, alias="billToPhone")
     currency: Optional[str] = Field(None, max_length=3)
     tax_percentage: Optional[Decimal] = Field(None, ge=0, alias="taxPercentage")
+    igst_percentage: Optional[Decimal] = Field(None, ge=0, alias="igstPercentage")
+    cgst_percentage: Optional[Decimal] = Field(None, ge=0, alias="cgstPercentage")
+    sgst_percentage: Optional[Decimal] = Field(None, ge=0, alias="sgstPercentage")
     due_date: Optional[date] = Field(None, alias="dueDate")
     notes: Optional[str] = None
     terms: Optional[str] = None
-
     model_config = ConfigDict(populate_by_name=True)
 
     @field_validator("currency")
@@ -122,7 +112,6 @@ class InvoiceUpdateRequest(BaseModel):
 
 
 class InvoiceFilters(BaseModel):
-    """Query filters for invoice list."""
     client_id: Optional[UUID] = Field(None, alias="clientId")
     quote_id: Optional[UUID] = Field(None, alias="quoteId")
     status: Optional[str] = None
@@ -134,30 +123,24 @@ class InvoiceFilters(BaseModel):
     min_amount: Optional[Decimal] = Field(None, alias="minAmount")
     max_amount: Optional[Decimal] = Field(None, alias="maxAmount")
     search: Optional[str] = None
-
     model_config = ConfigDict(populate_by_name=True)
 
 
 class ClientInfo(BaseModel):
-    """Embedded client info in invoice response."""
     id: UUID
     name: str
     code: str
-
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
 
 class QuoteInfo(BaseModel):
-    """Embedded quote info in invoice response."""
     id: UUID
     quote_number: str = Field(alias="quoteNumber")
     title: str
-
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
 
 class InvoiceResponse(BaseModel):
-    """Invoice response schema."""
     id: UUID
     tenant_id: UUID = Field(alias="tenantId")
     client_id: UUID = Field(alias="clientId")
@@ -165,6 +148,7 @@ class InvoiceResponse(BaseModel):
     quote_id: Optional[UUID] = Field(None, alias="quoteId")
     quote: Optional[QuoteInfo] = None
     invoice_number: str = Field(alias="invoiceNumber")
+    bill_date: Optional[date] = Field(None, alias="billDate")
     quote_date: Optional[date] = Field(None, alias="quoteDate")
     po_number: Optional[str] = Field(None, alias="poNumber")
     po_date: Optional[date] = Field(None, alias="poDate")
@@ -180,6 +164,9 @@ class InvoiceResponse(BaseModel):
     tax_percentage: Decimal = Field(alias="taxPercentage")
     tax_amount: Decimal = Field(alias="taxAmount")
     total_amount: Decimal = Field(alias="totalAmount")
+    igst_percentage: Decimal = Field(default=Decimal("0.00"), alias="igstPercentage")
+    cgst_percentage: Decimal = Field(default=Decimal("0.00"), alias="cgstPercentage")
+    sgst_percentage: Decimal = Field(default=Decimal("0.00"), alias="sgstPercentage")
     status: str
     due_date: Optional[date] = Field(None, alias="dueDate")
     notes: Optional[str] = None
@@ -193,10 +180,8 @@ class InvoiceResponse(BaseModel):
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")
     created_by: UUID = Field(alias="createdBy")
-
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
 
 class InvoiceListResponse(PaginatedData[InvoiceResponse]):
-    """Paginated list of invoices."""
     pass

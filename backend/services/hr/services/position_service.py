@@ -170,7 +170,7 @@ class PositionService:
             position.is_active = is_active
 
         position.updated_by = updated_by
-        position.updated_at = datetime.now(timezone.utc)
+        position.updated_at = datetime.utcnow()
 
         await self.db.commit()
 

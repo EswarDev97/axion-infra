@@ -191,6 +191,7 @@ export interface Invoice {
   quoteId?: string | null;
   quote?: QuoteInfo | null;
   quoteNumber?: string | null;
+  billDate?: string | null;
   quoteDate?: string | null;
   poNumber?: string | null;
   poDate?: string | null;
@@ -226,6 +227,7 @@ export interface InvoiceCreateRequest {
   invoiceNumber?: string;
   clientId: string;
   quoteId?: string;
+  billDate?: string;
   quoteDate?: string;
   poNumber?: string;
   poDate?: string;
@@ -246,6 +248,7 @@ export interface InvoiceCreateRequest {
 export interface InvoiceUpdateRequest {
   invoiceNumber?: string;
   clientId?: string;
+  billDate?: string | null;
   poNumber?: string | null;
   poDate?: string | null;
   quoteDate?: string | null;

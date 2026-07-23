@@ -457,7 +457,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - DATABASE_URL=postgresql://axionpcs:axionpcs_secret@postgres:5432/axionpcs_db?schema=public
+      - DATABASE_URL=postgresql://axionpcs:axionpcs_secret@postgres:5432/axionpcs_gateway_db?schema=public
       - REDIS_URL=redis://redis:6379
       - MINIO_ENDPOINT=minio
       - MINIO_PORT=9000
@@ -488,12 +488,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api/v1
+        - NEXT_PUBLIC_API_BASE_URL=https://mindflow.axionpcs.in/api/v1
     container_name: axionpcs-frontend
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api/v1
+      - NEXT_PUBLIC_API_BASE_URL=https://mindflow.axionpcs.in/api/v1
       - API_BASE_URL_INTERNAL=http://api-gateway:3001/api/v1
     ports:
       - "3002:3002"

@@ -223,7 +223,7 @@ class CandidateService:
             candidate.notes = notes
 
         candidate.updated_by = updated_by
-        candidate.updated_at = datetime.now(timezone.utc)
+        candidate.updated_at = datetime.utcnow()
 
         await self.db.commit()
         await self.db.refresh(candidate)
@@ -241,10 +241,10 @@ class CandidateService:
         candidate = await self.get_candidate(candidate_id, tenant_id)
 
         candidate.is_deleted = True
-        candidate.deleted_at = datetime.now(timezone.utc)
+        candidate.deleted_at = datetime.utcnow()
         candidate.deletion_reason = reason
         candidate.updated_by = deleted_by
-        candidate.updated_at = datetime.now(timezone.utc)
+        candidate.updated_at = datetime.utcnow()
 
         await self.db.commit()
 
@@ -316,10 +316,10 @@ class CandidateService:
 
         # Mark candidate as converted (soft delete with reason)
         candidate.is_deleted = True
-        candidate.deleted_at = datetime.now(timezone.utc)
+        candidate.deleted_at = datetime.utcnow()
         candidate.deletion_reason = "Converted to employee"
         candidate.updated_by = created_by
-        candidate.updated_at = datetime.now(timezone.utc)
+        candidate.updated_at = datetime.utcnow()
 
         await self.db.commit()
         await self.db.refresh(employee)

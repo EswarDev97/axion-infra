@@ -165,8 +165,34 @@ export async function get<T>(url: string, params?: object): Promise<T> {
   return response.data.data;
 }
 
+/**
+ * Strip the default JSON Content-Type for FormData payloads so the browser
+ * sets `multipart/form-data` (with the required boundary) itself. Axios passes
+ * FormData through transformRequest untouched, so the instance default
+ * `application/json` would otherwise be sent and break file uploads (HTTP 422).
+ */
+function isFormData(data: unknown): boolean {
+  return typeof FormData !== 'undefined' && data instanceof FormData;
+}
+
+const formDataTransform = [
+  (data: unknown, headers: { delete?: (name: string) => void } & Record<string, unknown>) => {
+    if (headers) {
+      if (typeof headers.delete === 'function') {
+        headers.delete('Content-Type');
+      } else {
+        delete headers['Content-Type'];
+        delete headers['content-type'];
+      }
+    }
+    return data;
+  },
+];
+
 export async function post<T>(url: string, data?: unknown): Promise<T> {
-  const response = await apiClient.post<ApiResponse<T>>(url, data);
+  const config = isFormData(data) ? { transformRequest: formDataTransform } : undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const response = await apiClient.post<ApiResponse<T>>(url, data, config as any);
   return response.data.data;
 }
 

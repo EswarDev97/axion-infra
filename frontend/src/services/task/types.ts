@@ -49,6 +49,7 @@ export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 export interface Task {
   id: string;
   tenantId: string;
+  taskNumber?: string | null;
   title: string;
   description?: string | null;
   statusId: string;

@@ -110,7 +110,7 @@ class AttendanceService:
         await self._validate_employee(employee_id, tenant_id)
 
         today = date.today()
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
 
         # Check if already checked in today
         stmt = select(AttendanceRecord).where(
@@ -165,7 +165,7 @@ class AttendanceService:
         await self._validate_employee(employee_id, tenant_id)
 
         today = date.today()
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
 
         stmt = select(AttendanceRecord).where(
             AttendanceRecord.employee_id == employee_id,
@@ -426,7 +426,7 @@ class AttendanceService:
             else:
                 record.overtime_hours = None
 
-        record.updated_at = datetime.now(timezone.utc)
+        record.updated_at = datetime.utcnow()
         await self.db.commit()
         await self.db.refresh(record)
 

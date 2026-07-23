@@ -150,7 +150,7 @@ class LeaveService:
             leave_type.is_active = is_active
 
         leave_type.updated_by = updated_by
-        leave_type.updated_at = datetime.now(timezone.utc)
+        leave_type.updated_at = datetime.utcnow()
 
         await self.db.commit()
         await self.db.refresh(leave_type)
@@ -253,7 +253,7 @@ class LeaveService:
         if carried_over_days is not None:
             balance.carried_over_days = carried_over_days
 
-        balance.updated_at = datetime.now(timezone.utc)
+        balance.updated_at = datetime.utcnow()
 
         await self.db.commit()
         await self.db.refresh(balance)
@@ -295,7 +295,7 @@ class LeaveService:
 
             if balance:
                 balance.total_days = days
-                balance.updated_at = datetime.now(timezone.utc)
+                balance.updated_at = datetime.utcnow()
             else:
                 balance = LeaveBalance(
                     tenant_id=tenant_id,
@@ -400,11 +400,11 @@ class LeaveService:
         # Update balance pending days (skip for unpaid leave)
         if balance and not is_unpaid_leave:
             balance.pending_days += days_requested
-            balance.updated_at = datetime.now(timezone.utc)
+            balance.updated_at = datetime.utcnow()
 
         # If auto-approved, update used days (skip for unpaid leave)
         if not leave_type.requires_approval:
-            leave_request.approved_at = datetime.now(timezone.utc)
+            leave_request.approved_at = datetime.utcnow()
             if balance and not is_unpaid_leave:
                 balance.pending_days -= days_requested
                 balance.used_days += days_requested
@@ -509,8 +509,8 @@ class LeaveService:
 
         leave_request.status = "APPROVED"
         leave_request.approved_by = approver_id
-        leave_request.approved_at = datetime.now(timezone.utc)
-        leave_request.updated_at = datetime.now(timezone.utc)
+        leave_request.approved_at = datetime.utcnow()
+        leave_request.updated_at = datetime.utcnow()
 
         # Update balance (skip for unpaid leave types like LOP)
         leave_type = leave_request.leave_type
@@ -530,7 +530,7 @@ class LeaveService:
             if balance:
                 balance.pending_days -= leave_request.days_requested
                 balance.used_days += leave_request.days_requested
-                balance.updated_at = datetime.now(timezone.utc)
+                balance.updated_at = datetime.utcnow()
 
         await self.db.commit()
 
@@ -562,9 +562,9 @@ class LeaveService:
 
         leave_request.status = "REJECTED"
         leave_request.approved_by = approver_id
-        leave_request.approved_at = datetime.now(timezone.utc)
+        leave_request.approved_at = datetime.utcnow()
         leave_request.rejection_reason = rejection_reason
-        leave_request.updated_at = datetime.now(timezone.utc)
+        leave_request.updated_at = datetime.utcnow()
 
         # Update balance - remove from pending (skip for unpaid leave like LOP)
         leave_type = leave_request.leave_type
@@ -583,7 +583,7 @@ class LeaveService:
 
             if balance:
                 balance.pending_days -= leave_request.days_requested
-                balance.updated_at = datetime.now(timezone.utc)
+                balance.updated_at = datetime.utcnow()
 
         await self.db.commit()
 
@@ -614,7 +614,7 @@ class LeaveService:
         old_status = leave_request.status
         leave_request.status = "CANCELLED"
         leave_request.updated_by = cancelled_by
-        leave_request.updated_at = datetime.now(timezone.utc)
+        leave_request.updated_at = datetime.utcnow()
 
         # Update balance (skip for unpaid leave like LOP)
         leave_type = leave_request.leave_type
@@ -636,7 +636,7 @@ class LeaveService:
                     balance.pending_days -= leave_request.days_requested
                 elif old_status == "APPROVED":
                     balance.used_days -= leave_request.days_requested
-                balance.updated_at = datetime.now(timezone.utc)
+                balance.updated_at = datetime.utcnow()
 
         await self.db.commit()
 
