@@ -1,11 +1,36 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 
-const menuItems = [
+interface MenuChildItem {
+  label: string;
+  href: string;
+  icon?: ReactNode;
+  permission?: string;
+}
+
+interface MenuLinkItem {
+  label: string;
+  href: string;
+  icon: ReactNode;
+  permission?: string;
+  children?: undefined;
+}
+
+interface MenuExpandableItem {
+  label: string;
+  href?: undefined;
+  icon: ReactNode;
+  permission?: string;
+  children: MenuChildItem[];
+}
+
+type MenuItem = MenuLinkItem | MenuExpandableItem;
+
+const menuItems: MenuItem[] = [
   {
     label: 'Dashboard',
     href: '/dashboard',
@@ -73,12 +98,18 @@ const menuItems = [
   },
   {
     label: 'Payroll',
-    href: '/dashboard/payroll',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
       </svg>
     ),
+    children: [
+      {
+        label: 'Payment Management',
+        href: '/dashboard/payments',
+        permission: 'payments:read',
+      },
+    ],
   },
   {
     label: 'Documents',
@@ -195,18 +226,72 @@ export function AppSidebar() {
   const pathname = usePathname();
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const [isMounted, setIsMounted] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  const filteredMenuItems = menuItems.filter((item) => {
-    if (!item.permission) return true;
-    // Before hydration, show all items to match server render
-    // After hydration, filter based on actual permissions
-    if (!isMounted) return true;
-    return hasPermission(item.permission);
-  });
+  // Auto-expand any parent whose child href matches the current pathname,
+  // so navigating directly to a nested route (e.g. /dashboard/payments)
+  // shows its parent (e.g. Payroll) already expanded.
+  useEffect(() => {
+    const parentsToExpand = menuItems
+      .filter((item) =>
+        item.children?.some(
+          (child) => pathname === child.href || pathname.startsWith(child.href + '/')
+        )
+      )
+      .map((item) => item.label);
+
+    if (parentsToExpand.length === 0) return;
+
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const label of parentsToExpand) {
+        if (!next.has(label)) {
+          next.add(label);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [pathname]);
+
+  const toggleExpanded = (label: string) => {
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) {
+        next.delete(label);
+      } else {
+        next.add(label);
+      }
+      return next;
+    });
+  };
+
+  const filteredMenuItems = useMemo(
+    () =>
+      menuItems
+        .filter((item) => {
+          if (!item.permission) return true;
+          // Before hydration, show all items to match server render
+          // After hydration, filter based on actual permissions
+          if (!isMounted) return true;
+          return hasPermission(item.permission);
+        })
+        .map((item) => {
+          if (!item.children) return item;
+          const filteredChildren = item.children.filter((child) => {
+            if (!child.permission) return true;
+            if (!isMounted) return true;
+            return hasPermission(child.permission);
+          });
+          return { ...item, children: filteredChildren };
+        }),
+    [isMounted, hasPermission]
+  );
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-gray-900 text-white hidden lg:block">
@@ -222,6 +307,65 @@ export function AppSidebar() {
         <nav className="flex-1 overflow-y-auto py-4 px-3">
           <ul className="space-y-1">
             {filteredMenuItems.map((item) => {
+              // Items with children render as an expandable button + nested
+              // submenu instead of a direct Link (they have no href of their own).
+              if (item.children) {
+                const isExpanded = expandedItems.has(item.label);
+                const isChildActive = item.children.some(
+                  (child) => pathname === child.href || pathname.startsWith(child.href + '/')
+                );
+                return (
+                  <li key={item.label}>
+                    <button
+                      type="button"
+                      onClick={() => toggleExpanded(item.label)}
+                      aria-expanded={isExpanded}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition ${
+                        isChildActive
+                          ? 'bg-primary-600 text-white'
+                          : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                      }`}
+                    >
+                      {item.icon}
+                      <span className="flex-1 text-left">{item.label}</span>
+                      <svg
+                        className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                    {isExpanded && (
+                      <ul className="mt-1 ml-4 space-y-1 border-l border-gray-800 pl-3">
+                        {item.children.map((child) => {
+                          const isChildLinkActive =
+                            pathname === child.href || pathname.startsWith(child.href + '/');
+                          return (
+                            <li key={child.href}>
+                              <Link
+                                href={child.href}
+                                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition text-sm ${
+                                  isChildLinkActive
+                                    ? 'bg-primary-600 text-white'
+                                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                                }`}
+                              >
+                                {child.icon}
+                                <span>{child.label}</span>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </li>
+                );
+              }
+
+              // Existing flat-item rendering path — unchanged from before
+              // children support was added, to avoid any regression risk.
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <li key={item.href}>
