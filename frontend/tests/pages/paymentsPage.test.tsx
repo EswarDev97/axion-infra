@@ -182,6 +182,50 @@ describe('PaymentsPageClient', () => {
     });
   });
 
+  describe('delete', () => {
+    it('deletes a payment after confirming, then refreshes the list', async () => {
+      const user = userEvent.setup();
+      const payment = makePayment();
+      mockedList.mockResolvedValue({
+        items: [payment],
+        total: 1,
+        page: 1,
+        limit: 200,
+        pages: 1,
+      });
+      const mockedDelete = paymentService.delete as unknown as ReturnType<typeof vi.fn>;
+      mockedDelete.mockResolvedValue(undefined);
+
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('CASE-1001')).toBeInTheDocument();
+      });
+
+      const deleteButton = screen.getByTitle('Delete');
+      await user.click(deleteButton);
+
+      // Confirm dialog renders a "Delete Payment" heading and a "Delete"
+      // confirm button. The row's icon-only delete button also exposes an
+      // accessible name of "Delete" via its `title` attribute, so scope the
+      // query to buttons inside the dialog (identified via the Cancel button,
+      // which is unambiguous) rather than matching by name alone.
+      await screen.findByText('Delete Payment');
+      const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+      const dialogButtons = within(cancelButton.parentElement as HTMLElement).getAllByRole('button');
+      const confirmButton = dialogButtons.find((btn) => btn.textContent === 'Delete');
+      expect(confirmButton).toBeDefined();
+      await user.click(confirmButton as HTMLElement);
+
+      await waitFor(() => {
+        expect(mockedDelete).toHaveBeenCalledWith('pay-1');
+      });
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalledTimes(2);
+      });
+    });
+  });
+
   describe('conditional form fields', () => {
     const openAddModal = async (user: ReturnType<typeof userEvent.setup>) => {
       render(<PaymentsPageClient />);

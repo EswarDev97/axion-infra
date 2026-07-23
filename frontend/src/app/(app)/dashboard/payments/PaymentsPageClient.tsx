@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Edit, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import { Alert } from '@/components/feedback/Alert';
 import { Modal, ModalFooter } from '@/components/feedback/Modal';
+import { ConfirmDialog } from '@/components/feedback/ConfirmDialog';
 import { FormField } from '@/components/form/FormField';
 import {
   paymentService,
@@ -65,6 +66,10 @@ export function PaymentsPageClient() {
   const [clients, setClients] = useState<Client[]>([]);
   const [financers, setFinancers] = useState<Client[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+
+  // Delete state
+  const [deleteTarget, setDeleteTarget] = useState<Payment | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Modal state
   const [showForm, setShowForm] = useState(false);
@@ -267,6 +272,20 @@ export function PaymentsPageClient() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await paymentService.delete(deleteTarget.id);
+      setDeleteTarget(null);
+      fetchPayments();
+    } catch (e) {
+      setError((e as Error).message || 'Failed to delete payment');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -358,6 +377,13 @@ export function PaymentsPageClient() {
                       title="Edit"
                     >
                       <Edit className="h-4 w-4 inline" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget(payment)}
+                      className="text-red-600 hover:text-red-800"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4 inline" />
                     </button>
                   </td>
                 </tr>
@@ -568,6 +594,18 @@ export function PaymentsPageClient() {
           </ModalFooter>
         </form>
       </Modal>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Delete Payment"
+        description={`Are you sure you want to delete "${deleteTarget?.caseReference}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        variant="danger"
+        loading={deleting}
+      />
     </div>
   );
 }
