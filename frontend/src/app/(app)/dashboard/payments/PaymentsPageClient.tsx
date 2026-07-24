@@ -128,6 +128,7 @@ export function PaymentsPageClient() {
       'S.No': index + 1,
       'Case Reference': payment.caseReference,
       Client: clientNameById.get(payment.clientId) ?? payment.clientId,
+      Finance: payment.financeId ? clientNameById.get(payment.financeId) ?? payment.financeId : '',
       'Vehicle Reg No': payment.vehicleRegistrationNumber,
       Executive: employeeNameById.get(payment.executiveEmployeeId) ?? payment.executiveEmployeeId,
       'Case Status': payment.caseStatus,
@@ -364,6 +365,7 @@ export function PaymentsPageClient() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">S.No</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Case Reference</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Finance</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vehicle Reg. No.</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Executive</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Case Status</th>
@@ -375,11 +377,11 @@ export function PaymentsPageClient() {
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={9} className="px-6 py-8 text-center text-gray-500">Loading...</td>
+                <td colSpan={10} className="px-6 py-8 text-center text-gray-500">Loading...</td>
               </tr>
             ) : payments.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={10} className="px-6 py-8 text-center text-gray-500">
                   No payments found.
                 </td>
               </tr>
@@ -389,6 +391,9 @@ export function PaymentsPageClient() {
                   <td className="px-6 py-4 text-sm text-gray-600">{(page - 1) * PAGE_SIZE + index + 1}</td>
                   <td className="px-6 py-4 text-sm font-mono text-gray-900">{payment.caseReference}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{clientNameById.get(payment.clientId) ?? payment.clientId}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {payment.financeId ? clientNameById.get(payment.financeId) ?? payment.financeId : '-'}
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{payment.vehicleRegistrationNumber}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{employeeNameById.get(payment.executiveEmployeeId) ?? payment.executiveEmployeeId}</td>
                   <td className="px-6 py-4">
