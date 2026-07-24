@@ -42,7 +42,11 @@ services:
       - axionpcs-network
 
   minio:
-    image: minio/minio:latest
+    # Pinned below the x86-64-v2 baseline MinIO adopted in later builds — this
+    # host's CPU (QEMU Virtual CPU 2.5+) doesn't support those extensions and
+    # minio:latest crash-loops with "Fatal glibc error: CPU does not support
+    # x86-64-v2" (exit 127) on this server.
+    image: minio/minio:RELEASE.2024-01-16T16-07-38Z
     container_name: axionpcs-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
