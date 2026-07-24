@@ -121,32 +121,37 @@ describe('AppSidebar', () => {
   });
 
   describe('role-based hiding (hideForRoles)', () => {
-    it('hides Approvals/Notifications/CRM/Training/Mind Maps/Documents/Leave/Holidays for the EMPLOYEE role', () => {
-      mockAuthStore(
-        () => true,
-        (roles) => roles.includes('EMPLOYEE')
-      );
+    const HIDDEN_LABELS = [
+      'Approvals',
+      'Notifications',
+      'CRM',
+      'Training',
+      'Mind Maps',
+      'Documents',
+      'Leave',
+      'Holidays',
+    ];
 
-      render(<AppSidebar />);
+    it.each(['EMPLOYEE', 'MANAGER'])(
+      'hides Approvals/Notifications/CRM/Training/Mind Maps/Documents/Leave/Holidays for the %s role',
+      (role) => {
+        mockAuthStore(
+          () => true,
+          (roles) => roles.includes(role)
+        );
 
-      for (const label of [
-        'Approvals',
-        'Notifications',
-        'CRM',
-        'Training',
-        'Mind Maps',
-        'Documents',
-        'Leave',
-        'Holidays',
-      ]) {
-        expect(screen.queryByRole('link', { name: new RegExp(`^${label}$`, 'i') })).not.toBeInTheDocument();
+        render(<AppSidebar />);
+
+        for (const label of HIDDEN_LABELS) {
+          expect(screen.queryByRole('link', { name: new RegExp(`^${label}$`, 'i') })).not.toBeInTheDocument();
+        }
       }
-    });
+    );
 
-    it('still shows Employees for the EMPLOYEE role', () => {
+    it.each(['EMPLOYEE', 'MANAGER'])('still shows Employees for the %s role', (role) => {
       mockAuthStore(
         () => true,
-        (roles) => roles.includes('EMPLOYEE')
+        (roles) => roles.includes(role)
       );
 
       render(<AppSidebar />);
@@ -157,13 +162,13 @@ describe('AppSidebar', () => {
       );
     });
 
-    it('keeps the hidden items visible for roles other than EMPLOYEE', () => {
-      // hasAnyRole never matches — simulates an HR_ADMIN/MANAGER/SUPER_ADMIN user
+    it('keeps the hidden items visible for roles other than EMPLOYEE/MANAGER', () => {
+      // hasAnyRole never matches — simulates an HR_ADMIN/SUPER_ADMIN user
       mockAuthStore(() => true, () => false);
 
       render(<AppSidebar />);
 
-      for (const label of ['Approvals', 'Notifications', 'CRM', 'Training', 'Mind Maps', 'Documents', 'Leave', 'Holidays']) {
+      for (const label of HIDDEN_LABELS) {
         expect(screen.getByRole('link', { name: new RegExp(`^${label}$`, 'i') })).toBeInTheDocument();
       }
     });

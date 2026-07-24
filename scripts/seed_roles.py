@@ -110,12 +110,17 @@ ROLES = {
     ),
     "MANAGER": (
         "Manager",
-        "Manages their team's employees, attendance and leave approvals",
+        "Manages their team's employees, attendance and leave approvals, "
+        "plus full HR record management and payment processing (payroll-instance scope)",
         [
-            "employees:read:team", "employees:update:team",
+            "employees:read", "employees:read:team", "employees:update:team",
             "attendance:read:team", "attendance:update:team",
             "leave:read:team", "leave:approve:team",
             "documents:read:team", "analytics:read:team",
+            "hr:read:all", "hr:read:subordinates", "hr:create:all",
+            "hr:update:all", "hr:delete:all", "hr:write:all",
+            "hr:approve:all", "hr:approve:subordinates",
+            "payments:create", "payments:read", "payments:update", "payments:delete",
         ],
     ),
     "EMPLOYEE": (
