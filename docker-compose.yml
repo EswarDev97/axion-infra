@@ -42,11 +42,15 @@ services:
       - axionpcs-network
 
   minio:
-    # Pinned below the x86-64-v2 baseline MinIO adopted in later builds — this
-    # host's CPU (QEMU Virtual CPU 2.5+) doesn't support those extensions and
-    # minio:latest crash-loops with "Fatal glibc error: CPU does not support
-    # x86-64-v2" (exit 127) on this server.
-    image: minio/minio:RELEASE.2024-01-16T16-07-38Z
+    # Official minio/minio Docker Hub images require x86-64-v2 CPU extensions
+    # (even older release tags) — this host's CPU (QEMU Virtual CPU 2.5+)
+    # doesn't support them and the container crash-loops with "Fatal glibc
+    # error: CPU does not support x86-64-v2" (exit 127). Building the plain
+    # linux-amd64 binary on a Debian base (same approach already proven
+    # working for inspectaone-minio on this same host) avoids the requirement.
+    build:
+      context: ./deployment/minio
+      dockerfile: Dockerfile
     container_name: axionpcs-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
