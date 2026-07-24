@@ -33,10 +33,26 @@ ADMIN_EMAIL = "admin@axionpcs.com"
 # Permission catalog: code -> (name, module, action, resource_scope)
 PERMISSIONS = {
     "employees:*": ("Manage Employees", "employees", "*", "ALL"),
+    "employees:read": ("Read Employees (frontend nav gate)", "employees", "read", "ALL"),
     "employees:read:team": ("Read Team Employees", "employees", "read", "TEAM"),
     "employees:update:team": ("Update Team Employees", "employees", "update", "TEAM"),
     "employees:read:self": ("Read Own Employee Record", "employees", "read", "OWN"),
     "employees:update:self": ("Update Own Employee Record", "employees", "update", "OWN"),
+
+    # NOTE: backend/services/hr/api/*.py (employees, positions, departments,
+    # attendance, leave, payroll, holidays, candidates, crm_leads) actually
+    # enforce this separate hr:* namespace via require_permission(), not the
+    # employees:*/departments:*/etc. codes above — those older codes are
+    # never checked by any HR endpoint. Both namespaces are kept here since
+    # removing the unused one is a larger, separate cleanup.
+    "hr:read:all": ("Read All HR Records", "hr", "read", "ALL"),
+    "hr:read:subordinates": ("Read Subordinate HR Records", "hr", "read", "SUBORDINATES"),
+    "hr:create:all": ("Create HR Records", "hr", "create", "ALL"),
+    "hr:update:all": ("Update HR Records", "hr", "update", "ALL"),
+    "hr:delete:all": ("Delete HR Records", "hr", "delete", "ALL"),
+    "hr:write:all": ("Write HR Records", "hr", "write", "ALL"),
+    "hr:approve:all": ("Approve All HR Requests", "hr", "approve", "ALL"),
+    "hr:approve:subordinates": ("Approve Subordinate HR Requests", "hr", "approve", "SUBORDINATES"),
 
     "departments:*": ("Manage Departments", "departments", "*", "ALL"),
 
@@ -71,6 +87,14 @@ PERMISSIONS = {
     "analytics:read:team": ("Read Team Analytics", "analytics", "read", "TEAM"),
 
     "careers:*": ("Manage Careers", "careers", "*", "ALL"),
+
+    # Also defined in seed_payment_permissions.py — duplicated here (both
+    # scripts use ON CONFLICT DO NOTHING) so EMPLOYEE can reference them
+    # below without requiring that script to have run first.
+    "payments:create": ("Create Payments", "payments", "create", "ALL"),
+    "payments:read": ("Read Payments", "payments", "read", "ALL"),
+    "payments:update": ("Update Payments", "payments", "update", "ALL"),
+    "payments:delete": ("Delete Payments", "payments", "delete", "ALL"),
 }
 
 # Role code -> (name, description, [permission codes])
@@ -96,13 +120,18 @@ ROLES = {
     ),
     "EMPLOYEE": (
         "Employee",
-        "Self-service access to own records, attendance, leave, documents and payroll",
+        "Self-service access to own records, attendance, leave, documents and payroll, "
+        "plus full HR record management (payroll-instance scope: manage employees)",
         [
-            "employees:read:self", "employees:update:self",
+            "employees:read", "employees:read:self", "employees:update:self",
             "attendance:read:self", "attendance:create:self",
             "leave:read:self", "leave:create:self", "leave:cancel:self",
             "documents:read:self", "documents:upload:self",
             "payroll:read:self",
+            "hr:read:all", "hr:read:subordinates", "hr:create:all",
+            "hr:update:all", "hr:delete:all", "hr:write:all",
+            "hr:approve:all", "hr:approve:subordinates",
+            "payments:create", "payments:read", "payments:update", "payments:delete",
         ],
     ),
 }
