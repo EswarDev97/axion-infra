@@ -237,8 +237,8 @@ def require_role(role: str):
 
 def get_pagination_params(
     page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
-    page_size: int = Query(default=20, ge=1, le=100, alias="page_size", description="Items per page"),
-    pageSize: int | None = Query(default=None, ge=1, le=100, description="Items per page (camelCase alias)"),
+    page_size: int = Query(default=20, ge=1, le=200, alias="page_size", description="Items per page"),
+    pageSize: int | None = Query(default=None, ge=1, le=200, description="Items per page (camelCase alias)"),
     sort_by: str = Query(default="created_at", description="Field to sort by"),
     sort_order: str = Query(default="desc", pattern="^(asc|desc)$", description="Sort order")
 ) -> PaginationParams:
