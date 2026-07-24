@@ -57,9 +57,15 @@ type FormState = typeof emptyForm;
 
 export function PaymentsPageClient() {
   const hasPermission = useAuthStore((state) => state.hasPermission);
+  const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission);
   // payments:read:own (EMPLOYEE) is read-only — create/edit/delete require
   // the full payments:create/update/delete grants, which that role lacks.
   const canWrite = hasPermission('payments:create');
+  // employeeService.list() (GET /employees) requires hr:read:all/hr:read:
+  // subordinates. A payments:read:own user typically has neither — resolve
+  // just their own name via employeeService.getMe() instead (see
+  // fetchDropdownData below).
+  const canListEmployees = hasAnyPermission(['hr:read:all', 'hr:read:subordinates']);
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,19 +159,41 @@ export function PaymentsPageClient() {
   };
 
   const fetchDropdownData = useCallback(async () => {
-    try {
-      const [clientRes, financerRes, employeeRes] = await Promise.all([
-        clientService.list({ type: 'CLIENT', limit: 200 }),
-        clientService.list({ type: 'FINANCER', limit: 200 }),
-        employeeService.list({ pageSize: 200 }),
-      ]);
-      setClients(clientRes.items ?? []);
-      setFinancers(financerRes.items ?? []);
-      setEmployees(employeeRes.items ?? []);
-    } catch (e) {
-      setFormError((e as Error).message || 'Failed to load form reference data');
+    // Fetched independently (not Promise.all) so a permission failure on
+    // one lookup — e.g. a payments:read:own user lacking employeeService.list's
+    // hr:read:all — doesn't also blank out the client/finance name lookups,
+    // which use an unrestricted endpoint and should still resolve.
+    //
+    // A payments:read:own user can only ever see payments where THEY are
+    // the executive (server-side scoped), so resolving just their own name
+    // via getMe() (gated on employees:read:self, not the directory-wide
+    // hr:read:all/hr:read:subordinates) is enough for the Executive column
+    // — no need for the full employee list.
+    const fetchEmployees = (): Promise<Employee[]> =>
+      canListEmployees
+        ? employeeService.list({ pageSize: 200 }).then((res) => res.items ?? [])
+        : employeeService.getMe().then((me) => [me]);
+
+    const results = await Promise.allSettled([
+      clientService.list({ type: 'CLIENT', limit: 200 }),
+      clientService.list({ type: 'FINANCER', limit: 200 }),
+      fetchEmployees(),
+    ]);
+
+    const [clientRes, financerRes, employeeRes] = results;
+    if (clientRes.status === 'fulfilled') setClients(clientRes.value.items ?? []);
+    if (financerRes.status === 'fulfilled') setFinancers(financerRes.value.items ?? []);
+    if (employeeRes.status === 'fulfilled') setEmployees(employeeRes.value);
+
+    const firstRejection = results.find((r) => r.status === 'rejected') as
+      | PromiseRejectedResult
+      | undefined;
+    if (firstRejection) {
+      setFormError(
+        (firstRejection.reason as Error)?.message || 'Failed to load form reference data'
+      );
     }
-  }, []);
+  }, [canListEmployees]);
 
   useEffect(() => {
     fetchDropdownData();

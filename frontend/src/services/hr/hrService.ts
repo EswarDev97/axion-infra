@@ -115,6 +115,17 @@ export const employeeService = {
     return get<Employee>(`/employees/${id}`);
   },
 
+  /**
+   * The caller's own employee record, gated on employees:read:self rather
+   * than the directory-wide hr:read:all/hr:read:subordinates permissions
+   * that GET /employees and GET /employees/{id} require. Used by
+   * self-service-only roles (e.g. EMPLOYEE with payments:read:own) that
+   * can't call employeeService.list() to resolve a display name.
+   */
+  async getMe(): Promise<Employee> {
+    return get<Employee>('/employees/me');
+  },
+
   async create(data: EmployeeCreateRequest): Promise<Employee> {
     return post<Employee>('/employees', data);
   },

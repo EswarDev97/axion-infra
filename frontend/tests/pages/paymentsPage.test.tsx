@@ -12,12 +12,17 @@ import { clientService } from '@/services/complaint/clientService';
 import { employeeService } from '@/services/hr/hrService';
 import { useAuthStore } from '@/stores/authStore';
 
-// Default: full payments:create access (matches HR_ADMIN/MANAGER, the roles
-// these pre-existing tests assume). Tests specific to the read-only
-// payments:read:own experience override this per-test.
+// Default: full payments:create + hr:read:all access (matches HR_ADMIN/
+// MANAGER, the roles these pre-existing tests assume). Tests specific to
+// the read-only payments:read:own experience override this per-test.
 vi.mock('@/stores/authStore', () => ({
-  useAuthStore: vi.fn((selector: (state: { hasPermission: (p: string) => boolean }) => unknown) =>
-    selector({ hasPermission: () => true })
+  useAuthStore: vi.fn(
+    (
+      selector: (state: {
+        hasPermission: (p: string) => boolean;
+        hasAnyPermission: (p: string[]) => boolean;
+      }) => unknown
+    ) => selector({ hasPermission: () => true, hasAnyPermission: () => true })
   ),
 }));
 
@@ -62,6 +67,7 @@ vi.mock('@/services/hr/hrService', async () => {
     employeeService: {
       ...actual.employeeService,
       list: vi.fn(),
+      getMe: vi.fn(),
     },
   };
 });
@@ -87,6 +93,7 @@ vi.mock('xlsx', () => ({
 const mockedList = paymentService.list as unknown as ReturnType<typeof vi.fn>;
 const mockedClientList = clientService.list as unknown as ReturnType<typeof vi.fn>;
 const mockedEmployeeList = employeeService.list as unknown as ReturnType<typeof vi.fn>;
+const mockedGetMe = employeeService.getMe as unknown as ReturnType<typeof vi.fn>;
 
 const makePayment = (overrides: Partial<Payment> = {}): Payment => ({
   id: 'pay-1',
@@ -114,8 +121,12 @@ describe('PaymentsPageClient', () => {
     // full-access behavior here so later tests aren't affected by an
     // earlier test's override (see 'read-only access' describe block).
     (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
-      (selector: (state: { hasPermission: (p: string) => boolean }) => unknown) =>
-        selector({ hasPermission: () => true })
+      (
+        selector: (state: {
+          hasPermission: (p: string) => boolean;
+          hasAnyPermission: (p: string[]) => boolean;
+        }) => unknown
+      ) => selector({ hasPermission: () => true, hasAnyPermission: () => true })
     );
     mockedList.mockResolvedValue({
       items: [],
@@ -133,27 +144,27 @@ describe('PaymentsPageClient', () => {
       limit: 200,
       pages: 1,
     });
+    const janeDoe = {
+      id: 'emp-1',
+      tenantId: 't-1',
+      employeeCode: 'E001',
+      firstName: 'Jane',
+      lastName: 'Doe',
+      fullName: 'Jane Doe',
+      email: 'jane@example.com',
+      positionId: 'pos-1',
+      positionTitle: 'Surveyor',
+      dateOfJoining: '2026-01-01',
+      status: 'ACTIVE',
+      employmentType: 'FULL_TIME',
+      createdAt: '',
+      updatedAt: '',
+    };
     mockedEmployeeList.mockResolvedValue({
-      items: [
-        {
-          id: 'emp-1',
-          tenantId: 't-1',
-          employeeCode: 'E001',
-          firstName: 'Jane',
-          lastName: 'Doe',
-          fullName: 'Jane Doe',
-          email: 'jane@example.com',
-          positionId: 'pos-1',
-          positionTitle: 'Surveyor',
-          dateOfJoining: '2026-01-01',
-          status: 'ACTIVE',
-          employmentType: 'FULL_TIME',
-          createdAt: '',
-          updatedAt: '',
-        },
-      ],
+      items: [janeDoe],
       pagination: { page: 1, pageSize: 200, totalItems: 1, totalPages: 1, hasNext: false, hasPrev: false },
     });
+    mockedGetMe.mockResolvedValue(janeDoe);
   });
 
   describe('list rendering', () => {
@@ -224,8 +235,16 @@ describe('PaymentsPageClient', () => {
   describe('read-only access (payments:read:own)', () => {
     it('hides Add Payment and the Actions column when the user lacks payments:create', async () => {
       (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
-        (selector: (state: { hasPermission: (p: string) => boolean }) => unknown) =>
-          selector({ hasPermission: (p: string) => p !== 'payments:create' })
+        (
+          selector: (state: {
+            hasPermission: (p: string) => boolean;
+            hasAnyPermission: (p: string[]) => boolean;
+          }) => unknown
+        ) =>
+          selector({
+            hasPermission: (p: string) => p !== 'payments:create',
+            hasAnyPermission: () => true,
+          })
       );
 
       const payment = makePayment({ clientId: 'client-1', executiveEmployeeId: 'emp-1' });
@@ -250,6 +269,41 @@ describe('PaymentsPageClient', () => {
 
       // Export remains available — read-only still means read access.
       expect(screen.getByRole('button', { name: /export to excel/i })).toBeInTheDocument();
+    });
+
+    it('resolves the Executive name via employeeService.getMe() (not .list()) when the user lacks hr:read:all/hr:read:subordinates', async () => {
+      (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+        (
+          selector: (state: {
+            hasPermission: (p: string) => boolean;
+            hasAnyPermission: (p: string[]) => boolean;
+          }) => unknown
+        ) =>
+          selector({
+            hasPermission: (p: string) => p === 'payments:read:own',
+            hasAnyPermission: () => false,
+          })
+      );
+
+      const payment = makePayment({ clientId: 'client-1', executiveEmployeeId: 'emp-1' });
+      mockedList.mockResolvedValue({
+        items: [payment],
+        total: 1,
+        page: 1,
+        limit: 200,
+        pages: 1,
+      });
+
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(mockedGetMe).toHaveBeenCalledTimes(1);
+      });
+      expect(mockedEmployeeList).not.toHaveBeenCalled();
+
+      await waitFor(() => {
+        expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+      });
     });
   });
 

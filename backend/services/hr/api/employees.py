@@ -6,7 +6,7 @@ Per API_CONTRACT.md Section 8.2.1
 from typing import Annotated, List
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 
 from shared.database import db_manager
 from shared.dependencies import (
@@ -188,6 +188,39 @@ async def create_employee(
             success=True,
             data=_employee_to_response(employee),
             message="Employee created successfully",
+            requestId=request_id
+        )
+
+
+@router.get("/me", response_model=ApiResponse[EmployeeResponse])
+async def get_my_employee_record(
+    user: Annotated[CurrentUser, Depends(require_permission("employees:read:self"))],
+    x_request_id: Annotated[str | None, Header()] = None
+):
+    """
+    Get the caller's own employee record. Registered ahead of
+    GET /{employee_id} so "me" isn't parsed as a UUID path param.
+
+    Gated on employees:read:self (not hr:read:all) so a self-service-only
+    role (e.g. EMPLOYEE with payments:read:own) can still resolve their own
+    name for display purposes — e.g. the Payment Management page's
+    Executive column — without granting broader employee-directory access.
+    """
+    request_id = UUID(x_request_id) if x_request_id else uuid4()
+
+    async with db_manager.session(tenant_id=user.tenant_id) as db:
+        service = EmployeeService(db)
+        employee = await service.get_employee_by_user_id(user.user_id, user.tenant_id)
+        if not employee:
+            raise HTTPException(status_code=404, detail="No employee record found for this user")
+
+        role_map = await _get_employee_roles(db, [employee])
+        role = role_map.get(str(employee.user_id)) if employee.user_id else None
+
+        return ApiResponse(
+            success=True,
+            data=_employee_to_response(employee, role=role),
+            message="Employee retrieved successfully",
             requestId=request_id
         )
 
