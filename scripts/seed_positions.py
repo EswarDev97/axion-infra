@@ -51,8 +51,6 @@ POSITIONS = [
     ("DEVOPS_ENGINEER", "DevOps Engineer", 4),
     ("PROJECT_MANAGER", "Project Manager", 5),
     ("BUSINESS_ANALYST", "Business Analyst", 4),
-    ("BO_USER", "BO User", 3),
-    ("FIELD_EXECUTIVE", "Field Executive", 3),
 ]
 
 

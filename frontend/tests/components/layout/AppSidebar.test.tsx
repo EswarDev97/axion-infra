@@ -20,17 +20,10 @@ vi.mock('@/stores/authStore', () => ({
   useAuthStore: vi.fn(),
 }));
 
-function mockAuthStore(
-  hasPermission: (permission: string) => boolean,
-  hasAnyRole: (roles: string[]) => boolean = () => false
-) {
+function mockAuthStore(hasPermission: (permission: string) => boolean) {
   (useAuthStore as unknown as vi.Mock).mockImplementation(
-    (
-      selector: (state: {
-        hasPermission: (permission: string) => boolean;
-        hasAnyRole: (roles: string[]) => boolean;
-      }) => unknown
-    ) => selector({ hasPermission, hasAnyRole })
+    (selector: (state: { hasPermission: (permission: string) => boolean }) => unknown) =>
+      selector({ hasPermission })
   );
 }
 
@@ -117,55 +110,6 @@ describe('AppSidebar', () => {
       await user.click(payrollButton);
 
       expect(screen.queryByRole('link', { name: /payment management/i })).not.toBeInTheDocument();
-    });
-  });
-
-  describe('role-based hiding (hideForRoles)', () => {
-    it('hides Approvals/Notifications/CRM/Training/Mind Maps/Documents/Leave/Holidays for the EMPLOYEE role', () => {
-      mockAuthStore(
-        () => true,
-        (roles) => roles.includes('EMPLOYEE')
-      );
-
-      render(<AppSidebar />);
-
-      for (const label of [
-        'Approvals',
-        'Notifications',
-        'CRM',
-        'Training',
-        'Mind Maps',
-        'Documents',
-        'Leave',
-        'Holidays',
-      ]) {
-        expect(screen.queryByRole('link', { name: new RegExp(`^${label}$`, 'i') })).not.toBeInTheDocument();
-      }
-    });
-
-    it('still shows Employees for the EMPLOYEE role', () => {
-      mockAuthStore(
-        () => true,
-        (roles) => roles.includes('EMPLOYEE')
-      );
-
-      render(<AppSidebar />);
-
-      expect(screen.getByRole('link', { name: /employees/i })).toHaveAttribute(
-        'href',
-        '/dashboard/employees'
-      );
-    });
-
-    it('keeps the hidden items visible for roles other than EMPLOYEE', () => {
-      // hasAnyRole never matches — simulates an HR_ADMIN/MANAGER/SUPER_ADMIN user
-      mockAuthStore(() => true, () => false);
-
-      render(<AppSidebar />);
-
-      for (const label of ['Approvals', 'Notifications', 'CRM', 'Training', 'Mind Maps', 'Documents', 'Leave', 'Holidays']) {
-        expect(screen.getByRole('link', { name: new RegExp(`^${label}$`, 'i') })).toBeInTheDocument();
-      }
     });
   });
 });

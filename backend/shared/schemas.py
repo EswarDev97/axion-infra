@@ -54,7 +54,7 @@ class PaginationMeta(BaseModel):
     }
     """
     page: int = Field(ge=1)
-    page_size: int = Field(ge=1, le=200, alias="pageSize")
+    page_size: int = Field(ge=1, le=100, alias="pageSize")
     total_items: int = Field(ge=0, alias="totalItems")
     total_pages: int = Field(ge=0, alias="totalPages")
     has_next: bool = Field(alias="hasNext")
@@ -107,12 +107,12 @@ class PaginationParams(BaseModel):
     | Parameter | Type | Default | Max | Description |
     |-----------|------|---------|-----|-------------|
     | `page` | integer | 1 | - | Page number (1-indexed) |
-    | `page_size` | integer | 20 | 200 | Items per page |
+    | `page_size` | integer | 20 | 100 | Items per page |
     | `sort_by` | string | `created_at` | - | Field to sort by |
     | `sort_order` | enum | `desc` | - | `asc` or `desc` |
     """
     page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=20, ge=1, le=200)
+    page_size: int = Field(default=20, ge=1, le=100)
     sort_by: str = Field(default="created_at")
     sort_order: str = Field(default="desc", pattern="^(asc|desc)$")
 

@@ -237,23 +237,17 @@ def require_role(role: str):
 
 def get_pagination_params(
     page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
-    page_size: int = Query(default=20, ge=1, le=200, alias="page_size", description="Items per page"),
-    pageSize: int | None = Query(default=None, ge=1, le=200, description="Items per page (camelCase alias)"),
+    page_size: int = Query(default=20, ge=1, le=100, alias="page_size", description="Items per page"),
     sort_by: str = Query(default="created_at", description="Field to sort by"),
     sort_order: str = Query(default="desc", pattern="^(asc|desc)$", description="Sort order")
 ) -> PaginationParams:
     """
     Dependency to parse pagination query parameters.
     Per API_CONTRACT.md Section 4.1.
-
-    FastAPI's Query(alias=...) only accepts a single alias, but the frontend
-    API client sends camelCase (pageSize) while the documented contract uses
-    snake_case (page_size) — accept both explicitly so requests silently
-    falling back to the default page size (20) don't hide records beyond it.
     """
     return PaginationParams(
         page=page,
-        page_size=pageSize if pageSize is not None else page_size,
+        page_size=page_size,
         sort_by=sort_by,
         sort_order=sort_order
     )
