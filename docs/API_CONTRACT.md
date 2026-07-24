@@ -192,7 +192,7 @@ X-Request-ID: <correlation_id> (optional - generated if not provided)
 | Parameter | Type | Default | Max | Description |
 |-----------|------|---------|-----|-------------|
 | `page` | integer | 1 | - | Page number (1-indexed) |
-| `page_size` | integer | 20 | 100 | Items per page |
+| `page_size` | integer | 20 | 200 | Items per page |
 | `sort_by` | string | `created_at` | - | Field to sort by |
 | `sort_order` | enum | `desc` | - | `asc` or `desc` |
 
