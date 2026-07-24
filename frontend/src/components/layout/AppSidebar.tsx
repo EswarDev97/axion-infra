@@ -10,6 +10,7 @@ interface MenuChildItem {
   href: string;
   icon?: ReactNode;
   permission?: string;
+  anyPermission?: string[];
   hideForRoles?: string[];
 }
 
@@ -18,6 +19,7 @@ interface MenuLinkItem {
   href: string;
   icon: ReactNode;
   permission?: string;
+  anyPermission?: string[];
   hideForRoles?: string[];
   children?: undefined;
 }
@@ -27,6 +29,7 @@ interface MenuExpandableItem {
   href?: undefined;
   icon: ReactNode;
   permission?: string;
+  anyPermission?: string[];
   hideForRoles?: string[];
   children: MenuChildItem[];
 }
@@ -52,6 +55,7 @@ const menuItems: MenuItem[] = [
       </svg>
     ),
     permission: 'employees:read',
+    hideForRoles: ['EMPLOYEE'],
   },
   {
     label: 'Departments',
@@ -62,6 +66,7 @@ const menuItems: MenuItem[] = [
       </svg>
     ),
     permission: 'departments:read',
+    hideForRoles: ['EMPLOYEE'],
   },
   {
     label: 'Attendance',
@@ -112,7 +117,7 @@ const menuItems: MenuItem[] = [
       {
         label: 'Payment Management',
         href: '/dashboard/payments',
-        permission: 'payments:read',
+        anyPermission: ['payments:read', 'payments:read:own'],
       },
     ],
   },
@@ -163,6 +168,7 @@ const menuItems: MenuItem[] = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
     ),
+    hideForRoles: ['EMPLOYEE'],
   },
   {
     label: 'Invoices',
@@ -172,6 +178,7 @@ const menuItems: MenuItem[] = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
       </svg>
     ),
+    hideForRoles: ['EMPLOYEE'],
   },
   {
     label: 'Complaints',
@@ -181,6 +188,7 @@ const menuItems: MenuItem[] = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
       </svg>
     ),
+    hideForRoles: ['EMPLOYEE'],
   },
   {
     label: 'CRM',
@@ -200,6 +208,7 @@ const menuItems: MenuItem[] = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
       </svg>
     ),
+    hideForRoles: ['EMPLOYEE'],
   },
   {
     label: 'Approvals',
@@ -236,6 +245,7 @@ const menuItems: MenuItem[] = [
 export function AppSidebar() {
   const pathname = usePathname();
   const hasPermission = useAuthStore((state) => state.hasPermission);
+  const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission);
   const hasAnyRole = useAuthStore((state) => state.hasAnyRole);
   const [isMounted, setIsMounted] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
@@ -290,6 +300,7 @@ export function AppSidebar() {
           // Before hydration, show all items to match server render
           if (!isMounted) return true;
           if (item.hideForRoles && hasAnyRole(item.hideForRoles)) return false;
+          if (item.anyPermission) return hasAnyPermission(item.anyPermission);
           if (!item.permission) return true;
           // After hydration, filter based on actual permissions
           return hasPermission(item.permission);
@@ -299,12 +310,13 @@ export function AppSidebar() {
           const filteredChildren = item.children.filter((child) => {
             if (!isMounted) return true;
             if (child.hideForRoles && hasAnyRole(child.hideForRoles)) return false;
+            if (child.anyPermission) return hasAnyPermission(child.anyPermission);
             if (!child.permission) return true;
             return hasPermission(child.permission);
           });
           return { ...item, children: filteredChildren };
         }),
-    [isMounted, hasPermission, hasAnyRole]
+    [isMounted, hasPermission, hasAnyPermission, hasAnyRole]
   );
 
   return (

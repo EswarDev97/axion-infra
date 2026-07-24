@@ -91,6 +91,7 @@ class PaymentService:
         case_status: Optional[str] = None,
         billing_status: Optional[str] = None,
         client_id: Optional[UUID] = None,
+        executive_employee_id: Optional[UUID] = None,
     ) -> PaymentListResponse:
         query = select(Payment).where(
             Payment.tenant_id == tenant_id,
@@ -105,6 +106,11 @@ class PaymentService:
 
         if client_id:
             query = query.where(Payment.client_id == client_id)
+
+        if executive_employee_id:
+            # payments:read:own scoping — restrict to payments where the
+            # caller is the assigned executive (see api/payments.py).
+            query = query.where(Payment.executive_employee_id == executive_employee_id)
 
         if search:
             term = f"%{search}%"

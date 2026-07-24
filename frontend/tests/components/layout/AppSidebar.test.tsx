@@ -24,13 +24,15 @@ function mockAuthStore(
   hasPermission: (permission: string) => boolean,
   hasAnyRole: (roles: string[]) => boolean = () => false
 ) {
+  const hasAnyPermission = (permissions: string[]) => permissions.some(hasPermission);
   (useAuthStore as unknown as vi.Mock).mockImplementation(
     (
       selector: (state: {
         hasPermission: (permission: string) => boolean;
+        hasAnyPermission: (permissions: string[]) => boolean;
         hasAnyRole: (roles: string[]) => boolean;
       }) => unknown
-    ) => selector({ hasPermission, hasAnyRole })
+    ) => selector({ hasPermission, hasAnyPermission, hasAnyRole })
   );
 }
 
@@ -108,7 +110,7 @@ describe('AppSidebar', () => {
     });
 
     it('hides the Payment Management child when the user lacks payments:read permission', async () => {
-      mockAuthStore((permission) => permission !== 'payments:read');
+      mockAuthStore((permission) => permission !== 'payments:read' && permission !== 'payments:read:own');
       const user = userEvent.setup();
 
       render(<AppSidebar />);
@@ -121,7 +123,7 @@ describe('AppSidebar', () => {
   });
 
   describe('role-based hiding (hideForRoles)', () => {
-    const HIDDEN_LABELS = [
+    const HIDDEN_FOR_EMPLOYEE_AND_MANAGER = [
       'Approvals',
       'Notifications',
       'CRM',
@@ -130,6 +132,14 @@ describe('AppSidebar', () => {
       'Documents',
       'Leave',
       'Holidays',
+    ];
+    const HIDDEN_FOR_EMPLOYEE_ONLY = [
+      'Employees',
+      'Departments',
+      'Quotes',
+      'Invoices',
+      'Complaints',
+      'Clients',
     ];
 
     it.each(['EMPLOYEE', 'MANAGER'])(
@@ -142,16 +152,29 @@ describe('AppSidebar', () => {
 
         render(<AppSidebar />);
 
-        for (const label of HIDDEN_LABELS) {
+        for (const label of HIDDEN_FOR_EMPLOYEE_AND_MANAGER) {
           expect(screen.queryByRole('link', { name: new RegExp(`^${label}$`, 'i') })).not.toBeInTheDocument();
         }
       }
     );
 
-    it.each(['EMPLOYEE', 'MANAGER'])('still shows Employees for the %s role', (role) => {
+    it('also hides Employees/Departments/Quotes/Invoices/Complaints/Clients for the EMPLOYEE role', () => {
       mockAuthStore(
         () => true,
-        (roles) => roles.includes(role)
+        (roles) => roles.includes('EMPLOYEE')
+      );
+
+      render(<AppSidebar />);
+
+      for (const label of HIDDEN_FOR_EMPLOYEE_ONLY) {
+        expect(screen.queryByRole('link', { name: new RegExp(`^${label}$`, 'i') })).not.toBeInTheDocument();
+      }
+    });
+
+    it('still shows Employees for the MANAGER role', () => {
+      mockAuthStore(
+        () => true,
+        (roles) => roles.includes('MANAGER')
       );
 
       render(<AppSidebar />);
@@ -162,15 +185,61 @@ describe('AppSidebar', () => {
       );
     });
 
+    it('shows only Dashboard, Attendance, Tasks, Expenses, and Payroll for the EMPLOYEE role', async () => {
+      mockAuthStore(
+        (permission) => permission === 'payments:read:own',
+        (roles) => roles.includes('EMPLOYEE')
+      );
+      const user = userEvent.setup();
+
+      render(<AppSidebar />);
+
+      for (const label of ['Dashboard', 'Attendance', 'Tasks', 'Expenses', 'Payroll']) {
+        expect(screen.getByRole(label === 'Payroll' ? 'button' : 'link', {
+          name: new RegExp(`^${label}$`, 'i'),
+        })).toBeInTheDocument();
+      }
+
+      const payrollButton = screen.getByRole('button', { name: /payroll/i });
+      await user.click(payrollButton);
+      expect(screen.getByRole('link', { name: /payment management/i })).toBeInTheDocument();
+    });
+
     it('keeps the hidden items visible for roles other than EMPLOYEE/MANAGER', () => {
       // hasAnyRole never matches — simulates an HR_ADMIN/SUPER_ADMIN user
       mockAuthStore(() => true, () => false);
 
       render(<AppSidebar />);
 
-      for (const label of HIDDEN_LABELS) {
+      for (const label of [...HIDDEN_FOR_EMPLOYEE_AND_MANAGER, ...HIDDEN_FOR_EMPLOYEE_ONLY]) {
         expect(screen.getByRole('link', { name: new RegExp(`^${label}$`, 'i') })).toBeInTheDocument();
       }
+    });
+  });
+
+  describe('Payment Management visibility for payments:read:own', () => {
+    it('shows Payment Management for a user with only payments:read:own (no payments:read)', async () => {
+      mockAuthStore((permission) => permission === 'payments:read:own');
+      const user = userEvent.setup();
+
+      render(<AppSidebar />);
+
+      const payrollButton = screen.getByRole('button', { name: /payroll/i });
+      await user.click(payrollButton);
+
+      expect(screen.getByRole('link', { name: /payment management/i })).toBeInTheDocument();
+    });
+
+    it('hides Payment Management for a user with neither payments:read nor payments:read:own', async () => {
+      mockAuthStore((permission) => permission !== 'payments:read' && permission !== 'payments:read:own');
+      const user = userEvent.setup();
+
+      render(<AppSidebar />);
+
+      const payrollButton = screen.getByRole('button', { name: /payroll/i });
+      await user.click(payrollButton);
+
+      expect(screen.queryByRole('link', { name: /payment management/i })).not.toBeInTheDocument();
     });
   });
 });

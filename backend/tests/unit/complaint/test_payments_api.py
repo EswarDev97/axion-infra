@@ -19,7 +19,13 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from fastapi import FastAPI
 
-from shared.dependencies import get_current_user, get_db_session, get_tenant_id, CurrentUser
+from shared.dependencies import (
+    get_current_user,
+    get_db_session,
+    get_employee_id,
+    get_tenant_id,
+    CurrentUser,
+)
 
 pytestmark = [pytest.mark.unit, pytest.mark.asyncio]
 
@@ -141,6 +147,182 @@ class TestCreatePayment:
         assert data["amount"] is None
         assert "createdAt" in data
         assert "updatedAt" in data
+
+
+@pytest_asyncio.fixture
+async def own_scoped_payments_client(db_session, test_tenant, test_user):
+    """
+    Variant of `payments_client` for an EMPLOYEE with ONLY `payments:read:own`
+    (no `payments:read`). `get_employee_id` is overridden to a fixed UUID
+    (rather than querying a real `employees` row, per the pattern already
+    used for `get_db_session`/`get_tenant_id` in this file) so list/get
+    scoping can be asserted deterministically. Returns (client, employee_id).
+    """
+    from services.complaint.api.payments import router as payments_router
+    from shared.middleware import setup_exception_handlers
+
+    app = FastAPI()
+    app.include_router(payments_router, prefix="/api/v1/complaints")
+    setup_exception_handlers(app)
+
+    own_employee_id = uuid4()
+
+    scoped_user = CurrentUser(
+        user_id=test_user.id,
+        tenant_id=test_tenant.id,
+        email=test_user.email,
+        roles=["EMPLOYEE"],
+        permissions=["payments:read:own"],
+        jti="test-jti",
+    )
+
+    async def override_get_db_session():
+        yield db_session
+
+    async def override_get_current_user():
+        return scoped_user
+
+    async def override_get_tenant_id():
+        return test_tenant.id
+
+    async def override_get_employee_id():
+        return own_employee_id
+
+    app.dependency_overrides[get_db_session] = override_get_db_session
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_tenant_id] = override_get_tenant_id
+    app.dependency_overrides[get_employee_id] = override_get_employee_id
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        yield client, own_employee_id
+
+    app.dependency_overrides.clear()
+
+
+class TestPaymentReadOwnScoping:
+    """Tests for `payments:read:own` (EMPLOYEE role) list/get scoping."""
+
+    async def test_list_payments_scoped_to_own_executive_id(
+        self, own_scoped_payments_client, db_session, test_tenant, test_user
+    ):
+        """A user with only payments:read:own must see just the payments
+        where they are the assigned executive, not other executives'."""
+        from services.complaint.models.payment import Payment
+
+        client_obj = await _create_client(db_session, test_tenant, test_user)
+        scoped_client, own_employee_id = own_scoped_payments_client
+
+        own_payment = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-OWN-API-001",
+            client_id=client_obj.id,
+            vehicle_registration_number="KA01AB2001",
+            executive_employee_id=own_employee_id,
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        other_payment = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-OTHER-API-001",
+            client_id=client_obj.id,
+            vehicle_registration_number="KA01AB2002",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add_all([own_payment, other_payment])
+        await db_session.commit()
+
+        response = await scoped_client.get("/api/v1/complaints/payments")
+
+        assert response.status_code == 200
+        body = response.json()
+        items = body["data"]["items"]
+        assert len(items) == 1
+        assert items[0]["caseReference"] == "CASE-OWN-API-001"
+
+    async def test_get_payment_scoped_denies_other_executives_payment(
+        self, own_scoped_payments_client, db_session, test_tenant, test_user
+    ):
+        """GET /payments/{id} for a payment NOT assigned to the caller must
+        return 404 (not 403 — avoids confirming the record's existence)."""
+        from services.complaint.models.payment import Payment
+
+        client_obj = await _create_client(db_session, test_tenant, test_user)
+        scoped_client, _own_employee_id = own_scoped_payments_client
+
+        other_payment = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-OTHER-API-002",
+            client_id=client_obj.id,
+            vehicle_registration_number="KA01AB2003",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add(other_payment)
+        await db_session.commit()
+        await db_session.refresh(other_payment)
+
+        response = await scoped_client.get(f"/api/v1/complaints/payments/{other_payment.id}")
+
+        assert response.status_code == 404
+
+    async def test_get_payment_scoped_allows_own_payment(
+        self, own_scoped_payments_client, db_session, test_tenant, test_user
+    ):
+        """GET /payments/{id} for a payment assigned to the caller succeeds."""
+        from services.complaint.models.payment import Payment
+
+        client_obj = await _create_client(db_session, test_tenant, test_user)
+        scoped_client, own_employee_id = own_scoped_payments_client
+
+        own_payment = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-OWN-API-002",
+            client_id=client_obj.id,
+            vehicle_registration_number="KA01AB2004",
+            executive_employee_id=own_employee_id,
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add(own_payment)
+        await db_session.commit()
+        await db_session.refresh(own_payment)
+
+        response = await scoped_client.get(f"/api/v1/complaints/payments/{own_payment.id}")
+
+        assert response.status_code == 200
+        assert response.json()["data"]["caseReference"] == "CASE-OWN-API-002"
+
+    async def test_create_payment_forbidden_with_only_read_own_permission(
+        self, own_scoped_payments_client
+    ):
+        """payments:read:own does not grant payments:create."""
+        scoped_client, _own_employee_id = own_scoped_payments_client
+        payload = {
+            "caseReference": "CASE-DENIED-001",
+            "clientId": str(uuid4()),
+            "vehicleRegistrationNumber": "KA01AB2005",
+            "executiveEmployeeId": str(uuid4()),
+            "caseStatus": "ASSIGNED",
+            "billingStatus": "COMPANY_BILLING",
+        }
+
+        response = await scoped_client.post("/api/v1/complaints/payments", json=payload)
+
+        assert response.status_code == 403
 
 
 @pytest_asyncio.fixture

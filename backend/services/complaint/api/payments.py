@@ -9,6 +9,14 @@ HR_ADMIN / MANAGER (the roles seeded with the `payments:*` permissions) —
 stricter than sibling `clients.py`. `require_permission` internally
 depends on `get_current_user`, so the returned value is still a
 `CurrentUser`; we simply swap which dependency factory produces it.
+
+`payments:read:own` (EMPLOYEE role): read-only access scoped to payments
+where the caller is the assigned executive. list_payments/get_payment
+accept either the full `payments:read` or `payments:read:own`; when the
+caller only has the `:own` grant, the service layer filters by
+`executive_employee_id == get_employee_id(current_user)`. Create/update/
+delete remain gated on the unscoped payments:create/update/delete only —
+EMPLOYEE has no write access to payment records.
 """
 
 from typing import Annotated, Optional
@@ -20,7 +28,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from shared.dependencies import (
     CurrentUser,
     get_db_session,
+    get_employee_id,
     get_tenant_id,
+    require_any_permission,
     require_permission,
 )
 from shared.schemas import ApiResponse
@@ -73,14 +83,24 @@ async def list_payments(
     billing_status: Optional[str] = Query(None, alias="billingStatus"),
     client_id: Optional[UUID] = Query(None, alias="clientId"),
     db: AsyncSession = Depends(get_db_session),
-    current_user: CurrentUser = Depends(require_permission("payments:read")),
+    current_user: CurrentUser = Depends(
+        require_any_permission(["payments:read", "payments:read:own"])
+    ),
     tenant_id: UUID = Depends(get_tenant_id),
+    employee_id: UUID = Depends(get_employee_id),
     x_request_id: Annotated[str | None, Header()] = None,
 ):
     request_id = UUID(x_request_id) if x_request_id else uuid4()
+    # Full payments:read (or SUPER_ADMIN) sees everything; payments:read:own
+    # alone is scoped to payments where the caller is the assigned executive.
+    scoped_executive_id = None
+    if not current_user.is_super_admin() and not current_user.has_permission("payments:read"):
+        scoped_executive_id = employee_id
+
     service = PaymentService(db)
     result = await service.list(
-        tenant_id, page, limit, search, case_status, billing_status, client_id
+        tenant_id, page, limit, search, case_status, billing_status, client_id,
+        executive_employee_id=scoped_executive_id,
     )
     return ApiResponse(
         success=True,
@@ -98,8 +118,11 @@ async def list_payments(
 async def get_payment(
     payment_id: UUID,
     db: AsyncSession = Depends(get_db_session),
-    current_user: CurrentUser = Depends(require_permission("payments:read")),
+    current_user: CurrentUser = Depends(
+        require_any_permission(["payments:read", "payments:read:own"])
+    ),
     tenant_id: UUID = Depends(get_tenant_id),
+    employee_id: UUID = Depends(get_employee_id),
     x_request_id: Annotated[str | None, Header()] = None,
 ):
     request_id = UUID(x_request_id) if x_request_id else uuid4()
@@ -107,6 +130,11 @@ async def get_payment(
     payment = await service.get_by_id(payment_id, tenant_id)
     if not payment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
+
+    is_scoped_to_own = not current_user.is_super_admin() and not current_user.has_permission("payments:read")
+    if is_scoped_to_own and str(payment.executive_employee_id) != str(employee_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
+
     return ApiResponse(
         success=True,
         data=PaymentResponse.model_validate(payment),

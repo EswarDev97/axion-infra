@@ -93,6 +93,7 @@ PERMISSIONS = {
     # below without requiring that script to have run first.
     "payments:create": ("Create Payments", "payments", "create", "ALL"),
     "payments:read": ("Read Payments", "payments", "read", "ALL"),
+    "payments:read:own": ("Read Own Assigned Payments", "payments", "read", "OWN"),
     "payments:update": ("Update Payments", "payments", "update", "ALL"),
     "payments:delete": ("Delete Payments", "payments", "delete", "ALL"),
 }
@@ -125,18 +126,14 @@ ROLES = {
     ),
     "EMPLOYEE": (
         "Employee",
-        "Self-service access to own records, attendance, leave, documents and payroll, "
-        "plus full HR record management (payroll-instance scope: manage employees)",
+        "Self-service access to own attendance and payroll, plus read-only "
+        "access to payments where they are the assigned executive "
+        "(payroll-instance scope: Attendance / Tasks / Expenses / Payment Management only)",
         [
-            "employees:read", "employees:read:self", "employees:update:self",
+            "employees:read:self", "employees:update:self",
             "attendance:read:self", "attendance:create:self",
-            "leave:read:self", "leave:create:self", "leave:cancel:self",
-            "documents:read:self", "documents:upload:self",
             "payroll:read:self",
-            "hr:read:all", "hr:read:subordinates", "hr:create:all",
-            "hr:update:all", "hr:delete:all", "hr:write:all",
-            "hr:approve:all", "hr:approve:subordinates",
-            "payments:create", "payments:read", "payments:update", "payments:delete",
+            "payments:read:own",
         ],
     ),
 }

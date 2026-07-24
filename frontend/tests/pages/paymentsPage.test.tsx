@@ -10,6 +10,16 @@ import { PaymentsPageClient } from '@/app/(app)/dashboard/payments/PaymentsPageC
 import { paymentService, type Payment } from '@/services/complaint/paymentService';
 import { clientService } from '@/services/complaint/clientService';
 import { employeeService } from '@/services/hr/hrService';
+import { useAuthStore } from '@/stores/authStore';
+
+// Default: full payments:create access (matches HR_ADMIN/MANAGER, the roles
+// these pre-existing tests assume). Tests specific to the read-only
+// payments:read:own experience override this per-test.
+vi.mock('@/stores/authStore', () => ({
+  useAuthStore: vi.fn((selector: (state: { hasPermission: (p: string) => boolean }) => unknown) =>
+    selector({ hasPermission: () => true })
+  ),
+}));
 
 vi.mock('@/services/complaint/paymentService', async () => {
   const actual = await vi.importActual<typeof import('@/services/complaint/paymentService')>(
@@ -99,6 +109,14 @@ const makePayment = (overrides: Partial<Payment> = {}): Payment => ({
 describe('PaymentsPageClient', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // vi.clearAllMocks() clears call history but not a custom
+    // mockImplementation set by an individual test — restore the default
+    // full-access behavior here so later tests aren't affected by an
+    // earlier test's override (see 'read-only access' describe block).
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (selector: (state: { hasPermission: (p: string) => boolean }) => unknown) =>
+        selector({ hasPermission: () => true })
+    );
     mockedList.mockResolvedValue({
       items: [],
       total: 0,
@@ -200,6 +218,38 @@ describe('PaymentsPageClient', () => {
           expect.objectContaining({ search: 'CASE-1001' })
         );
       });
+    });
+  });
+
+  describe('read-only access (payments:read:own)', () => {
+    it('hides Add Payment and the Actions column when the user lacks payments:create', async () => {
+      (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+        (selector: (state: { hasPermission: (p: string) => boolean }) => unknown) =>
+          selector({ hasPermission: (p: string) => p !== 'payments:create' })
+      );
+
+      const payment = makePayment({ clientId: 'client-1', executiveEmployeeId: 'emp-1' });
+      mockedList.mockResolvedValue({
+        items: [payment],
+        total: 1,
+        page: 1,
+        limit: 200,
+        pages: 1,
+      });
+
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('CASE-1001')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('button', { name: /add payment/i })).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Edit')).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Delete')).not.toBeInTheDocument();
+      expect(screen.queryByText('Actions')).not.toBeInTheDocument();
+
+      // Export remains available — read-only still means read access.
+      expect(screen.getByRole('button', { name: /export to excel/i })).toBeInTheDocument();
     });
   });
 

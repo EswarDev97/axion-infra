@@ -116,6 +116,50 @@ class TestPaymentServiceList:
         assert result.items[0].case_status == "COMPLETED"
         assert result.items[0].case_reference == "CASE-COMPLETED-001"
 
+    async def test_list_payments_scoped_by_executive_employee_id(
+        self, db_session, test_tenant, test_user
+    ):
+        """Test that list() restricts results to the given
+        executive_employee_id when provided (payments:read:own scoping)."""
+        from services.complaint.models.payment import Payment
+        from services.complaint.services.payment_service import PaymentService
+
+        client = await _create_client(db_session, test_tenant, test_user)
+        own_executive_id = uuid4()
+        other_executive_id = uuid4()
+
+        own_payment = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-OWN-001",
+            client_id=client.id,
+            vehicle_registration_number="KA01AB0003",
+            executive_employee_id=own_executive_id,
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        other_payment = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-OTHER-001",
+            client_id=client.id,
+            vehicle_registration_number="KA01AB0004",
+            executive_employee_id=other_executive_id,
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add_all([own_payment, other_payment])
+        await db_session.commit()
+
+        service = PaymentService(db_session)
+        result = await service.list(test_tenant.id, executive_employee_id=own_executive_id)
+
+        assert result.total == 1
+        assert len(result.items) == 1
+        assert result.items[0].case_reference == "CASE-OWN-001"
+
 
 class TestPaymentServiceUpdate:
     """Tests for PaymentService.update()."""

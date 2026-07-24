@@ -19,6 +19,7 @@ import {
 import { clientService, type Client } from '@/services/complaint/clientService';
 import { employeeService } from '@/services/hr/hrService';
 import type { Employee } from '@/services/hr/types';
+import { useAuthStore } from '@/stores/authStore';
 
 const PAGE_SIZE = 20;
 
@@ -55,6 +56,11 @@ const emptyForm = {
 type FormState = typeof emptyForm;
 
 export function PaymentsPageClient() {
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  // payments:read:own (EMPLOYEE) is read-only — create/edit/delete require
+  // the full payments:create/update/delete grants, which that role lacks.
+  const canWrite = hasPermission('payments:create');
+
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -328,10 +334,12 @@ export function PaymentsPageClient() {
             <Download className="h-4 w-4 mr-2" />
             Export to Excel
           </Button>
-          <Button onClick={openCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Payment
-          </Button>
+          {canWrite && (
+            <Button onClick={openCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Payment
+            </Button>
+          )}
         </div>
       </div>
 
@@ -371,17 +379,19 @@ export function PaymentsPageClient() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Case Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Billing Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+              {canWrite && (
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+              )}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={10} className="px-6 py-8 text-center text-gray-500">Loading...</td>
+                <td colSpan={canWrite ? 10 : 9} className="px-6 py-8 text-center text-gray-500">Loading...</td>
               </tr>
             ) : payments.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={canWrite ? 10 : 9} className="px-6 py-8 text-center text-gray-500">
                   No payments found.
                 </td>
               </tr>
@@ -405,22 +415,24 @@ export function PaymentsPageClient() {
                   <td className="px-6 py-4 text-sm text-gray-600">
                     {payment.amount != null ? payment.amount : '-'}
                   </td>
-                  <td className="px-6 py-4 text-right space-x-2">
-                    <button
-                      onClick={() => openEdit(payment)}
-                      className="text-blue-600 hover:text-blue-800"
-                      title="Edit"
-                    >
-                      <Edit className="h-4 w-4 inline" />
-                    </button>
-                    <button
-                      onClick={() => setDeleteTarget(payment)}
-                      className="text-red-600 hover:text-red-800"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-4 w-4 inline" />
-                    </button>
-                  </td>
+                  {canWrite && (
+                    <td className="px-6 py-4 text-right space-x-2">
+                      <button
+                        onClick={() => openEdit(payment)}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="Edit"
+                      >
+                        <Edit className="h-4 w-4 inline" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget(payment)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4 inline" />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))
             )}
