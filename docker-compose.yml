@@ -72,7 +72,11 @@ services:
 
   # MinIO bucket initialization
   minio-init:
-    image: minio/mc:latest
+    # See the minio service comment above — minio/mc:latest has the same
+    # x86-64-v2 incompatibility on this host, so it's built from source too.
+    build:
+      context: ./deployment/minio-mc
+      dockerfile: Dockerfile
     container_name: axionpcs-minio-init
     depends_on:
       minio:
