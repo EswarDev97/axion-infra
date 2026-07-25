@@ -842,9 +842,10 @@ describe('PaymentsPageClient', () => {
       expect(mockedBookNew).toHaveBeenCalledTimes(1);
       expect(mockedBookAppendSheet).toHaveBeenCalledTimes(1);
       expect(mockedWriteFile).toHaveBeenCalledTimes(1);
+      // Filename includes a date/time stamp, e.g. payments_2026-07-25_1430.xlsx
       expect(mockedWriteFile).toHaveBeenCalledWith(
         mockedBookNew.mock.results[0]?.value,
-        'payments.xlsx'
+        expect.stringMatching(/^payments_\d{4}-\d{2}-\d{2}_\d{4}\.xlsx$/)
       );
     });
   });
