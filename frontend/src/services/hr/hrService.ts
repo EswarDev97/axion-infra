@@ -126,6 +126,19 @@ export const employeeService = {
     return get<Employee>('/employees/me');
   },
 
+  /**
+   * Every active employee with position 'Field Executive', gated on
+   * payments:create/payments:read rather than the directory-wide
+   * hr:read:all/hr:read:subordinates. Lets a payments-only role (e.g.
+   * EMPLOYEE) populate the Payment Management form's Executive dropdown
+   * with all Field Executives — not just their own record via getMe() —
+   * without gaining general employee-directory read access.
+   */
+  async fieldExecutives(): Promise<Employee[]> {
+    const res = await get<PaginatedResponse<Employee>>('/employees/field-executives');
+    return res.items ?? [];
+  },
+
   async create(data: EmployeeCreateRequest): Promise<Employee> {
     return post<Employee>('/employees', data);
   },

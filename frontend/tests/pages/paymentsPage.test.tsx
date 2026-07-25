@@ -74,6 +74,7 @@ vi.mock('@/services/hr/hrService', async () => {
       ...actual.employeeService,
       list: vi.fn(),
       getMe: vi.fn(),
+      fieldExecutives: vi.fn(),
     },
   };
 });
@@ -100,6 +101,7 @@ const mockedList = paymentService.list as unknown as ReturnType<typeof vi.fn>;
 const mockedClientList = clientService.list as unknown as ReturnType<typeof vi.fn>;
 const mockedEmployeeList = employeeService.list as unknown as ReturnType<typeof vi.fn>;
 const mockedGetMe = employeeService.getMe as unknown as ReturnType<typeof vi.fn>;
+const mockedFieldExecutives = employeeService.fieldExecutives as unknown as ReturnType<typeof vi.fn>;
 
 const makePayment = (overrides: Partial<Payment> = {}): Payment => ({
   id: 'pay-1',
@@ -177,6 +179,7 @@ describe('PaymentsPageClient', () => {
       pagination: { page: 1, pageSize: 200, totalItems: 1, totalPages: 1, hasNext: false, hasPrev: false },
     });
     mockedGetMe.mockResolvedValue(janeDoe);
+    mockedFieldExecutives.mockResolvedValue([janeDoe]);
   });
 
   describe('list rendering', () => {
@@ -337,7 +340,7 @@ describe('PaymentsPageClient', () => {
       expect(screen.getByRole('button', { name: /export to excel/i })).toBeInTheDocument();
     });
 
-    it('resolves the Executive name via employeeService.getMe() (not .list()) when the user lacks hr:read:all/hr:read:subordinates', async () => {
+    it('resolves the Executive name via employeeService.fieldExecutives() (not .list()) when the user lacks hr:read:all/hr:read:subordinates', async () => {
       (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
         (
           selector: (state: {
@@ -365,7 +368,7 @@ describe('PaymentsPageClient', () => {
       render(<PaymentsPageClient />);
 
       await waitFor(() => {
-        expect(mockedGetMe).toHaveBeenCalledTimes(1);
+        expect(mockedFieldExecutives).toHaveBeenCalledTimes(1);
       });
       expect(mockedEmployeeList).not.toHaveBeenCalled();
 

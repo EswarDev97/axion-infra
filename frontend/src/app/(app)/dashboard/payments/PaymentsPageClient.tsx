@@ -175,19 +175,22 @@ export function PaymentsPageClient() {
 
   const fetchDropdownData = useCallback(async () => {
     // Fetched independently (not Promise.all) so a permission failure on
-    // one lookup — e.g. a payments:read:own user lacking employeeService.list's
+    // one lookup — e.g. a payments-only user lacking employeeService.list's
     // hr:read:all — doesn't also blank out the client/finance name lookups,
     // which use an unrestricted endpoint and should still resolve.
     //
-    // A payments:read:own user can only ever see payments where THEY are
-    // the executive (server-side scoped), so resolving just their own name
-    // via getMe() (gated on employees:read:self, not the directory-wide
-    // hr:read:all/hr:read:subordinates) is enough for the Executive column
-    // — no need for the full employee list.
+    // A caller without hr:read:all/hr:read:subordinates can't call
+    // employeeService.list() (the general directory), so we fall back to
+    // fieldExecutives() — gated on payments:create/payments:read, which
+    // this role does have — returning every active Field Executive rather
+    // than just the caller's own record. Good enough for both the
+    // Executive dropdown (only Field Executives are selectable anyway,
+    // see fieldExecutives memo below) and name resolution of existing
+    // payments assigned to any Field Executive.
     const fetchEmployees = (): Promise<Employee[]> =>
       canListEmployees
         ? employeeService.list({ pageSize: 200 }).then((res) => res.items ?? [])
-        : employeeService.getMe().then((me) => [me]);
+        : employeeService.fieldExecutives();
 
     const results = await Promise.allSettled([
       clientService.list({ type: 'CLIENT', limit: 200 }),

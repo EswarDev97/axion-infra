@@ -1,5 +1,6 @@
 """
-HR Service Employees API Unit Tests — GET /employees/me
+HR Service Employees API Unit Tests — GET /employees/me,
+GET /employees/field-executives
 
 Standalone route-level test (mirrors backend/tests/unit/complaint/
 test_payments_api.py's pattern: minimal FastAPI app mounting only the
@@ -40,11 +41,10 @@ async def _create_position(db_session, test_tenant, test_user):
     return position
 
 
-@pytest_asyncio.fixture
-async def employees_client(db_session, test_tenant, test_user) -> AsyncClient:
-    """Standalone ASGI app mounting only the employees router, with
-    get_current_user/get_tenant_id overridden to the test's
-    test_tenant/test_user fixtures.
+def _make_employees_client(db_session, test_tenant, test_user, permissions):
+    """Shared builder behind the employees_client/payments_scoped_employees_client
+    fixtures below — same client, different CurrentUser.permissions so each
+    test exercises a specific permission gate.
 
     Unlike sibling services (e.g. complaint/api/payments.py, which takes
     `db: AsyncSession = Depends(get_db_session)`), employees.py opens its
@@ -61,38 +61,68 @@ async def employees_client(db_session, test_tenant, test_user) -> AsyncClient:
     from shared.database import db_manager
     from shared.middleware import setup_exception_handlers
 
-    await db_manager.init_db()
+    async def _client_cm():
+        await db_manager.init_db()
 
-    app = FastAPI()
-    app.include_router(employees_router, prefix="/api/v1/hr")
-    setup_exception_handlers(app)
+        app = FastAPI()
+        app.include_router(employees_router, prefix="/api/v1/hr")
+        setup_exception_handlers(app)
 
-    current_user = CurrentUser(
-        user_id=test_user.id,
-        tenant_id=test_tenant.id,
-        email=test_user.email,
-        roles=["EMPLOYEE"],
-        permissions=["employees:read:self"],
-        jti="test-jti",
-    )
+        current_user = CurrentUser(
+            user_id=test_user.id,
+            tenant_id=test_tenant.id,
+            email=test_user.email,
+            roles=["EMPLOYEE"],
+            permissions=permissions,
+            jti="test-jti",
+        )
 
-    async def override_get_current_user():
-        return current_user
+        async def override_get_current_user():
+            return current_user
 
-    async def override_get_tenant_id():
-        return test_tenant.id
+        async def override_get_tenant_id():
+            return test_tenant.id
 
-    app.dependency_overrides[get_current_user] = override_get_current_user
-    app.dependency_overrides[get_tenant_id] = override_get_tenant_id
+        app.dependency_overrides[get_current_user] = override_get_current_user
+        app.dependency_overrides[get_tenant_id] = override_get_tenant_id
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test",
-    ) as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+        ) as client:
+            yield client
+
+        app.dependency_overrides.clear()
+        await db_manager.close_db()
+
+    return _client_cm()
+
+
+@pytest_asyncio.fixture
+async def employees_client(db_session, test_tenant, test_user) -> AsyncClient:
+    """CurrentUser with only employees:read:self (the GET /employees/me case)."""
+    async for client in _make_employees_client(
+        db_session, test_tenant, test_user, ["employees:read:self"]
+    ):
         yield client
 
-    app.dependency_overrides.clear()
-    await db_manager.close_db()
+
+@pytest_asyncio.fixture
+async def payments_scoped_employees_client(db_session, test_tenant, test_user) -> AsyncClient:
+    """CurrentUser with only payments:read (no hr:read:all/hr:read:subordinates,
+    no employees:read:self) — the GET /employees/field-executives case."""
+    async for client in _make_employees_client(
+        db_session, test_tenant, test_user, ["payments:read"]
+    ):
+        yield client
+
+
+@pytest_asyncio.fixture
+async def no_permission_employees_client(db_session, test_tenant, test_user) -> AsyncClient:
+    """CurrentUser with no relevant permissions at all — used to assert 403
+    on GET /employees/field-executives."""
+    async for client in _make_employees_client(db_session, test_tenant, test_user, []):
+        yield client
 
 
 class TestGetMyEmployeeRecord:
@@ -136,3 +166,84 @@ class TestGetMyEmployeeRecord:
         response = await employees_client.get("/api/v1/hr/employees/me")
 
         assert response.status_code == 404
+
+
+class TestListFieldExecutives:
+    """Tests for GET /employees/field-executives."""
+
+    async def test_returns_only_active_field_executives(
+        self, payments_scoped_employees_client, db_session, test_tenant, test_user
+    ):
+        """A caller with only payments:read (no hr:read:all/hr:read:
+        subordinates) gets every active Field Executive, excluding other
+        positions and inactive Field Executives."""
+        from services.hr.models import Position
+        from services.hr.services.employee_service import EmployeeService
+
+        field_exec_position = Position(
+            tenant_id=test_tenant.id,
+            title="Field Executive",
+            code=f"FE-{uuid4().hex[:8]}",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        other_position = await _create_position(db_session, test_tenant, test_user)
+        db_session.add(field_exec_position)
+        await db_session.commit()
+        await db_session.refresh(field_exec_position)
+
+        service = EmployeeService(db_session)
+        active_fe = await service.create_employee(
+            tenant_id=test_tenant.id,
+            employee_code=f"E-{uuid4().hex[:8]}",
+            first_name="Raju",
+            last_name="P",
+            email=f"raju.{uuid4().hex[:8]}@example.com",
+            position_id=field_exec_position.id,
+            date_of_joining=date.today(),
+            created_by=test_user.id,
+        )
+        inactive_fe = await service.create_employee(
+            tenant_id=test_tenant.id,
+            employee_code=f"E-{uuid4().hex[:8]}",
+            first_name="Inactive",
+            last_name="Fe",
+            email=f"inactive.{uuid4().hex[:8]}@example.com",
+            position_id=field_exec_position.id,
+            date_of_joining=date.today(),
+            created_by=test_user.id,
+        )
+        inactive_fe.status = "INACTIVE"
+        await db_session.commit()
+        await service.create_employee(
+            tenant_id=test_tenant.id,
+            employee_code=f"E-{uuid4().hex[:8]}",
+            first_name="Other",
+            last_name="Position",
+            email=f"other.{uuid4().hex[:8]}@example.com",
+            position_id=other_position.id,
+            date_of_joining=date.today(),
+            created_by=test_user.id,
+        )
+
+        response = await payments_scoped_employees_client.get(
+            "/api/v1/hr/employees/field-executives"
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["success"] is True
+        names = [item["fullName"] for item in body["data"]["items"]]
+        assert names == ["Raju P"]
+        assert active_fe.id is not None  # sanity: employee actually persisted
+
+    async def test_forbidden_without_payments_or_hr_permission(
+        self, no_permission_employees_client
+    ):
+        """A caller with neither payments:create/payments:read nor hr:read:all/
+        hr:read:subordinates is rejected with 403."""
+        response = await no_permission_employees_client.get(
+            "/api/v1/hr/employees/field-executives"
+        )
+
+        assert response.status_code == 403

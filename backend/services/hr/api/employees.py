@@ -225,6 +225,55 @@ async def get_my_employee_record(
         )
 
 
+@router.get("/field-executives", response_model=ApiResponse[EmployeeListResponse])
+async def list_field_executives(
+    user: Annotated[
+        CurrentUser,
+        Depends(require_any_permission(["payments:create", "payments:read", "hr:read:all", "hr:read:subordinates"])),
+    ],
+    x_request_id: Annotated[str | None, Header()] = None
+):
+    """
+    Active employees with position title 'Field Executive'. Registered
+    ahead of GET /{employee_id} so "field-executives" isn't parsed as a
+    UUID path param.
+
+    Gated on payments:create/payments:read (which EMPLOYEE has) rather
+    than hr:read:all/hr:read:subordinates, so a payments-only caller can
+    populate the Payment Management form's Executive dropdown with every
+    Field Executive — not just their own record via GET /employees/me —
+    without gaining general employee-directory read access.
+    """
+    request_id = UUID(x_request_id) if x_request_id else uuid4()
+
+    async with db_manager.session(tenant_id=user.tenant_id) as db:
+        service = EmployeeService(db)
+        employees = await service.list_by_position_title(user.tenant_id, "Field Executive")
+
+        role_map = await _get_employee_roles(db, employees)
+        items = [
+            _employee_to_response(e, role=role_map.get(str(e.user_id)))
+            for e in employees
+        ]
+
+        return ApiResponse(
+            success=True,
+            data=EmployeeListResponse(
+                items=items,
+                pagination=PaginationMeta(
+                    page=1,
+                    pageSize=len(items),
+                    totalItems=len(items),
+                    totalPages=1,
+                    hasNext=False,
+                    hasPrevious=False,
+                ),
+            ),
+            message="Field executives retrieved successfully",
+            requestId=request_id,
+        )
+
+
 @router.get("/{employee_id}", response_model=ApiResponse[EmployeeResponse])
 async def get_employee(
     employee_id: UUID,

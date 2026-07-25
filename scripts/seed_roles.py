@@ -96,6 +96,13 @@ PERMISSIONS = {
     "payments:read:own": ("Read Own Assigned Payments", "payments", "read", "OWN"),
     "payments:update": ("Update Payments", "payments", "update", "ALL"),
     "payments:delete": ("Delete Payments", "payments", "delete", "ALL"),
+
+    # Required by the Employees Edit page's Role dropdown (GET /roles is
+    # in the auth service, gated on auth:read:all — a different namespace
+    # than the hr:*/employees:* permissions above). Neither HR_ADMIN nor
+    # MANAGER had this, so the Edit Employee page 403'd for both before
+    # ever rendering the form.
+    "auth:read:all": ("Read All Auth Records (users, roles)", "auth", "read", "ALL"),
 }
 
 # Role code -> (name, description, [permission codes])
@@ -107,12 +114,14 @@ ROLES = {
             "employees:*", "departments:*", "attendance:*", "leave:*",
             "payroll:*", "documents:*", "roles:read", "roles:assign",
             "settings:read", "settings:update", "analytics:*", "careers:*",
+            "auth:read:all",
         ],
     ),
     "MANAGER": (
         "Manager",
-        "Manages their team's employees, attendance and leave approvals, "
-        "plus full HR record management and payment processing (payroll-instance scope)",
+        "Full control of the Employees screen (view/create/edit/delete), "
+        "team attendance and leave approvals, plus payment processing "
+        "(payroll-instance scope)",
         [
             "employees:read", "employees:read:team", "employees:update:team",
             "attendance:read:team", "attendance:update:team",
@@ -122,6 +131,7 @@ ROLES = {
             "hr:update:all", "hr:delete:all", "hr:write:all",
             "hr:approve:all", "hr:approve:subordinates",
             "payments:create", "payments:read", "payments:update", "payments:delete",
+            "auth:read:all",
         ],
     ),
     "EMPLOYEE": (
