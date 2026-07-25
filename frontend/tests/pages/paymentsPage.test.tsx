@@ -165,7 +165,7 @@ describe('PaymentsPageClient', () => {
       fullName: 'Jane Doe',
       email: 'jane@example.com',
       positionId: 'pos-1',
-      positionTitle: 'Surveyor',
+      positionTitle: 'Field Executive',
       dateOfJoining: '2026-01-01',
       status: 'ACTIVE',
       employmentType: 'FULL_TIME',
@@ -527,6 +527,52 @@ describe('PaymentsPageClient', () => {
         (call: unknown[]) => !(call[0] as { type?: string })?.type
       );
       expect(calledWithoutType).toBe(false);
+    });
+
+    it('only lists Field Executive employees in the Executive dropdown, excluding other positions', async () => {
+      mockedEmployeeList.mockResolvedValue({
+        items: [
+          {
+            id: 'emp-1',
+            tenantId: 't-1',
+            employeeCode: 'E001',
+            firstName: 'Jane',
+            lastName: 'Doe',
+            fullName: 'Jane Doe',
+            email: 'jane@example.com',
+            positionId: 'pos-1',
+            positionTitle: 'Field Executive',
+            dateOfJoining: '2026-01-01',
+            status: 'ACTIVE',
+            employmentType: 'FULL_TIME',
+            createdAt: '',
+            updatedAt: '',
+          },
+          {
+            id: 'emp-2',
+            tenantId: 't-1',
+            employeeCode: 'E002',
+            firstName: 'Sam',
+            lastName: 'Smith',
+            fullName: 'Sam Smith',
+            email: 'sam@example.com',
+            positionId: 'pos-2',
+            positionTitle: 'HR Executive',
+            dateOfJoining: '2026-01-01',
+            status: 'ACTIVE',
+            employmentType: 'FULL_TIME',
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
+        pagination: { page: 1, pageSize: 200, totalItems: 2, totalPages: 1, hasNext: false, hasPrev: false },
+      });
+
+      const user = userEvent.setup();
+      await openAddModal(user);
+
+      expect(screen.getByRole('option', { name: 'Jane Doe' })).toBeInTheDocument();
+      expect(screen.queryByRole('option', { name: 'Sam Smith' })).not.toBeInTheDocument();
     });
   });
 

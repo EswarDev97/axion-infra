@@ -98,6 +98,16 @@ export function PaymentsPageClient() {
     return map;
   }, [employees]);
 
+  // The Executive dropdown only offers Field Executive employees (per the
+  // Payment Management design). employeeNameById above stays unfiltered so
+  // existing payments assigned to any employee — including one whose
+  // position later changed away from Field Executive — still resolve to a
+  // name in the table/export rather than falling back to the raw id.
+  const fieldExecutives = useMemo(
+    () => employees.filter((e) => e.positionTitle === 'Field Executive'),
+    [employees]
+  );
+
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<Payment | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -570,7 +580,7 @@ export function PaymentsPageClient() {
                 onChange={(e) => handleChange('executiveEmployeeId', e.target.value)}
                 placeholder="Select executive"
               >
-                {employees.map((emp) => (
+                {fieldExecutives.map((emp) => (
                   <option key={emp.id} value={emp.id}>{emp.fullName}</option>
                 ))}
               </Select>
