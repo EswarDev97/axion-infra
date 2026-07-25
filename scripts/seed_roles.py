@@ -126,14 +126,14 @@ ROLES = {
     ),
     "EMPLOYEE": (
         "Employee",
-        "Self-service access to own attendance and payroll, plus read-only "
-        "access to payments where they are the assigned executive "
-        "(payroll-instance scope: Attendance / Tasks / Expenses / Payment Management only)",
+        "Self-service access to own attendance and payroll, plus full "
+        "payment management CRUD (payroll-instance scope: Attendance / "
+        "Tasks / Expenses / Payment Management only)",
         [
             "employees:read:self", "employees:update:self",
             "attendance:read:self", "attendance:create:self",
             "payroll:read:self",
-            "payments:read:own",
+            "payments:create", "payments:read", "payments:update", "payments:delete",
         ],
     ),
 }

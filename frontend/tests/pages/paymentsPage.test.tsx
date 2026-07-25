@@ -12,17 +12,23 @@ import { clientService } from '@/services/complaint/clientService';
 import { employeeService } from '@/services/hr/hrService';
 import { useAuthStore } from '@/stores/authStore';
 
-// Default: full payments:create + hr:read:all access (matches HR_ADMIN/
-// MANAGER, the roles these pre-existing tests assume). Tests specific to
-// the read-only payments:read:own experience override this per-test.
+// Default: full payments:create + hr:read:all access, no EMPLOYEE role
+// (matches HR_ADMIN/MANAGER, the roles these pre-existing tests assume).
+// Tests specific to the EMPLOYEE experience override this per-test.
 vi.mock('@/stores/authStore', () => ({
   useAuthStore: vi.fn(
     (
       selector: (state: {
         hasPermission: (p: string) => boolean;
         hasAnyPermission: (p: string[]) => boolean;
+        hasAnyRole: (r: string[]) => boolean;
       }) => unknown
-    ) => selector({ hasPermission: () => true, hasAnyPermission: () => true })
+    ) =>
+      selector({
+        hasPermission: () => true,
+        hasAnyPermission: () => true,
+        hasAnyRole: () => false,
+      })
   ),
 }));
 
@@ -125,8 +131,14 @@ describe('PaymentsPageClient', () => {
         selector: (state: {
           hasPermission: (p: string) => boolean;
           hasAnyPermission: (p: string[]) => boolean;
+          hasAnyRole: (r: string[]) => boolean;
         }) => unknown
-      ) => selector({ hasPermission: () => true, hasAnyPermission: () => true })
+      ) =>
+        selector({
+          hasPermission: () => true,
+          hasAnyPermission: () => true,
+          hasAnyRole: () => false,
+        })
     );
     mockedList.mockResolvedValue({
       items: [],
@@ -232,18 +244,20 @@ describe('PaymentsPageClient', () => {
     });
   });
 
-  describe('read-only access (payments:read:own)', () => {
+  describe('permission-gated UI (write access, export, name resolution)', () => {
     it('hides Add Payment and the Actions column when the user lacks payments:create', async () => {
       (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
         (
           selector: (state: {
             hasPermission: (p: string) => boolean;
             hasAnyPermission: (p: string[]) => boolean;
+            hasAnyRole: (r: string[]) => boolean;
           }) => unknown
         ) =>
           selector({
             hasPermission: (p: string) => p !== 'payments:create',
             hasAnyPermission: () => true,
+            hasAnyRole: () => false,
           })
       );
 
@@ -266,8 +280,60 @@ describe('PaymentsPageClient', () => {
       expect(screen.queryByTitle('Edit')).not.toBeInTheDocument();
       expect(screen.queryByTitle('Delete')).not.toBeInTheDocument();
       expect(screen.queryByText('Actions')).not.toBeInTheDocument();
+    });
 
-      // Export remains available — read-only still means read access.
+    it('hides Export to Excel specifically for the EMPLOYEE role, even though EMPLOYEE has full payments:create/read/update/delete', async () => {
+      (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+        (
+          selector: (state: {
+            hasPermission: (p: string) => boolean;
+            hasAnyPermission: (p: string[]) => boolean;
+            hasAnyRole: (r: string[]) => boolean;
+          }) => unknown
+        ) =>
+          selector({
+            hasPermission: () => true,
+            hasAnyPermission: () => true,
+            hasAnyRole: (roles: string[]) => roles.includes('EMPLOYEE'),
+          })
+      );
+
+      const payment = makePayment({ clientId: 'client-1', executiveEmployeeId: 'emp-1' });
+      mockedList.mockResolvedValue({
+        items: [payment],
+        total: 1,
+        page: 1,
+        limit: 200,
+        pages: 1,
+      });
+
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('CASE-1001')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('button', { name: /export to excel/i })).not.toBeInTheDocument();
+      // Full write access is unaffected by the export restriction.
+      expect(screen.getByRole('button', { name: /add payment/i })).toBeInTheDocument();
+    });
+
+    it('shows Export to Excel for non-EMPLOYEE roles (SUPER_ADMIN/HR_ADMIN/MANAGER)', async () => {
+      const payment = makePayment({ clientId: 'client-1', executiveEmployeeId: 'emp-1' });
+      mockedList.mockResolvedValue({
+        items: [payment],
+        total: 1,
+        page: 1,
+        limit: 200,
+        pages: 1,
+      });
+
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('CASE-1001')).toBeInTheDocument();
+      });
+
       expect(screen.getByRole('button', { name: /export to excel/i })).toBeInTheDocument();
     });
 
@@ -277,11 +343,13 @@ describe('PaymentsPageClient', () => {
           selector: (state: {
             hasPermission: (p: string) => boolean;
             hasAnyPermission: (p: string[]) => boolean;
+            hasAnyRole: (r: string[]) => boolean;
           }) => unknown
         ) =>
           selector({
-            hasPermission: (p: string) => p === 'payments:read:own',
+            hasPermission: () => true,
             hasAnyPermission: () => false,
+            hasAnyRole: () => false,
           })
       );
 

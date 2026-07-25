@@ -58,9 +58,14 @@ type FormState = typeof emptyForm;
 export function PaymentsPageClient() {
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission);
-  // payments:read:own (EMPLOYEE) is read-only — create/edit/delete require
-  // the full payments:create/update/delete grants, which that role lacks.
+  const hasAnyRole = useAuthStore((state) => state.hasAnyRole);
+  // EMPLOYEE has full payments:create/update/delete (same as MANAGER/
+  // HR_ADMIN) — canWrite is true for every role that reaches this page.
   const canWrite = hasPermission('payments:create');
+  // Export to Excel is restricted to SUPER_ADMIN/HR_ADMIN/MANAGER — hidden
+  // specifically for EMPLOYEE, per explicit request, independent of the
+  // payments:read permission itself (which EMPLOYEE does have).
+  const canExport = !hasAnyRole(['EMPLOYEE']);
   // employeeService.list() (GET /employees) requires hr:read:all/hr:read:
   // subordinates. A payments:read:own user typically has neither — resolve
   // just their own name via employeeService.getMe() instead (see
@@ -358,10 +363,12 @@ export function PaymentsPageClient() {
           <p className="text-gray-600">Track case-level payments, billing and finance references</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Export to Excel
-          </Button>
+          {canExport && (
+            <Button variant="outline" onClick={handleExport}>
+              <Download className="h-4 w-4 mr-2" />
+              Export to Excel
+            </Button>
+          )}
           {canWrite && (
             <Button onClick={openCreate}>
               <Plus className="h-4 w-4 mr-2" />
