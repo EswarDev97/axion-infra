@@ -7,7 +7,7 @@ SOFT delete (sets is_deleted/deleted_at) rather than a row removal, and
 list() always excludes soft-deleted rows.
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -92,7 +92,20 @@ class PaymentService:
         billing_status: Optional[str] = None,
         client_id: Optional[UUID] = None,
         executive_employee_id: Optional[UUID] = None,
+        finance_id: Optional[UUID] = None,
+        date_from: Optional[date] = None,
+        date_to: Optional[date] = None,
     ) -> PaymentListResponse:
+        """
+        executive_employee_id does double duty: it's both the user-facing
+        "Field Executive" filter (Payment Management's filter bar) AND the
+        payments:read:own server-side scoping mechanism (see api/payments.py)
+        — the caller passes whichever value applies; when payments:read:own
+        scoping is active it's forced to the caller's own employee id and a
+        user-supplied filter value is ignored (see the route).
+        date_from/date_to filter on created_at (the "Lead Created Date"
+        already surfaced in the Excel export), inclusive of both endpoints.
+        """
         query = select(Payment).where(
             Payment.tenant_id == tenant_id,
             Payment.is_deleted.is_(False),
@@ -107,10 +120,23 @@ class PaymentService:
         if client_id:
             query = query.where(Payment.client_id == client_id)
 
+        if finance_id:
+            query = query.where(Payment.finance_id == finance_id)
+
         if executive_employee_id:
-            # payments:read:own scoping — restrict to payments where the
-            # caller is the assigned executive (see api/payments.py).
             query = query.where(Payment.executive_employee_id == executive_employee_id)
+
+        if date_from:
+            query = query.where(
+                Payment.created_at >= datetime.combine(date_from, datetime.min.time(), tzinfo=timezone.utc)
+            )
+
+        if date_to:
+            # Inclusive of the entire "to" day.
+            query = query.where(
+                Payment.created_at < datetime.combine(date_to, datetime.min.time(), tzinfo=timezone.utc)
+                + timedelta(days=1)
+            )
 
         if search:
             term = f"%{search}%"

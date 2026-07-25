@@ -80,6 +80,10 @@ export const paymentService = {
     caseStatus?: string;
     billingStatus?: string;
     clientId?: string;
+    financeId?: string;
+    executiveEmployeeId?: string;
+    dateFrom?: string;
+    dateTo?: string;
   }): Promise<PaymentListResponse> {
     return get<PaymentListResponse>(BASE, params);
   },

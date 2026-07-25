@@ -19,6 +19,7 @@ delete remain gated on the unscoped payments:create/update/delete only —
 EMPLOYEE has no write access to payment records.
 """
 
+from datetime import date
 from typing import Annotated, Optional
 from uuid import UUID, uuid4
 
@@ -82,6 +83,10 @@ async def list_payments(
     case_status: Optional[str] = Query(None, alias="caseStatus"),
     billing_status: Optional[str] = Query(None, alias="billingStatus"),
     client_id: Optional[UUID] = Query(None, alias="clientId"),
+    finance_id: Optional[UUID] = Query(None, alias="financeId"),
+    executive_employee_id: Optional[UUID] = Query(None, alias="executiveEmployeeId"),
+    date_from: Optional[date] = Query(None, alias="dateFrom"),
+    date_to: Optional[date] = Query(None, alias="dateTo"),
     db: AsyncSession = Depends(get_db_session),
     current_user: CurrentUser = Depends(
         require_any_permission(["payments:read", "payments:read:own"])
@@ -91,16 +96,22 @@ async def list_payments(
     x_request_id: Annotated[str | None, Header()] = None,
 ):
     request_id = UUID(x_request_id) if x_request_id else uuid4()
-    # Full payments:read (or SUPER_ADMIN) sees everything; payments:read:own
-    # alone is scoped to payments where the caller is the assigned executive.
-    scoped_executive_id = None
-    if not current_user.is_super_admin() and not current_user.has_permission("payments:read"):
-        scoped_executive_id = employee_id
+    # Full payments:read (or SUPER_ADMIN) sees everything and may filter by
+    # any Field Executive via executiveEmployeeId. payments:read:own alone
+    # is scoped to payments where the caller IS the assigned executive —
+    # that scoping always wins over a user-supplied executiveEmployeeId,
+    # since a :read:own caller has no visibility into other executives'
+    # payments regardless of what they pass.
+    is_scoped_to_own = not current_user.is_super_admin() and not current_user.has_permission("payments:read")
+    effective_executive_id = employee_id if is_scoped_to_own else executive_employee_id
 
     service = PaymentService(db)
     result = await service.list(
         tenant_id, page, limit, search, case_status, billing_status, client_id,
-        executive_employee_id=scoped_executive_id,
+        executive_employee_id=effective_executive_id,
+        finance_id=finance_id,
+        date_from=date_from,
+        date_to=date_to,
     )
     return ApiResponse(
         success=True,

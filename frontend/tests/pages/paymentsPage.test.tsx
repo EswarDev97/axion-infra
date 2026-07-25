@@ -149,14 +149,27 @@ describe('PaymentsPageClient', () => {
       limit: 200,
       pages: 0,
     });
-    mockedClientList.mockResolvedValue({
-      items: [
-        { id: 'client-1', name: 'Acme Insurance', code: 'ACME', type: 'CLIENT', isActive: true, createdAt: '', updatedAt: '' },
-      ],
-      total: 1,
-      page: 1,
-      limit: 200,
-      pages: 1,
+    mockedClientList.mockImplementation((params?: { type?: string }) => {
+      if (params?.type === 'FINANCER') {
+        return Promise.resolve({
+          items: [
+            { id: 'financer-1', name: 'Acme Finance Co', code: 'FIN', type: 'FINANCER', isActive: true, createdAt: '', updatedAt: '' },
+          ],
+          total: 1,
+          page: 1,
+          limit: 200,
+          pages: 1,
+        });
+      }
+      return Promise.resolve({
+        items: [
+          { id: 'client-1', name: 'Acme Insurance', code: 'ACME', type: 'CLIENT', isActive: true, createdAt: '', updatedAt: '' },
+        ],
+        total: 1,
+        page: 1,
+        limit: 200,
+        pages: 1,
+      });
     });
     const janeDoe = {
       id: 'emp-1',
@@ -199,13 +212,14 @@ describe('PaymentsPageClient', () => {
         expect(screen.getByText('CASE-1001')).toBeInTheDocument();
       });
 
-      expect(screen.getByText('1')).toBeInTheDocument();
-      expect(screen.getByText('Acme Insurance')).toBeInTheDocument();
-      expect(screen.getByText('KA01AB1234')).toBeInTheDocument();
-      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-      expect(screen.getByText('ASSIGNED')).toBeInTheDocument();
-      expect(screen.getByText('COMPANY_BILLING')).toBeInTheDocument();
-      expect(screen.getByText('5000')).toBeInTheDocument();
+      const row = screen.getByText('CASE-1001').closest('tr') as HTMLElement;
+      expect(within(row).getByText('1')).toBeInTheDocument();
+      expect(within(row).getByText('Acme Insurance')).toBeInTheDocument();
+      expect(within(row).getByText('KA01AB1234')).toBeInTheDocument();
+      expect(within(row).getByText('Jane Doe')).toBeInTheDocument();
+      expect(within(row).getByText('ASSIGNED')).toBeInTheDocument();
+      expect(within(row).getByText('COMPANY_BILLING')).toBeInTheDocument();
+      expect(within(row).getByText('5000')).toBeInTheDocument();
     });
 
     it('falls back to the raw id when a client/executive lookup is unavailable', async () => {
@@ -244,6 +258,152 @@ describe('PaymentsPageClient', () => {
           expect.objectContaining({ search: 'CASE-1001' })
         );
       });
+    });
+  });
+
+  describe('filter bar (Client / Finance / Field Executive / date range)', () => {
+    it('renders Client, Finance Company, Field Executive, From Date, and To Date controls for all roles', async () => {
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalled();
+      });
+
+      expect(screen.getByLabelText(/^client$/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/finance company/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/field executive/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/from date/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/to date/i)).toBeInTheDocument();
+    });
+
+    it('re-fetches with clientId when the Client filter changes', async () => {
+      const user = userEvent.setup();
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalledTimes(1);
+      });
+
+      const clientFilter = screen.getByLabelText(/^client$/i);
+      await user.selectOptions(clientFilter, 'client-1');
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenLastCalledWith(
+          expect.objectContaining({ clientId: 'client-1' })
+        );
+      });
+    });
+
+    it('re-fetches with financeId when the Finance Company filter changes', async () => {
+      const user = userEvent.setup();
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalledTimes(1);
+      });
+
+      const financeFilter = screen.getByLabelText(/finance company/i);
+      await user.selectOptions(financeFilter, 'financer-1');
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenLastCalledWith(
+          expect.objectContaining({ financeId: 'financer-1' })
+        );
+      });
+    });
+
+    it('re-fetches with executiveEmployeeId when the Field Executive filter changes', async () => {
+      const user = userEvent.setup();
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalledTimes(1);
+      });
+
+      const executiveFilter = screen.getByLabelText(/field executive/i);
+      await user.selectOptions(executiveFilter, 'emp-1');
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenLastCalledWith(
+          expect.objectContaining({ executiveEmployeeId: 'emp-1' })
+        );
+      });
+    });
+
+    it('re-fetches with dateFrom/dateTo when the date range changes', async () => {
+      const user = userEvent.setup();
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalledTimes(1);
+      });
+
+      const fromDate = screen.getByLabelText(/from date/i);
+      const toDate = screen.getByLabelText(/to date/i);
+      await user.type(fromDate, '2026-04-01');
+      await user.type(toDate, '2026-04-30');
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenLastCalledWith(
+          expect.objectContaining({ dateFrom: '2026-04-01', dateTo: '2026-04-30' })
+        );
+      });
+    });
+
+    it('combines all filters (client + finance + executive + date range) into a single request', async () => {
+      const user = userEvent.setup();
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalledTimes(1);
+      });
+
+      await user.selectOptions(screen.getByLabelText(/^client$/i), 'client-1');
+      await user.selectOptions(screen.getByLabelText(/finance company/i), 'financer-1');
+      await user.selectOptions(screen.getByLabelText(/field executive/i), 'emp-1');
+      await user.type(screen.getByLabelText(/from date/i), '2026-04-01');
+      await user.type(screen.getByLabelText(/to date/i), '2026-04-30');
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            clientId: 'client-1',
+            financeId: 'financer-1',
+            executiveEmployeeId: 'emp-1',
+            dateFrom: '2026-04-01',
+            dateTo: '2026-04-30',
+          })
+        );
+      });
+    });
+
+    it('shows a Clear Filters button once a filter is active, and clears all filters on click', async () => {
+      const user = userEvent.setup();
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalledTimes(1);
+      });
+
+      expect(screen.queryByRole('button', { name: /clear filters/i })).not.toBeInTheDocument();
+
+      await user.selectOptions(screen.getByLabelText(/^client$/i), 'client-1');
+
+      const clearButton = await screen.findByRole('button', { name: /clear filters/i });
+      await user.click(clearButton);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            clientId: undefined,
+            financeId: undefined,
+            executiveEmployeeId: undefined,
+            dateFrom: undefined,
+            dateTo: undefined,
+          })
+        );
+      });
+      expect(screen.queryByRole('button', { name: /clear filters/i })).not.toBeInTheDocument();
     });
   });
 
@@ -373,7 +533,8 @@ describe('PaymentsPageClient', () => {
       expect(mockedEmployeeList).not.toHaveBeenCalled();
 
       await waitFor(() => {
-        expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+        const row = screen.getByText('CASE-1001').closest('tr') as HTMLElement;
+        expect(within(row).getByText('Jane Doe')).toBeInTheDocument();
       });
     });
   });
@@ -436,9 +597,12 @@ describe('PaymentsPageClient', () => {
       });
       // Wait for the dropdown options to actually be populated in the DOM
       // before proceeding, so subsequent state updates don't leak past act().
+      // Scoped to the modal dialog since the page's filter bar also renders
+      // Client/Field Executive dropdowns with the same option text.
+      const dialog = screen.getByRole('dialog');
       await waitFor(() => {
-        expect(screen.getAllByRole('option', { name: 'Acme Insurance' }).length).toBeGreaterThan(0);
-        expect(screen.getByRole('option', { name: 'Jane Doe' })).toBeInTheDocument();
+        expect(within(dialog).getAllByRole('option', { name: 'Acme Insurance' }).length).toBeGreaterThan(0);
+        expect(within(dialog).getByRole('option', { name: 'Jane Doe' })).toBeInTheDocument();
       });
     };
 
@@ -574,8 +738,9 @@ describe('PaymentsPageClient', () => {
       const user = userEvent.setup();
       await openAddModal(user);
 
-      expect(screen.getByRole('option', { name: 'Jane Doe' })).toBeInTheDocument();
-      expect(screen.queryByRole('option', { name: 'Sam Smith' })).not.toBeInTheDocument();
+      const dialog = screen.getByRole('dialog');
+      expect(within(dialog).getByRole('option', { name: 'Jane Doe' })).toBeInTheDocument();
+      expect(within(dialog).queryByRole('option', { name: 'Sam Smith' })).not.toBeInTheDocument();
     });
   });
 

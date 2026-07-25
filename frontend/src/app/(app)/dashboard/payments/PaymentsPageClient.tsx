@@ -79,6 +79,15 @@ export function PaymentsPageClient() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Filter bar: Client / Finance Company / Field Executive dropdowns plus a
+  // Lead Created Date (created_at) From/To range — all combinable, for every
+  // role that can reach this page.
+  const [filterClientId, setFilterClientId] = useState('');
+  const [filterFinanceId, setFilterFinanceId] = useState('');
+  const [filterExecutiveId, setFilterExecutiveId] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+
   // Dropdown data
   const [clients, setClients] = useState<Client[]>([]);
   const [financers, setFinancers] = useState<Client[]>([]);
@@ -126,6 +135,11 @@ export function PaymentsPageClient() {
         page,
         limit: PAGE_SIZE,
         search: search || undefined,
+        clientId: filterClientId || undefined,
+        financeId: filterFinanceId || undefined,
+        executiveEmployeeId: filterExecutiveId || undefined,
+        dateFrom: filterDateFrom || undefined,
+        dateTo: filterDateTo || undefined,
       });
       setPayments(res.items ?? []);
       setTotalPages(res.pages ?? 1);
@@ -134,7 +148,7 @@ export function PaymentsPageClient() {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, search, filterClientId, filterFinanceId, filterExecutiveId, filterDateFrom, filterDateTo]);
 
   useEffect(() => {
     fetchPayments();
@@ -144,6 +158,25 @@ export function PaymentsPageClient() {
     setPage(1);
     fetchPayments();
   };
+
+  const handleFilterChange = (
+    setter: (value: string) => void
+  ) => (value: string) => {
+    setter(value);
+    setPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setFilterClientId('');
+    setFilterFinanceId('');
+    setFilterExecutiveId('');
+    setFilterDateFrom('');
+    setFilterDateTo('');
+    setPage(1);
+  };
+
+  const hasActiveFilters =
+    !!filterClientId || !!filterFinanceId || !!filterExecutiveId || !!filterDateFrom || !!filterDateTo;
 
   const handleExport = async () => {
     // Dynamically imported so the (fairly large) SheetJS library is only
@@ -397,8 +430,8 @@ export function PaymentsPageClient() {
         </Alert>
       )}
 
-      {/* Search */}
-      <div className="bg-white rounded-lg border p-4">
+      {/* Search + Filters */}
+      <div className="bg-white rounded-lg border p-4 space-y-3">
         <div className="flex gap-3">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -410,6 +443,81 @@ export function PaymentsPageClient() {
               className="pl-10"
             />
           </div>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="w-48">
+            <label htmlFor="filterClientId" className="block text-xs font-medium text-gray-500 mb-1">
+              Client
+            </label>
+            <Select
+              id="filterClientId"
+              value={filterClientId}
+              onChange={(e) => handleFilterChange(setFilterClientId)(e.target.value)}
+              placeholder="All clients"
+            >
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-48">
+            <label htmlFor="filterFinanceId" className="block text-xs font-medium text-gray-500 mb-1">
+              Finance Company
+            </label>
+            <Select
+              id="filterFinanceId"
+              value={filterFinanceId}
+              onChange={(e) => handleFilterChange(setFilterFinanceId)(e.target.value)}
+              placeholder="All finance companies"
+            >
+              {financers.map((f) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-48">
+            <label htmlFor="filterExecutiveId" className="block text-xs font-medium text-gray-500 mb-1">
+              Field Executive
+            </label>
+            <Select
+              id="filterExecutiveId"
+              value={filterExecutiveId}
+              onChange={(e) => handleFilterChange(setFilterExecutiveId)(e.target.value)}
+              placeholder="All executives"
+            >
+              {fieldExecutives.map((emp) => (
+                <option key={emp.id} value={emp.id}>{emp.fullName}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-40">
+            <label htmlFor="filterDateFrom" className="block text-xs font-medium text-gray-500 mb-1">
+              From Date
+            </label>
+            <Input
+              id="filterDateFrom"
+              type="date"
+              value={filterDateFrom}
+              onChange={(e) => handleFilterChange(setFilterDateFrom)(e.target.value)}
+            />
+          </div>
+          <div className="w-40">
+            <label htmlFor="filterDateTo" className="block text-xs font-medium text-gray-500 mb-1">
+              To Date
+            </label>
+            <Input
+              id="filterDateTo"
+              type="date"
+              value={filterDateTo}
+              onChange={(e) => handleFilterChange(setFilterDateTo)(e.target.value)}
+            />
+          </div>
+          {hasActiveFilters && (
+            <Button variant="outline" size="sm" onClick={handleClearFilters}>
+              Clear Filters
+            </Button>
+          )}
         </div>
       </div>
 
