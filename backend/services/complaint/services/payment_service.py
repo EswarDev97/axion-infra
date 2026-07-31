@@ -11,12 +11,12 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select, func, asc, desc
+from sqlalchemy import select, func, asc, desc, table, column, String
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import aliased
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.complaint.models.client import Client
-from services.hr.models.employee import Employee
 
 from ..models.payment import Payment
 from ..schemas.payment import (
@@ -24,6 +24,20 @@ from ..schemas.payment import (
     PaymentUpdateRequest,
     PaymentResponse,
     PaymentListResponse,
+)
+
+# Sorting by the assigned Field Executive's name requires joining against
+# the `employees` table, which belongs to the hr service. complaint-service
+# only ships its own service/shared code (see services/complaint/Dockerfile
+# — COPY services/complaint only), so an ORM import of
+# services.hr.models.employee.Employee would crash this service at startup.
+# Both services share the same physical database, so a lightweight SQLAlchemy
+# Core table() reference (no ORM import) lets us join the real table safely.
+_employees_table = table(
+    "employees",
+    column("id", PGUUID(as_uuid=True)),
+    column("first_name", String),
+    column("last_name", String),
 )
 
 # Columns the Payment Management list screen allows sorting by. The three
@@ -133,13 +147,13 @@ class PaymentService:
         """
         client_alias = aliased(Client)
         financer_alias = aliased(Client)
-        executive_alias = aliased(Employee)
+        executive_alias = _employees_table.alias("payment_executive")
 
         query = (
             select(Payment)
             .outerjoin(client_alias, Payment.client_id == client_alias.id)
             .outerjoin(financer_alias, Payment.finance_id == financer_alias.id)
-            .outerjoin(executive_alias, Payment.executive_employee_id == executive_alias.id)
+            .outerjoin(executive_alias, Payment.executive_employee_id == executive_alias.c.id)
             .where(
                 Payment.tenant_id == tenant_id,
                 Payment.is_deleted.is_(False),
@@ -187,7 +201,7 @@ class PaymentService:
         name_sort_columns = {
             "client": client_alias.name,
             "finance": financer_alias.name,
-            "executive": func.concat(executive_alias.first_name, " ", executive_alias.last_name),
+            "executive": func.concat(executive_alias.c.first_name, " ", executive_alias.c.last_name),
         }
         if sort_by in name_sort_columns:
             query = query.order_by(direction(name_sort_columns[sort_by]))
