@@ -168,6 +168,34 @@ class TestCreatePayment:
         assert "createdAt" in data
         assert "updatedAt" in data
 
+    async def test_create_payment_rejects_duplicate_vehicle_registration_number(
+        self, payments_client, db_session, test_tenant, test_user
+    ):
+        """A second payment for the same tenant using an already-active
+        vehicle registration number must be rejected with 409."""
+        client = await _create_client(db_session, test_tenant, test_user)
+
+        payload = {
+            "caseReference": "CASE-API-DUP-VEH-001",
+            "clientId": str(client.id),
+            "vehicleRegistrationNumber": "KA01AB1999",
+            "executiveEmployeeId": str(uuid4()),
+            "caseStatus": "ASSIGNED",
+            "billingStatus": "COMPANY_BILLING",
+        }
+        first = await payments_client.post("/api/v1/complaints/payments", json=payload)
+        assert first.status_code == 201
+
+        duplicate_payload = {**payload, "caseReference": "CASE-API-DUP-VEH-002"}
+        response = await payments_client.post(
+            "/api/v1/complaints/payments", json=duplicate_payload
+        )
+
+        assert response.status_code == 409
+        body = response.json()
+        assert body["success"] is False
+        assert body["error"]["code"] == "RESOURCE_ALREADY_EXISTS"
+
 
 @pytest_asyncio.fixture
 async def own_scoped_payments_client(db_session, test_tenant, test_user):

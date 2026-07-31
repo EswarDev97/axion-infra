@@ -123,6 +123,267 @@ class TestPaymentServiceCreate:
         assert payment.updated_by == test_user.id
 
 
+class TestPaymentServiceUniqueFields:
+    """Tests for the Vehicle Registration Number / UTR Number uniqueness
+    validation on create() and update()."""
+
+    async def test_create_rejects_duplicate_vehicle_registration_number(
+        self, db_session, test_tenant, test_user
+    ):
+        from services.complaint.schemas.payment import PaymentCreateRequest
+        from services.complaint.services.payment_service import PaymentService
+        from shared.exceptions import ResourceAlreadyExistsException
+
+        client = await _create_client(db_session, test_tenant, test_user)
+        service = PaymentService(db_session)
+
+        await service.create(
+            PaymentCreateRequest(
+                case_reference="CASE-DUP-VEH-001",
+                client_id=client.id,
+                vehicle_registration_number="KA01AB9999",
+                executive_employee_id=uuid4(),
+                case_status="ASSIGNED",
+                billing_status="COMPANY_BILLING",
+            ),
+            test_tenant.id,
+            test_user.id,
+        )
+
+        with pytest.raises(ResourceAlreadyExistsException):
+            await service.create(
+                PaymentCreateRequest(
+                    case_reference="CASE-DUP-VEH-002",
+                    client_id=client.id,
+                    vehicle_registration_number="KA01AB9999",
+                    executive_employee_id=uuid4(),
+                    case_status="ASSIGNED",
+                    billing_status="COMPANY_BILLING",
+                ),
+                test_tenant.id,
+                test_user.id,
+            )
+
+    async def test_create_rejects_duplicate_utr_number(
+        self, db_session, test_tenant, test_user
+    ):
+        from services.complaint.schemas.payment import PaymentCreateRequest
+        from services.complaint.services.payment_service import PaymentService
+        from shared.exceptions import ResourceAlreadyExistsException
+
+        client = await _create_client(db_session, test_tenant, test_user)
+        service = PaymentService(db_session)
+
+        await service.create(
+            PaymentCreateRequest(
+                case_reference="CASE-DUP-UTR-001",
+                client_id=client.id,
+                vehicle_registration_number="KA01AB8001",
+                executive_employee_id=uuid4(),
+                case_status="ASSIGNED",
+                billing_status="CUSTOMER_BILLING",
+                payment_mode="TRANSFER",
+                utr_number="UTR000111222",
+                transaction_datetime="2026-07-01T10:00:00Z",
+                amount="500.00",
+            ),
+            test_tenant.id,
+            test_user.id,
+        )
+
+        with pytest.raises(ResourceAlreadyExistsException):
+            await service.create(
+                PaymentCreateRequest(
+                    case_reference="CASE-DUP-UTR-002",
+                    client_id=client.id,
+                    vehicle_registration_number="KA01AB8002",
+                    executive_employee_id=uuid4(),
+                    case_status="ASSIGNED",
+                    billing_status="CUSTOMER_BILLING",
+                    payment_mode="TRANSFER",
+                    utr_number="UTR000111222",
+                    transaction_datetime="2026-07-01T11:00:00Z",
+                    amount="700.00",
+                ),
+                test_tenant.id,
+                test_user.id,
+            )
+
+    async def test_different_tenants_may_share_the_same_vehicle_registration_number(
+        self, db_session, test_tenant, test_user
+    ):
+        """Uniqueness is scoped per tenant — two different companies may
+        each have a payment for the same vehicle."""
+        from services.auth.models import Tenant
+        from services.complaint.schemas.payment import PaymentCreateRequest
+        from services.complaint.services.payment_service import PaymentService
+
+        other_tenant = Tenant(
+            name="Other Co",
+            slug=f"other-co-{uuid4().hex[:8]}",
+            status="ACTIVE",
+        )
+        db_session.add(other_tenant)
+        await db_session.commit()
+        await db_session.refresh(other_tenant)
+
+        client_a = await _create_client(db_session, test_tenant, test_user)
+        client_b = await _create_client(db_session, other_tenant, test_user)
+
+        service = PaymentService(db_session)
+        await service.create(
+            PaymentCreateRequest(
+                case_reference="CASE-TENANT-A",
+                client_id=client_a.id,
+                vehicle_registration_number="KA01AB7777",
+                executive_employee_id=uuid4(),
+                case_status="ASSIGNED",
+                billing_status="COMPANY_BILLING",
+            ),
+            test_tenant.id,
+            test_user.id,
+        )
+
+        # Should NOT raise — different tenant, same vehicle registration number.
+        payment_b = await service.create(
+            PaymentCreateRequest(
+                case_reference="CASE-TENANT-B",
+                client_id=client_b.id,
+                vehicle_registration_number="KA01AB7777",
+                executive_employee_id=uuid4(),
+                case_status="ASSIGNED",
+                billing_status="COMPANY_BILLING",
+            ),
+            other_tenant.id,
+            test_user.id,
+        )
+        assert payment_b.vehicle_registration_number == "KA01AB7777"
+
+    async def test_soft_deleted_payment_frees_its_vehicle_registration_number_for_reuse(
+        self, db_session, test_tenant, test_user
+    ):
+        from services.complaint.schemas.payment import PaymentCreateRequest
+        from services.complaint.services.payment_service import PaymentService
+
+        client = await _create_client(db_session, test_tenant, test_user)
+        service = PaymentService(db_session)
+
+        original = await service.create(
+            PaymentCreateRequest(
+                case_reference="CASE-REUSE-001",
+                client_id=client.id,
+                vehicle_registration_number="KA01AB6666",
+                executive_employee_id=uuid4(),
+                case_status="ASSIGNED",
+                billing_status="COMPANY_BILLING",
+            ),
+            test_tenant.id,
+            test_user.id,
+        )
+        await service.delete(original)
+
+        # Should NOT raise — the only other payment with this vehicle
+        # registration number has been soft-deleted.
+        new_payment = await service.create(
+            PaymentCreateRequest(
+                case_reference="CASE-REUSE-002",
+                client_id=client.id,
+                vehicle_registration_number="KA01AB6666",
+                executive_employee_id=uuid4(),
+                case_status="ASSIGNED",
+                billing_status="COMPANY_BILLING",
+            ),
+            test_tenant.id,
+            test_user.id,
+        )
+        assert new_payment.vehicle_registration_number == "KA01AB6666"
+
+    async def test_update_rejects_changing_to_a_duplicate_vehicle_registration_number(
+        self, db_session, test_tenant, test_user
+    ):
+        from services.complaint.schemas.payment import (
+            PaymentCreateRequest,
+            PaymentUpdateRequest,
+        )
+        from services.complaint.services.payment_service import PaymentService
+        from shared.exceptions import ResourceAlreadyExistsException
+
+        client = await _create_client(db_session, test_tenant, test_user)
+        service = PaymentService(db_session)
+
+        await service.create(
+            PaymentCreateRequest(
+                case_reference="CASE-UPD-DUP-001",
+                client_id=client.id,
+                vehicle_registration_number="KA01AB5001",
+                executive_employee_id=uuid4(),
+                case_status="ASSIGNED",
+                billing_status="COMPANY_BILLING",
+            ),
+            test_tenant.id,
+            test_user.id,
+        )
+        second = await service.create(
+            PaymentCreateRequest(
+                case_reference="CASE-UPD-DUP-002",
+                client_id=client.id,
+                vehicle_registration_number="KA01AB5002",
+                executive_employee_id=uuid4(),
+                case_status="ASSIGNED",
+                billing_status="COMPANY_BILLING",
+            ),
+            test_tenant.id,
+            test_user.id,
+        )
+
+        with pytest.raises(ResourceAlreadyExistsException):
+            await service.update(
+                second,
+                PaymentUpdateRequest(vehicle_registration_number="KA01AB5001"),
+                test_user.id,
+            )
+
+    async def test_update_allows_keeping_a_payments_own_unchanged_vehicle_registration_number(
+        self, db_session, test_tenant, test_user
+    ):
+        """Saving a payment without changing its vehicle registration
+        number must not trip the uniqueness check against itself."""
+        from services.complaint.schemas.payment import (
+            PaymentCreateRequest,
+            PaymentUpdateRequest,
+        )
+        from services.complaint.services.payment_service import PaymentService
+
+        client = await _create_client(db_session, test_tenant, test_user)
+        service = PaymentService(db_session)
+
+        payment = await service.create(
+            PaymentCreateRequest(
+                case_reference="CASE-UPD-SELF-001",
+                client_id=client.id,
+                vehicle_registration_number="KA01AB4444",
+                executive_employee_id=uuid4(),
+                case_status="ASSIGNED",
+                billing_status="COMPANY_BILLING",
+            ),
+            test_tenant.id,
+            test_user.id,
+        )
+
+        # Should NOT raise — re-saving the same vehicle registration number
+        # on the same payment it already belongs to.
+        updated = await service.update(
+            payment,
+            PaymentUpdateRequest(
+                vehicle_registration_number="KA01AB4444",
+                case_status="SCHEDULED",
+            ),
+            test_user.id,
+        )
+        assert updated.vehicle_registration_number == "KA01AB4444"
+        assert updated.case_status == "SCHEDULED"
+
+
 class TestPaymentServiceList:
     """Tests for PaymentService.list()."""
 

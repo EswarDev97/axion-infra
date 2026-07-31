@@ -17,6 +17,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.complaint.models.client import Client
+from shared.exceptions import ResourceAlreadyExistsException
 
 from ..models.payment import Payment
 from ..schemas.payment import (
@@ -57,9 +58,49 @@ class PaymentService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def _check_unique_fields(
+        self,
+        tenant_id: UUID,
+        vehicle_registration_number: Optional[str],
+        utr_number: Optional[str],
+        exclude_payment_id: Optional[UUID] = None,
+    ) -> None:
+        """Vehicle Registration Number and UTR Number must be unique among
+        this tenant's active (non-deleted) payments — a soft-deleted
+        payment's values are free to reuse. exclude_payment_id lets update()
+        skip a payment matching its own current, unchanged values."""
+        if vehicle_registration_number:
+            query = select(Payment.id).where(
+                Payment.tenant_id == tenant_id,
+                Payment.is_deleted.is_(False),
+                Payment.vehicle_registration_number == vehicle_registration_number,
+            )
+            if exclude_payment_id:
+                query = query.where(Payment.id != exclude_payment_id)
+            if (await self.db.execute(query)).scalar_one_or_none():
+                raise ResourceAlreadyExistsException(
+                    "Payment", f"vehicleRegistrationNumber={vehicle_registration_number}"
+                )
+
+        if utr_number:
+            query = select(Payment.id).where(
+                Payment.tenant_id == tenant_id,
+                Payment.is_deleted.is_(False),
+                Payment.utr_number == utr_number,
+            )
+            if exclude_payment_id:
+                query = query.where(Payment.id != exclude_payment_id)
+            if (await self.db.execute(query)).scalar_one_or_none():
+                raise ResourceAlreadyExistsException(
+                    "Payment", f"utrNumber={utr_number}"
+                )
+
     async def create(
         self, data: PaymentCreateRequest, tenant_id: UUID, user_id: UUID
     ) -> Payment:
+        await self._check_unique_fields(
+            tenant_id, data.vehicle_registration_number, data.utr_number
+        )
         payment = Payment(
             tenant_id=tenant_id,
             case_reference=data.case_reference,
@@ -95,6 +136,12 @@ class PaymentService:
         self, payment: Payment, data: PaymentUpdateRequest, user_id: UUID
     ) -> Payment:
         update_data = data.model_dump(exclude_unset=True, by_alias=False)
+        await self._check_unique_fields(
+            payment.tenant_id,
+            update_data.get("vehicle_registration_number"),
+            update_data.get("utr_number"),
+            exclude_payment_id=payment.id,
+        )
         for field, value in update_data.items():
             # Enum fields need their raw value stored on the plain-String columns
             if hasattr(value, "value"):

@@ -878,6 +878,86 @@ describe('PaymentsPageClient', () => {
       expect(within(dialog).getByRole('option', { name: 'Jane Doe' })).toBeInTheDocument();
       expect(within(dialog).queryByRole('option', { name: 'Sam Smith' })).not.toBeInTheDocument();
     });
+
+    it('uppercases the UTR Number as the user types it, matching Vehicle Registration Number', async () => {
+      const user = userEvent.setup();
+      await openAddModal(user);
+
+      await setBillingStatus(user, 'CUSTOMER_BILLING');
+      await user.click(screen.getByRole('radio', { name: /transfer/i }));
+
+      const utrField = screen.getByLabelText(/utr number/i);
+      await user.type(utrField, 'utr123abc');
+
+      expect(utrField).toHaveValue('UTR123ABC');
+    });
+  });
+
+  describe('duplicate validation (Vehicle Registration Number / UTR Number)', () => {
+    const mockedCreate = paymentService.create as unknown as ReturnType<typeof vi.fn>;
+
+    const openAddModal = async (user: ReturnType<typeof userEvent.setup>) => {
+      render(<PaymentsPageClient />);
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalled();
+      });
+      const addButton = screen.getByRole('button', { name: /add payment/i });
+      await user.click(addButton);
+      const dialog = screen.getByRole('dialog');
+      await waitFor(() => {
+        expect(within(dialog).getByRole('option', { name: 'Acme Insurance' })).toBeInTheDocument();
+        expect(within(dialog).getByRole('option', { name: 'Jane Doe' })).toBeInTheDocument();
+      });
+      return dialog;
+    };
+
+    const fillMinimalRequiredFields = async (
+      user: ReturnType<typeof userEvent.setup>,
+      dialog: HTMLElement
+    ) => {
+      await user.type(within(dialog).getByLabelText(/case reference/i), 'CASE-2001');
+      await user.selectOptions(within(dialog).getByLabelText(/^client/i), 'client-1');
+      await user.type(within(dialog).getByLabelText(/vehicle registration number/i), 'KA01AB9999');
+      await user.selectOptions(within(dialog).getByLabelText(/^executive/i), 'emp-1');
+      await user.selectOptions(within(dialog).getByLabelText(/billing status/i), 'COMPANY_BILLING');
+    };
+
+    it('shows a clear message when the Vehicle Registration Number is already used by another payment', async () => {
+      mockedCreate.mockRejectedValue({
+        code: 'RESOURCE_ALREADY_EXISTS',
+        message: "Payment with identifier 'vehicleRegistrationNumber=KA01AB9999' already exists",
+        status: 409,
+      });
+
+      const user = userEvent.setup();
+      const dialog = await openAddModal(user);
+      await fillMinimalRequiredFields(user, dialog);
+
+      await user.click(within(dialog).getByRole('button', { name: 'Create' }));
+
+      await screen.findByText(/vehicle registration number is already used by another payment/i);
+    });
+
+    it('shows a clear message when the UTR Number is already used by another payment', async () => {
+      mockedCreate.mockRejectedValue({
+        code: 'RESOURCE_ALREADY_EXISTS',
+        message: "Payment with identifier 'utrNumber=UTR000111' already exists",
+        status: 409,
+      });
+
+      const user = userEvent.setup();
+      const dialog = await openAddModal(user);
+      await fillMinimalRequiredFields(user, dialog);
+      await user.selectOptions(within(dialog).getByLabelText(/billing status/i), 'CUSTOMER_BILLING');
+      await user.click(within(dialog).getByRole('radio', { name: /transfer/i }));
+      await user.type(within(dialog).getByLabelText(/utr number/i), 'UTR000111');
+      await user.type(within(dialog).getByLabelText(/transaction date/i), '2026-07-01T10:00');
+      await user.type(within(dialog).getByLabelText(/^amount/i), '500');
+
+      await user.click(within(dialog).getByRole('button', { name: 'Create' }));
+
+      await screen.findByText(/utr number is already used by another payment/i);
+    });
   });
 
   describe('export', () => {

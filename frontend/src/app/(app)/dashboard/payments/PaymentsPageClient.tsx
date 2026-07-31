@@ -57,6 +57,23 @@ const emptyForm = {
 
 type FormState = typeof emptyForm;
 
+// Backend returns RESOURCE_ALREADY_EXISTS with a technical identifier
+// string (e.g. "Payment with identifier 'vehicleRegistrationNumber=KA01AB1234'
+// already exists") — translate that into a clear, field-specific message
+// for the create/edit form rather than showing the raw backend text.
+function describeSaveError(e: unknown): string {
+  const apiError = e as { code?: string; message?: string };
+  if (apiError.code === 'RESOURCE_ALREADY_EXISTS') {
+    if (apiError.message?.includes('vehicleRegistrationNumber')) {
+      return 'This Vehicle Registration Number is already used by another payment.';
+    }
+    if (apiError.message?.includes('utrNumber')) {
+      return 'This UTR Number is already used by another payment.';
+    }
+  }
+  return apiError.message || 'Failed to save payment';
+}
+
 // Defined at module scope (not inside PaymentsPageClient) so it keeps a
 // stable component identity across renders — defining it inline in the
 // parent's body would make React remount the <th>/<button> subtree on
@@ -465,7 +482,7 @@ export function PaymentsPageClient() {
       setShowForm(false);
       fetchPayments();
     } catch (e) {
-      setFormError((e as Error).message || 'Failed to save payment');
+      setFormError(describeSaveError(e));
     } finally {
       setSaving(false);
     }
@@ -877,7 +894,7 @@ export function PaymentsPageClient() {
                 <Input
                   id="utrNumber"
                   value={formData.utrNumber}
-                  onChange={(e) => handleChange('utrNumber', e.target.value)}
+                  onChange={(e) => handleChange('utrNumber', e.target.value.toUpperCase())}
                   placeholder="UTR reference number"
                 />
               </FormField>
