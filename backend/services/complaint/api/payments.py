@@ -78,7 +78,7 @@ async def create_payment(
 )
 async def list_payments(
     page: int = Query(1, ge=1),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=5000),
     search: Optional[str] = Query(None),
     case_status: Optional[str] = Query(None, alias="caseStatus"),
     billing_status: Optional[str] = Query(None, alias="billingStatus"),
@@ -87,6 +87,12 @@ async def list_payments(
     executive_employee_id: Optional[UUID] = Query(None, alias="executiveEmployeeId"),
     date_from: Optional[date] = Query(None, alias="dateFrom"),
     date_to: Optional[date] = Query(None, alias="dateTo"),
+    sort_by: Optional[str] = Query(
+        None,
+        alias="sortBy",
+        pattern="^(caseReference|client|finance|executive|caseStatus|billingStatus|amount|createdAt)$",
+    ),
+    sort_order: str = Query("asc", alias="sortOrder", pattern="^(asc|desc)$"),
     db: AsyncSession = Depends(get_db_session),
     current_user: CurrentUser = Depends(
         require_any_permission(["payments:read", "payments:read:own"])
@@ -112,6 +118,8 @@ async def list_payments(
         finance_id=finance_id,
         date_from=date_from,
         date_to=date_to,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
     return ApiResponse(
         success=True,

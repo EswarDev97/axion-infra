@@ -54,6 +54,38 @@ async def _create_financer(db_session, test_tenant, test_user):
     return financer
 
 
+async def _create_employee(db_session, test_tenant, test_user, first_name, last_name):
+    """Helper: create an Employee row (via a throwaway Position) so a
+    sort-by-executive-name test has a real employees row to join against."""
+    from datetime import date as date_cls
+
+    from services.hr.models import Position
+    from services.hr.services.employee_service import EmployeeService
+
+    position = Position(
+        tenant_id=test_tenant.id,
+        title="Field Executive",
+        code=f"FE-{uuid4().hex[:8]}",
+        created_by=test_user.id,
+        updated_by=test_user.id,
+    )
+    db_session.add(position)
+    await db_session.commit()
+    await db_session.refresh(position)
+
+    service = EmployeeService(db_session)
+    return await service.create_employee(
+        tenant_id=test_tenant.id,
+        employee_code=f"E-{uuid4().hex[:8]}",
+        first_name=first_name,
+        last_name=last_name,
+        email=f"{first_name.lower()}.{uuid4().hex[:8]}@example.com",
+        position_id=position.id,
+        date_of_joining=date_cls.today(),
+        created_by=test_user.id,
+    )
+
+
 class TestPaymentServiceCreate:
     """Tests for PaymentService.create()."""
 
@@ -448,3 +480,222 @@ class TestPaymentServiceDelete:
 
         assert result.total == 0
         assert len(result.items) == 0
+
+
+class TestPaymentServiceSort:
+    """Tests for PaymentService.list()'s sort_by/sort_order — column
+    headers on the Payment Management screen."""
+
+    async def test_sorts_by_amount_ascending_and_descending(
+        self, db_session, test_tenant, test_user
+    ):
+        from decimal import Decimal
+
+        from services.complaint.models.payment import Payment
+        from services.complaint.services.payment_service import PaymentService
+
+        client = await _create_client(db_session, test_tenant, test_user)
+
+        low = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-SORT-AMT-LOW",
+            client_id=client.id,
+            vehicle_registration_number="KA01AB4001",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            amount=Decimal("100.00"),
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        high = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-SORT-AMT-HIGH",
+            client_id=client.id,
+            vehicle_registration_number="KA01AB4002",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            amount=Decimal("900.00"),
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add_all([low, high])
+        await db_session.commit()
+
+        service = PaymentService(db_session)
+
+        asc_result = await service.list(test_tenant.id, sort_by="amount", sort_order="asc")
+        asc_refs = [item.case_reference for item in asc_result.items]
+        assert asc_refs.index("CASE-SORT-AMT-LOW") < asc_refs.index("CASE-SORT-AMT-HIGH")
+
+        desc_result = await service.list(test_tenant.id, sort_by="amount", sort_order="desc")
+        desc_refs = [item.case_reference for item in desc_result.items]
+        assert desc_refs.index("CASE-SORT-AMT-HIGH") < desc_refs.index("CASE-SORT-AMT-LOW")
+
+    async def test_sorts_by_case_reference(self, db_session, test_tenant, test_user):
+        from services.complaint.models.payment import Payment
+        from services.complaint.services.payment_service import PaymentService
+
+        client = await _create_client(db_session, test_tenant, test_user)
+
+        payment_b = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-SORT-B",
+            client_id=client.id,
+            vehicle_registration_number="KA01AB4003",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        payment_a = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-SORT-A",
+            client_id=client.id,
+            vehicle_registration_number="KA01AB4004",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add_all([payment_b, payment_a])
+        await db_session.commit()
+
+        service = PaymentService(db_session)
+        result = await service.list(test_tenant.id, sort_by="caseReference", sort_order="asc")
+
+        refs = [item.case_reference for item in result.items]
+        assert refs.index("CASE-SORT-A") < refs.index("CASE-SORT-B")
+
+    async def test_sorts_by_client_name_via_join(self, db_session, test_tenant, test_user):
+        """sort_by='client' sorts by the joined clients.name, not the raw
+        client_id — a UUID sort would not match what's shown on screen."""
+        from services.complaint.models.client import Client
+        from services.complaint.models.payment import Payment
+        from services.complaint.services.payment_service import PaymentService
+
+        client_zeta = Client(
+            tenant_id=test_tenant.id,
+            name="Zeta Insurer",
+            code=f"ZETA-{uuid4().hex[:8]}",
+            type="CLIENT",
+            is_active=True,
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        client_alpha = Client(
+            tenant_id=test_tenant.id,
+            name="Alpha Insurer",
+            code=f"ALPHA-{uuid4().hex[:8]}",
+            type="CLIENT",
+            is_active=True,
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add_all([client_zeta, client_alpha])
+        await db_session.commit()
+        await db_session.refresh(client_zeta)
+        await db_session.refresh(client_alpha)
+
+        payment_zeta = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-SORT-CLIENT-ZETA",
+            client_id=client_zeta.id,
+            vehicle_registration_number="KA01AB4005",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        payment_alpha = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-SORT-CLIENT-ALPHA",
+            client_id=client_alpha.id,
+            vehicle_registration_number="KA01AB4006",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add_all([payment_zeta, payment_alpha])
+        await db_session.commit()
+
+        service = PaymentService(db_session)
+        result = await service.list(test_tenant.id, sort_by="client", sort_order="asc")
+
+        refs = [item.case_reference for item in result.items]
+        assert refs.index("CASE-SORT-CLIENT-ALPHA") < refs.index("CASE-SORT-CLIENT-ZETA")
+
+    async def test_sorts_by_executive_name_via_join(self, db_session, test_tenant, test_user):
+        """sort_by='executive' sorts by the joined employee's full name."""
+        from services.complaint.models.payment import Payment
+        from services.complaint.services.payment_service import PaymentService
+
+        client = await _create_client(db_session, test_tenant, test_user)
+        zeta_employee = await _create_employee(db_session, test_tenant, test_user, "Zeta", "Executive")
+        alpha_employee = await _create_employee(db_session, test_tenant, test_user, "Alpha", "Executive")
+
+        payment_zeta = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-SORT-EXEC-ZETA",
+            client_id=client.id,
+            vehicle_registration_number="KA01AB4007",
+            executive_employee_id=zeta_employee.id,
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        payment_alpha = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-SORT-EXEC-ALPHA",
+            client_id=client.id,
+            vehicle_registration_number="KA01AB4008",
+            executive_employee_id=alpha_employee.id,
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add_all([payment_zeta, payment_alpha])
+        await db_session.commit()
+
+        service = PaymentService(db_session)
+        result = await service.list(test_tenant.id, sort_by="executive", sort_order="asc")
+
+        refs = [item.case_reference for item in result.items]
+        assert refs.index("CASE-SORT-EXEC-ALPHA") < refs.index("CASE-SORT-EXEC-ZETA")
+
+    async def test_unrecognized_sort_by_falls_back_to_created_at_desc(
+        self, db_session, test_tenant, test_user
+    ):
+        """An invalid/omitted sort_by must not raise — it falls back to the
+        original default ordering (newest created_at first)."""
+        from services.complaint.models.payment import Payment
+        from services.complaint.services.payment_service import PaymentService
+
+        client = await _create_client(db_session, test_tenant, test_user)
+        payment = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-SORT-FALLBACK",
+            client_id=client.id,
+            vehicle_registration_number="KA01AB4009",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add(payment)
+        await db_session.commit()
+
+        service = PaymentService(db_session)
+        result = await service.list(test_tenant.id, sort_by=None)
+
+        assert result.total == 1
+        assert result.items[0].case_reference == "CASE-SORT-FALLBACK"

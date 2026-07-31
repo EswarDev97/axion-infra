@@ -375,6 +375,65 @@ class TestPaymentListFilters:
         assert items[0]["caseReference"] == "CASE-API-COMBINED-MATCH"
 
 
+class TestPaymentListSort:
+    """Tests for the sortBy/sortOrder query params on GET /payments."""
+
+    async def test_sorts_by_amount_query_param(
+        self, payments_client, db_session, test_tenant, test_user
+    ):
+        from decimal import Decimal
+
+        from services.complaint.models.payment import Payment
+
+        client_obj = await _create_client(db_session, test_tenant, test_user)
+
+        low = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-API-SORT-LOW",
+            client_id=client_obj.id,
+            vehicle_registration_number="KA01AB5001",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            amount=Decimal("50.00"),
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        high = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-API-SORT-HIGH",
+            client_id=client_obj.id,
+            vehicle_registration_number="KA01AB5002",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            amount=Decimal("500.00"),
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add_all([low, high])
+        await db_session.commit()
+
+        response = await payments_client.get(
+            "/api/v1/complaints/payments",
+            params={"sortBy": "amount", "sortOrder": "asc"},
+        )
+
+        assert response.status_code == 200
+        refs = [item["caseReference"] for item in response.json()["data"]["items"]]
+        assert refs.index("CASE-API-SORT-LOW") < refs.index("CASE-API-SORT-HIGH")
+
+    async def test_rejects_unrecognized_sort_by_value(self, payments_client):
+        """sortBy is pattern-validated by FastAPI — an unknown column name
+        is a 422, not silently ignored or a 500."""
+        response = await payments_client.get(
+            "/api/v1/complaints/payments",
+            params={"sortBy": "notARealColumn"},
+        )
+
+        assert response.status_code == 422
+
+
 class TestPaymentReadOwnScoping:
     """Tests for `payments:read:own` (EMPLOYEE role) list/get scoping."""
 

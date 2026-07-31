@@ -72,6 +72,17 @@ export interface PaymentListResponse {
   pages: number;
 }
 
+export type PaymentSortColumn =
+  | 'caseReference'
+  | 'client'
+  | 'finance'
+  | 'executive'
+  | 'caseStatus'
+  | 'billingStatus'
+  | 'amount'
+  | 'createdAt';
+export type PaymentSortOrder = 'asc' | 'desc';
+
 export const paymentService = {
   async list(params?: {
     page?: number;
@@ -84,6 +95,8 @@ export const paymentService = {
     executiveEmployeeId?: string;
     dateFrom?: string;
     dateTo?: string;
+    sortBy?: PaymentSortColumn;
+    sortOrder?: PaymentSortOrder;
   }): Promise<PaymentListResponse> {
     return get<PaymentListResponse>(BASE, params);
   },

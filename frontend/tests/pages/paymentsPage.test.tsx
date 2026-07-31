@@ -261,6 +261,142 @@ describe('PaymentsPageClient', () => {
     });
   });
 
+  describe('sorting', () => {
+    it('clicking a column header sorts ascending, and clicking it again flips to descending', async () => {
+      const user = userEvent.setup();
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalledTimes(1);
+      });
+
+      const amountHeader = screen.getByRole('button', { name: /amount/i });
+      await user.click(amountHeader);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenLastCalledWith(
+          expect.objectContaining({ sortBy: 'amount', sortOrder: 'asc' })
+        );
+      });
+
+      await user.click(amountHeader);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenLastCalledWith(
+          expect.objectContaining({ sortBy: 'amount', sortOrder: 'desc' })
+        );
+      });
+    });
+
+    it('clicking a different column header resets to ascending order', async () => {
+      const user = userEvent.setup();
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalledTimes(1);
+      });
+
+      await user.click(screen.getByRole('button', { name: /amount/i }));
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenLastCalledWith(
+          expect.objectContaining({ sortBy: 'amount', sortOrder: 'asc' })
+        );
+      });
+      await user.click(screen.getByRole('button', { name: /amount/i }));
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenLastCalledWith(
+          expect.objectContaining({ sortBy: 'amount', sortOrder: 'desc' })
+        );
+      });
+
+      await user.click(screen.getByRole('button', { name: /case reference/i }));
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenLastCalledWith(
+          expect.objectContaining({ sortBy: 'caseReference', sortOrder: 'asc' })
+        );
+      });
+    });
+
+    it('renders sortable headers for Client, Finance, and Executive (name-joined columns)', async () => {
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalledTimes(1);
+      });
+
+      const table = screen.getByRole('table');
+      expect(within(table).getByRole('button', { name: /^client$/i })).toBeInTheDocument();
+      expect(within(table).getByRole('button', { name: /finance/i })).toBeInTheDocument();
+      expect(within(table).getByRole('button', { name: /executive/i })).toBeInTheDocument();
+    });
+  });
+
+  describe('pagination', () => {
+    it('renders page-number buttons and clicking one fetches that page', async () => {
+      const user = userEvent.setup();
+      mockedList.mockResolvedValue({
+        items: [],
+        total: 100,
+        page: 1,
+        limit: 20,
+        pages: 5,
+      });
+
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalledTimes(1);
+      });
+
+      expect(screen.getByText('Page 1 of 5')).toBeInTheDocument();
+      const page3Button = screen.getByRole('button', { name: '3' });
+      await user.click(page3Button);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenLastCalledWith(
+          expect.objectContaining({ page: 3 })
+        );
+      });
+    });
+
+    it('does not render pagination controls when there is only one page', async () => {
+      mockedList.mockResolvedValue({
+        items: [],
+        total: 3,
+        page: 1,
+        limit: 20,
+        pages: 1,
+      });
+
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalledTimes(1);
+      });
+
+      expect(screen.queryByText(/page 1 of/i)).not.toBeInTheDocument();
+    });
+
+    it('marks the current page button with aria-current', async () => {
+      mockedList.mockResolvedValue({
+        items: [],
+        total: 100,
+        page: 1,
+        limit: 20,
+        pages: 5,
+      });
+
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalledTimes(1);
+      });
+
+      const page1Button = screen.getByRole('button', { name: '1' });
+      expect(page1Button).toHaveAttribute('aria-current', 'page');
+    });
+  });
+
   describe('filter bar (Client / Finance / Field Executive / date range)', () => {
     it('renders Client, Finance Company, Field Executive, From Date, and To Date controls for all roles', async () => {
       render(<PaymentsPageClient />);
@@ -847,6 +983,66 @@ describe('PaymentsPageClient', () => {
         mockedBookNew.mock.results[0]?.value,
         expect.stringMatching(/^payments_\d{4}-\d{2}-\d{2}_\d{4}\.xlsx$/)
       );
+    });
+
+    it('fetches ALL filtered/sorted results for export, not just the current page', async () => {
+      const user = userEvent.setup();
+      mockedList.mockResolvedValue({
+        items: [makePayment({ clientId: 'client-1', executiveEmployeeId: 'emp-1' })],
+        total: 1,
+        page: 1,
+        limit: 200,
+        pages: 1,
+      });
+
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('CASE-1001')).toBeInTheDocument();
+      });
+
+      // Apply a filter and a sort before exporting, so the export call can
+      // be asserted to carry the same active filters/sort as the table.
+      await user.selectOptions(screen.getByLabelText(/^client$/i), 'client-1');
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenLastCalledWith(
+          expect.objectContaining({ clientId: 'client-1' })
+        );
+      });
+      await user.click(screen.getByRole('button', { name: /amount/i }));
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenLastCalledWith(
+          expect.objectContaining({ sortBy: 'amount', sortOrder: 'asc' })
+        );
+      });
+
+      const callCountBeforeExport = mockedList.mock.calls.length;
+
+      const exportButton = screen.getByRole('button', { name: /export to excel/i });
+      await user.click(exportButton);
+
+      await waitFor(() => {
+        expect(mockedList.mock.calls.length).toBeGreaterThan(callCountBeforeExport);
+      });
+
+      // The export-triggered call requests a large page size (covering
+      // every matching row, not the ~20-row table page) with the same
+      // filters/sort the table is currently showing.
+      expect(mockedList).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          page: 1,
+          limit: expect.any(Number),
+          clientId: 'client-1',
+          sortBy: 'amount',
+          sortOrder: 'asc',
+        })
+      );
+      const exportCallArgs = mockedList.mock.calls[mockedList.mock.calls.length - 1][0] as {
+        limit: number;
+      };
+      // The page's own list fetch uses a small page size (20); export
+      // must request substantially more to cover all matching rows.
+      expect(exportCallArgs.limit).toBeGreaterThan(100);
     });
   });
 });

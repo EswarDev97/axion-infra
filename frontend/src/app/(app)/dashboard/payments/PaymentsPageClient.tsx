@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, Download, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -15,6 +15,8 @@ import {
   type Payment,
   type PaymentCreateRequest,
   type PaymentUpdateRequest,
+  type PaymentSortColumn,
+  type PaymentSortOrder,
 } from '@/services/complaint/paymentService';
 import { clientService, type Client } from '@/services/complaint/clientService';
 import { employeeService } from '@/services/hr/hrService';
@@ -55,6 +57,44 @@ const emptyForm = {
 
 type FormState = typeof emptyForm;
 
+// Defined at module scope (not inside PaymentsPageClient) so it keeps a
+// stable component identity across renders — defining it inline in the
+// parent's body would make React remount the <th>/<button> subtree on
+// every render (new function = new component type), which breaks click
+// handling on the just-clicked button and loses focus for real users.
+function SortableHeader({
+  column,
+  label,
+  align = 'left',
+  sortBy,
+  sortOrder,
+  onSort,
+}: {
+  column: PaymentSortColumn;
+  label: string;
+  align?: 'left' | 'right';
+  sortBy: PaymentSortColumn | undefined;
+  sortOrder: PaymentSortOrder;
+  onSort: (column: PaymentSortColumn) => void;
+}) {
+  const isActive = sortBy === column;
+  const Icon = isActive ? (sortOrder === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <th className={`px-6 py-3 text-${align} text-xs font-medium text-gray-500 uppercase`}>
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={`inline-flex items-center gap-1 hover:text-gray-700 ${
+          isActive ? 'text-gray-900' : ''
+        }`}
+      >
+        {label}
+        <Icon className="h-3 w-3" />
+      </button>
+    </th>
+  );
+}
+
 export function PaymentsPageClient() {
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission);
@@ -74,6 +114,7 @@ export function PaymentsPageClient() {
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -87,6 +128,12 @@ export function PaymentsPageClient() {
   const [filterExecutiveId, setFilterExecutiveId] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
+
+  // Column sort: click a column header to sort by it; clicking the same
+  // column again flips asc/desc. Defaults to unsorted (backend falls back
+  // to createdAt desc), matching the original default ordering.
+  const [sortBy, setSortBy] = useState<PaymentSortColumn | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<PaymentSortOrder>('asc');
 
   // Dropdown data
   const [clients, setClients] = useState<Client[]>([]);
@@ -140,6 +187,8 @@ export function PaymentsPageClient() {
         executiveEmployeeId: filterExecutiveId || undefined,
         dateFrom: filterDateFrom || undefined,
         dateTo: filterDateTo || undefined,
+        sortBy,
+        sortOrder,
       });
       setPayments(res.items ?? []);
       setTotalPages(res.pages ?? 1);
@@ -148,7 +197,7 @@ export function PaymentsPageClient() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterClientId, filterFinanceId, filterExecutiveId, filterDateFrom, filterDateTo]);
+  }, [page, search, filterClientId, filterFinanceId, filterExecutiveId, filterDateFrom, filterDateTo, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchPayments();
@@ -166,6 +215,12 @@ export function PaymentsPageClient() {
     setPage(1);
   };
 
+  const handleSort = (column: PaymentSortColumn) => {
+    setSortOrder((prevOrder) => (sortBy === column && prevOrder === 'asc' ? 'desc' : 'asc'));
+    setSortBy(column);
+    setPage(1);
+  };
+
   const handleClearFilters = () => {
     setFilterClientId('');
     setFilterFinanceId('');
@@ -179,35 +234,61 @@ export function PaymentsPageClient() {
     !!filterClientId || !!filterFinanceId || !!filterExecutiveId || !!filterDateFrom || !!filterDateTo;
 
   const handleExport = async () => {
-    // Dynamically imported so the (fairly large) SheetJS library is only
-    // pulled into a separate chunk when the user actually exports, rather
-    // than bloating the main payments page bundle.
-    const XLSX = await import('xlsx');
+    setExporting(true);
+    setError(null);
+    try {
+      // Export reflects the currently active filters and sort, but covers
+      // every matching row — not just the ~20 on screen — so the download
+      // is a complete report rather than a snapshot of one page.
+      const EXPORT_LIMIT = 5000;
+      const res = await paymentService.list({
+        page: 1,
+        limit: EXPORT_LIMIT,
+        search: search || undefined,
+        clientId: filterClientId || undefined,
+        financeId: filterFinanceId || undefined,
+        executiveEmployeeId: filterExecutiveId || undefined,
+        dateFrom: filterDateFrom || undefined,
+        dateTo: filterDateTo || undefined,
+        sortBy,
+        sortOrder,
+      });
+      const exportRows = res.items ?? [];
 
-    const rows = payments.map((payment, index) => ({
-      'S.No': index + 1,
-      'Case Reference': payment.caseReference,
-      Client: clientNameById.get(payment.clientId) ?? payment.clientId,
-      Finance: payment.financeId ? clientNameById.get(payment.financeId) ?? payment.financeId : '',
-      'Vehicle Reg No': payment.vehicleRegistrationNumber,
-      Executive: employeeNameById.get(payment.executiveEmployeeId) ?? payment.executiveEmployeeId,
-      'Case Status': payment.caseStatus,
-      'Billing Status': payment.billingStatus,
-      'Payment Mode': payment.paymentMode ?? '',
-      'UTR Number': payment.utrNumber ?? '',
-      'Transaction Date': payment.transactionDatetime ?? '',
-      Amount: payment.amount ?? '',
-      'Lead Created Date': payment.createdAt,
-    }));
+      // Dynamically imported so the (fairly large) SheetJS library is only
+      // pulled into a separate chunk when the user actually exports, rather
+      // than bloating the main payments page bundle.
+      const XLSX = await import('xlsx');
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Payments');
+      const rows = exportRows.map((payment, index) => ({
+        'S.No': index + 1,
+        'Case Reference': payment.caseReference,
+        Client: clientNameById.get(payment.clientId) ?? payment.clientId,
+        Finance: payment.financeId ? clientNameById.get(payment.financeId) ?? payment.financeId : '',
+        'Vehicle Reg No': payment.vehicleRegistrationNumber,
+        Executive: employeeNameById.get(payment.executiveEmployeeId) ?? payment.executiveEmployeeId,
+        'Case Status': payment.caseStatus,
+        'Billing Status': payment.billingStatus,
+        'Payment Mode': payment.paymentMode ?? '',
+        'UTR Number': payment.utrNumber ?? '',
+        'Transaction Date': payment.transactionDatetime ?? '',
+        Amount: payment.amount ?? '',
+        'Lead Created Date': payment.createdAt,
+      }));
 
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
-    XLSX.writeFile(workbook, `payments_${timestamp}.xlsx`);
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Payments');
+
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+      XLSX.writeFile(workbook, `payments_${timestamp}.xlsx`);
+    } catch (e) {
+      setError((e as Error).message || 'Failed to export payments');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const fetchDropdownData = useCallback(async () => {
@@ -404,6 +485,23 @@ export function PaymentsPageClient() {
     }
   };
 
+  // Windowed page-number list: always shows first/last page, up to 2
+  // neighbors of the current page, and 'ellipsis' markers for gaps —
+  // keeps the pager compact even with hundreds of pages.
+  const getPageNumbers = (): (number | 'ellipsis')[] => {
+    const pages: (number | 'ellipsis')[] = [];
+    const windowStart = Math.max(2, page - 2);
+    const windowEnd = Math.min(totalPages - 1, page + 2);
+
+    pages.push(1);
+    if (windowStart > 2) pages.push('ellipsis');
+    for (let p = windowStart; p <= windowEnd; p++) pages.push(p);
+    if (windowEnd < totalPages - 1) pages.push('ellipsis');
+    if (totalPages > 1) pages.push(totalPages);
+
+    return pages;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -414,7 +512,7 @@ export function PaymentsPageClient() {
         </div>
         <div className="flex gap-2">
           {canExport && (
-            <Button variant="outline" onClick={handleExport}>
+            <Button variant="outline" onClick={handleExport} loading={exporting} disabled={exporting}>
               <Download className="h-4 w-4 mr-2" />
               Export to Excel
             </Button>
@@ -531,14 +629,14 @@ export function PaymentsPageClient() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">S.No</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Case Reference</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Finance</th>
+              <SortableHeader column="caseReference" label="Case Reference" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+              <SortableHeader column="client" label="Client" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+              <SortableHeader column="finance" label="Finance" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vehicle Reg. No.</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Executive</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Case Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Billing Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+              <SortableHeader column="executive" label="Executive" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+              <SortableHeader column="caseStatus" label="Case Status" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+              <SortableHeader column="billingStatus" label="Billing Status" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+              <SortableHeader column="amount" label="Amount" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
               {canWrite && (
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
               )}
@@ -606,7 +704,7 @@ export function PaymentsPageClient() {
           <p className="text-sm text-gray-600">
             Page {page} of {totalPages}
           </p>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-1">
             <Button
               variant="outline"
               size="sm"
@@ -616,6 +714,23 @@ export function PaymentsPageClient() {
               <ChevronLeft className="h-4 w-4 mr-1" />
               Previous
             </Button>
+            {getPageNumbers().map((entry, index) =>
+              entry === 'ellipsis' ? (
+                <span key={`ellipsis-${index}`} className="px-2 text-sm text-gray-400">
+                  …
+                </span>
+              ) : (
+                <Button
+                  key={entry}
+                  variant={entry === page ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setPage(entry)}
+                  aria-current={entry === page ? 'page' : undefined}
+                >
+                  {entry}
+                </Button>
+              )
+            )}
             <Button
               variant="outline"
               size="sm"

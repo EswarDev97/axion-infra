@@ -11,8 +11,12 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, asc, desc
+from sqlalchemy.orm import aliased
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from services.complaint.models.client import Client
+from services.hr.models.employee import Employee
 
 from ..models.payment import Payment
 from ..schemas.payment import (
@@ -21,6 +25,18 @@ from ..schemas.payment import (
     PaymentResponse,
     PaymentListResponse,
 )
+
+# Columns the Payment Management list screen allows sorting by. The three
+# name-resolved columns (client/finance/executive) sort by the joined
+# entity's display name rather than the raw FK id, matching what's shown
+# on screen — sorting by id would look arbitrary to the user.
+_SORTABLE_COLUMNS = {
+    "caseReference": lambda: Payment.case_reference,
+    "caseStatus": lambda: Payment.case_status,
+    "billingStatus": lambda: Payment.billing_status,
+    "amount": lambda: Payment.amount,
+    "createdAt": lambda: Payment.created_at,
+}
 
 
 class PaymentService:
@@ -95,6 +111,8 @@ class PaymentService:
         finance_id: Optional[UUID] = None,
         date_from: Optional[date] = None,
         date_to: Optional[date] = None,
+        sort_by: Optional[str] = None,
+        sort_order: str = "asc",
     ) -> PaymentListResponse:
         """
         executive_employee_id does double duty: it's both the user-facing
@@ -105,10 +123,27 @@ class PaymentService:
         user-supplied filter value is ignored (see the route).
         date_from/date_to filter on created_at (the "Lead Created Date"
         already surfaced in the Excel export), inclusive of both endpoints.
+
+        sort_by is one of _SORTABLE_COLUMNS' keys, or "client"/"finance"/
+        "executive" — the latter three sort by the joined entity's display
+        name (clients.name / employees.first_name+last_name) rather than
+        the raw FK id, since that's what's actually shown in the table.
+        Unrecognized/omitted sort_by falls back to created_at desc (the
+        original default ordering).
         """
-        query = select(Payment).where(
-            Payment.tenant_id == tenant_id,
-            Payment.is_deleted.is_(False),
+        client_alias = aliased(Client)
+        financer_alias = aliased(Client)
+        executive_alias = aliased(Employee)
+
+        query = (
+            select(Payment)
+            .outerjoin(client_alias, Payment.client_id == client_alias.id)
+            .outerjoin(financer_alias, Payment.finance_id == financer_alias.id)
+            .outerjoin(executive_alias, Payment.executive_employee_id == executive_alias.id)
+            .where(
+                Payment.tenant_id == tenant_id,
+                Payment.is_deleted.is_(False),
+            )
         )
 
         if case_status:
@@ -148,7 +183,20 @@ class PaymentService:
         count_query = select(func.count()).select_from(query.subquery())
         total = (await self.db.execute(count_query)).scalar() or 0
 
-        query = query.order_by(Payment.created_at.desc()).offset((page - 1) * limit).limit(limit)
+        direction = desc if sort_order == "desc" else asc
+        name_sort_columns = {
+            "client": client_alias.name,
+            "finance": financer_alias.name,
+            "executive": func.concat(executive_alias.first_name, " ", executive_alias.last_name),
+        }
+        if sort_by in name_sort_columns:
+            query = query.order_by(direction(name_sort_columns[sort_by]))
+        elif sort_by in _SORTABLE_COLUMNS:
+            query = query.order_by(direction(_SORTABLE_COLUMNS[sort_by]()))
+        else:
+            query = query.order_by(Payment.created_at.desc())
+
+        query = query.offset((page - 1) * limit).limit(limit)
         result = await self.db.execute(query)
         payments = result.scalars().all()
 
