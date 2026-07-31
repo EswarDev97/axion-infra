@@ -17,6 +17,14 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+class CaseType(str, Enum):
+    RETAIL = "RETAIL"
+    YARD = "YARD"
+    PI = "PI"
+    CI = "CI"
+    DOC = "DOC"
+
+
 class CaseStatus(str, Enum):
     ASSIGNED = "ASSIGNED"
     SCHEDULED = "SCHEDULED"
@@ -109,6 +117,7 @@ class PaymentCreateRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
     case_reference: str = Field(..., min_length=1, max_length=100, alias="caseReference")
+    case_type: CaseType = Field(..., alias="caseType")
     client_id: UUID = Field(..., alias="clientId")
     finance_id: Optional[UUID] = Field(None, alias="financeId")
     vehicle_registration_number: str = Field(
@@ -140,6 +149,7 @@ class PaymentUpdateRequest(BaseModel):
     case_reference: Optional[str] = Field(
         None, min_length=1, max_length=100, alias="caseReference"
     )
+    case_type: Optional[CaseType] = Field(None, alias="caseType")
     client_id: Optional[UUID] = Field(None, alias="clientId")
     finance_id: Optional[UUID] = Field(None, alias="financeId")
     vehicle_registration_number: Optional[str] = Field(
@@ -178,6 +188,7 @@ class PaymentResponse(BaseModel):
 
     id: UUID
     case_reference: str = Field(alias="caseReference")
+    case_type: CaseType = Field(alias="caseType")
     client_id: UUID = Field(alias="clientId")
     finance_id: Optional[UUID] = Field(None, alias="financeId")
     vehicle_registration_number: str = Field(alias="vehicleRegistrationNumber")

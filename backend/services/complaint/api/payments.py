@@ -90,7 +90,7 @@ async def list_payments(
     sort_by: Optional[str] = Query(
         None,
         alias="sortBy",
-        pattern="^(caseReference|client|finance|executive|caseStatus|billingStatus|amount|createdAt)$",
+        pattern="^(caseReference|caseType|client|finance|executive|caseStatus|billingStatus|amount|createdAt)$",
     ),
     sort_order: str = Query("asc", alias="sortOrder", pattern="^(asc|desc)$"),
     db: AsyncSession = Depends(get_db_session),

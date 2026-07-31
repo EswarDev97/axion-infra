@@ -134,6 +134,7 @@ class TestCreatePayment:
 
         payload = {
             "caseReference": "CASE-2026-0001",
+            "caseType": "RETAIL",
             "clientId": str(client.id),
             "vehicleRegistrationNumber": "KA01AB1234",
             "executiveEmployeeId": str(uuid4()),
@@ -156,6 +157,7 @@ class TestCreatePayment:
         data = body["data"]
         assert data["id"] is not None
         assert data["caseReference"] == "CASE-2026-0001"
+        assert data["caseType"] == "RETAIL"
         assert data["clientId"] == str(client.id)
         assert data["financeId"] is None
         assert data["vehicleRegistrationNumber"] == "KA01AB1234"
@@ -177,6 +179,7 @@ class TestCreatePayment:
 
         payload = {
             "caseReference": "CASE-API-DUP-VEH-001",
+            "caseType": "RETAIL",
             "clientId": str(client.id),
             "vehicleRegistrationNumber": "KA01AB1999",
             "executiveEmployeeId": str(uuid4()),
@@ -266,6 +269,7 @@ class TestPaymentListFilters:
         matching = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-API-FIN-MATCH",
+            case_type="RETAIL",
             client_id=client_obj.id,
             finance_id=matching_financer.id,
             vehicle_registration_number="KA01AB3001",
@@ -278,6 +282,7 @@ class TestPaymentListFilters:
         other = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-API-FIN-OTHER",
+            case_type="RETAIL",
             client_id=client_obj.id,
             finance_id=other_financer.id,
             vehicle_registration_number="KA01AB3002",
@@ -312,6 +317,7 @@ class TestPaymentListFilters:
         in_range = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-API-DATE-IN",
+            case_type="RETAIL",
             client_id=client_obj.id,
             vehicle_registration_number="KA01AB3003",
             executive_employee_id=uuid4(),
@@ -324,6 +330,7 @@ class TestPaymentListFilters:
         out_of_range = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-API-DATE-OUT",
+            case_type="RETAIL",
             client_id=client_obj.id,
             vehicle_registration_number="KA01AB3004",
             executive_employee_id=uuid4(),
@@ -360,6 +367,7 @@ class TestPaymentListFilters:
         exact_match = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-API-COMBINED-MATCH",
+            case_type="RETAIL",
             client_id=client_obj.id,
             finance_id=target_financer.id,
             vehicle_registration_number="KA01AB3005",
@@ -373,6 +381,7 @@ class TestPaymentListFilters:
         wrong_executive = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-API-COMBINED-WRONG-EXEC",
+            case_type="RETAIL",
             client_id=client_obj.id,
             finance_id=target_financer.id,
             vehicle_registration_number="KA01AB3006",
@@ -418,6 +427,7 @@ class TestPaymentListSort:
         low = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-API-SORT-LOW",
+            case_type="RETAIL",
             client_id=client_obj.id,
             vehicle_registration_number="KA01AB5001",
             executive_employee_id=uuid4(),
@@ -430,6 +440,7 @@ class TestPaymentListSort:
         high = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-API-SORT-HIGH",
+            case_type="RETAIL",
             client_id=client_obj.id,
             vehicle_registration_number="KA01AB5002",
             executive_employee_id=uuid4(),
@@ -478,6 +489,7 @@ class TestPaymentReadOwnScoping:
         own_payment = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-OWN-API-001",
+            case_type="RETAIL",
             client_id=client_obj.id,
             vehicle_registration_number="KA01AB2001",
             executive_employee_id=own_employee_id,
@@ -489,6 +501,7 @@ class TestPaymentReadOwnScoping:
         other_payment = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-OTHER-API-001",
+            case_type="RETAIL",
             client_id=client_obj.id,
             vehicle_registration_number="KA01AB2002",
             executive_employee_id=uuid4(),
@@ -523,6 +536,7 @@ class TestPaymentReadOwnScoping:
         own_payment = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-OWN-API-SCOPE-OVERRIDE",
+            case_type="RETAIL",
             client_id=client_obj.id,
             vehicle_registration_number="KA01AB2006",
             executive_employee_id=own_employee_id,
@@ -534,6 +548,7 @@ class TestPaymentReadOwnScoping:
         other_payment = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-OTHER-API-SCOPE-OVERRIDE",
+            case_type="RETAIL",
             client_id=client_obj.id,
             vehicle_registration_number="KA01AB2007",
             executive_employee_id=other_executive_id,
@@ -568,6 +583,7 @@ class TestPaymentReadOwnScoping:
         other_payment = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-OTHER-API-002",
+            case_type="RETAIL",
             client_id=client_obj.id,
             vehicle_registration_number="KA01AB2003",
             executive_employee_id=uuid4(),
@@ -596,6 +612,7 @@ class TestPaymentReadOwnScoping:
         own_payment = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-OWN-API-002",
+            case_type="RETAIL",
             client_id=client_obj.id,
             vehicle_registration_number="KA01AB2004",
             executive_employee_id=own_employee_id,
@@ -620,6 +637,7 @@ class TestPaymentReadOwnScoping:
         scoped_client, _own_employee_id = own_scoped_payments_client
         payload = {
             "caseReference": "CASE-DENIED-001",
+            "caseType": "RETAIL",
             "clientId": str(uuid4()),
             "vehicleRegistrationNumber": "KA01AB2005",
             "executiveEmployeeId": str(uuid4()),
@@ -713,6 +731,7 @@ class TestPaymentAuthorization:
         permissions=[]) must be rejected with 403 before any route logic runs."""
         payload = {
             "caseReference": "CASE-2026-0002",
+            "caseType": "RETAIL",
             "clientId": str(uuid4()),
             "vehicleRegistrationNumber": "KA01AB1234",
             "executiveEmployeeId": str(uuid4()),
@@ -738,6 +757,7 @@ class TestPaymentAuthorization:
         route body."""
         payload = {
             "caseReference": "CASE-2026-0003",
+            "caseType": "RETAIL",
             "clientId": str(uuid4()),
             "vehicleRegistrationNumber": "KA01AB1234",
             "executiveEmployeeId": str(uuid4()),

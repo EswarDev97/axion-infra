@@ -99,6 +99,7 @@ class TestPaymentServiceCreate:
 
         data = PaymentCreateRequest(
             case_reference="CASE-2026-0001",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB1234",
             executive_employee_id=executive_id,
@@ -112,6 +113,7 @@ class TestPaymentServiceCreate:
         assert payment.id is not None
         assert payment.tenant_id == test_tenant.id
         assert payment.case_reference == "CASE-2026-0001"
+        assert payment.case_type == "RETAIL"
         assert payment.client_id == client.id
         assert payment.vehicle_registration_number == "KA01AB1234"
         assert payment.executive_employee_id == executive_id
@@ -121,6 +123,58 @@ class TestPaymentServiceCreate:
         assert payment.is_deleted is False
         assert payment.created_by == test_user.id
         assert payment.updated_by == test_user.id
+
+    async def test_create_payment_rejects_invalid_case_type(
+        self, db_session, test_tenant, test_user
+    ):
+        from pydantic import ValidationError
+
+        from services.complaint.schemas.payment import PaymentCreateRequest
+
+        client = await _create_client(db_session, test_tenant, test_user)
+
+        with pytest.raises(ValidationError):
+            PaymentCreateRequest(
+                case_reference="CASE-BAD-TYPE",
+                case_type="NOT_A_REAL_TYPE",
+                client_id=client.id,
+                vehicle_registration_number="KA01AB0099",
+                executive_employee_id=uuid4(),
+                case_status="ASSIGNED",
+                billing_status="COMPANY_BILLING",
+            )
+
+    async def test_update_case_type(self, db_session, test_tenant, test_user):
+        from services.complaint.schemas.payment import (
+            PaymentCreateRequest,
+            PaymentUpdateRequest,
+        )
+        from services.complaint.services.payment_service import PaymentService
+
+        client = await _create_client(db_session, test_tenant, test_user)
+        service = PaymentService(db_session)
+
+        payment = await service.create(
+            PaymentCreateRequest(
+                case_reference="CASE-UPD-TYPE-001",
+                case_type="RETAIL",
+                client_id=client.id,
+                vehicle_registration_number="KA01AB0088",
+                executive_employee_id=uuid4(),
+                case_status="ASSIGNED",
+                billing_status="COMPANY_BILLING",
+            ),
+            test_tenant.id,
+            test_user.id,
+        )
+        assert payment.case_type == "RETAIL"
+
+        updated = await service.update(
+            payment,
+            PaymentUpdateRequest(case_type="YARD"),
+            test_user.id,
+        )
+        assert updated.case_type == "YARD"
 
 
 class TestPaymentServiceUniqueFields:
@@ -140,6 +194,7 @@ class TestPaymentServiceUniqueFields:
         await service.create(
             PaymentCreateRequest(
                 case_reference="CASE-DUP-VEH-001",
+                case_type="RETAIL",
                 client_id=client.id,
                 vehicle_registration_number="KA01AB9999",
                 executive_employee_id=uuid4(),
@@ -154,6 +209,7 @@ class TestPaymentServiceUniqueFields:
             await service.create(
                 PaymentCreateRequest(
                     case_reference="CASE-DUP-VEH-002",
+                    case_type="RETAIL",
                     client_id=client.id,
                     vehicle_registration_number="KA01AB9999",
                     executive_employee_id=uuid4(),
@@ -177,6 +233,7 @@ class TestPaymentServiceUniqueFields:
         await service.create(
             PaymentCreateRequest(
                 case_reference="CASE-DUP-UTR-001",
+                case_type="RETAIL",
                 client_id=client.id,
                 vehicle_registration_number="KA01AB8001",
                 executive_employee_id=uuid4(),
@@ -195,6 +252,7 @@ class TestPaymentServiceUniqueFields:
             await service.create(
                 PaymentCreateRequest(
                     case_reference="CASE-DUP-UTR-002",
+                    case_type="RETAIL",
                     client_id=client.id,
                     vehicle_registration_number="KA01AB8002",
                     executive_employee_id=uuid4(),
@@ -234,6 +292,7 @@ class TestPaymentServiceUniqueFields:
         await service.create(
             PaymentCreateRequest(
                 case_reference="CASE-TENANT-A",
+                case_type="RETAIL",
                 client_id=client_a.id,
                 vehicle_registration_number="KA01AB7777",
                 executive_employee_id=uuid4(),
@@ -248,6 +307,7 @@ class TestPaymentServiceUniqueFields:
         payment_b = await service.create(
             PaymentCreateRequest(
                 case_reference="CASE-TENANT-B",
+                case_type="RETAIL",
                 client_id=client_b.id,
                 vehicle_registration_number="KA01AB7777",
                 executive_employee_id=uuid4(),
@@ -271,6 +331,7 @@ class TestPaymentServiceUniqueFields:
         original = await service.create(
             PaymentCreateRequest(
                 case_reference="CASE-REUSE-001",
+                case_type="RETAIL",
                 client_id=client.id,
                 vehicle_registration_number="KA01AB6666",
                 executive_employee_id=uuid4(),
@@ -287,6 +348,7 @@ class TestPaymentServiceUniqueFields:
         new_payment = await service.create(
             PaymentCreateRequest(
                 case_reference="CASE-REUSE-002",
+                case_type="RETAIL",
                 client_id=client.id,
                 vehicle_registration_number="KA01AB6666",
                 executive_employee_id=uuid4(),
@@ -314,6 +376,7 @@ class TestPaymentServiceUniqueFields:
         await service.create(
             PaymentCreateRequest(
                 case_reference="CASE-UPD-DUP-001",
+                case_type="RETAIL",
                 client_id=client.id,
                 vehicle_registration_number="KA01AB5001",
                 executive_employee_id=uuid4(),
@@ -326,6 +389,7 @@ class TestPaymentServiceUniqueFields:
         second = await service.create(
             PaymentCreateRequest(
                 case_reference="CASE-UPD-DUP-002",
+                case_type="RETAIL",
                 client_id=client.id,
                 vehicle_registration_number="KA01AB5002",
                 executive_employee_id=uuid4(),
@@ -360,6 +424,7 @@ class TestPaymentServiceUniqueFields:
         payment = await service.create(
             PaymentCreateRequest(
                 case_reference="CASE-UPD-SELF-001",
+                case_type="RETAIL",
                 client_id=client.id,
                 vehicle_registration_number="KA01AB4444",
                 executive_employee_id=uuid4(),
@@ -399,6 +464,7 @@ class TestPaymentServiceList:
         assigned_payment = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-ASSIGNED-001",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB0001",
             executive_employee_id=uuid4(),
@@ -410,6 +476,7 @@ class TestPaymentServiceList:
         completed_payment = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-COMPLETED-001",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB0002",
             executive_employee_id=uuid4(),
@@ -444,6 +511,7 @@ class TestPaymentServiceList:
         own_payment = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-OWN-001",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB0003",
             executive_employee_id=own_executive_id,
@@ -455,6 +523,7 @@ class TestPaymentServiceList:
         other_payment = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-OTHER-001",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB0004",
             executive_employee_id=other_executive_id,
@@ -488,6 +557,7 @@ class TestPaymentServiceList:
         matching_payment = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-FIN-MATCH-001",
+            case_type="RETAIL",
             client_id=client.id,
             finance_id=matching_financer.id,
             vehicle_registration_number="KA01AB0005",
@@ -500,6 +570,7 @@ class TestPaymentServiceList:
         other_payment = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-FIN-OTHER-001",
+            case_type="RETAIL",
             client_id=client.id,
             finance_id=other_financer.id,
             vehicle_registration_number="KA01AB0006",
@@ -533,6 +604,7 @@ class TestPaymentServiceList:
         before_range = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-DATE-BEFORE",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB0007",
             executive_employee_id=uuid4(),
@@ -545,6 +617,7 @@ class TestPaymentServiceList:
         in_range_start = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-DATE-START",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB0008",
             executive_employee_id=uuid4(),
@@ -557,6 +630,7 @@ class TestPaymentServiceList:
         in_range_end = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-DATE-END",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB0009",
             executive_employee_id=uuid4(),
@@ -569,6 +643,7 @@ class TestPaymentServiceList:
         after_range = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-DATE-AFTER",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB0010",
             executive_employee_id=uuid4(),
@@ -610,6 +685,7 @@ class TestPaymentServiceList:
         exact_match = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-COMBINED-MATCH",
+            case_type="RETAIL",
             client_id=client.id,
             finance_id=target_financer.id,
             vehicle_registration_number="KA01AB0011",
@@ -624,6 +700,7 @@ class TestPaymentServiceList:
         wrong_executive = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-COMBINED-WRONG-EXEC",
+            case_type="RETAIL",
             client_id=client.id,
             finance_id=target_financer.id,
             vehicle_registration_number="KA01AB0012",
@@ -638,6 +715,7 @@ class TestPaymentServiceList:
         wrong_date = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-COMBINED-WRONG-DATE",
+            case_type="RETAIL",
             client_id=client.id,
             finance_id=target_financer.id,
             vehicle_registration_number="KA01AB0013",
@@ -679,6 +757,7 @@ class TestPaymentServiceUpdate:
         payment = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-UPDATE-001",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB9999",
             executive_employee_id=uuid4(),
@@ -719,6 +798,7 @@ class TestPaymentServiceDelete:
         payment = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-DELETE-001",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB0000",
             executive_employee_id=uuid4(),
@@ -760,6 +840,7 @@ class TestPaymentServiceSort:
         low = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-SORT-AMT-LOW",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB4001",
             executive_employee_id=uuid4(),
@@ -772,6 +853,7 @@ class TestPaymentServiceSort:
         high = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-SORT-AMT-HIGH",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB4002",
             executive_employee_id=uuid4(),
@@ -803,6 +885,7 @@ class TestPaymentServiceSort:
         payment_b = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-SORT-B",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB4003",
             executive_employee_id=uuid4(),
@@ -814,6 +897,7 @@ class TestPaymentServiceSort:
         payment_a = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-SORT-A",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB4004",
             executive_employee_id=uuid4(),
@@ -864,6 +948,7 @@ class TestPaymentServiceSort:
         payment_zeta = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-SORT-CLIENT-ZETA",
+            case_type="RETAIL",
             client_id=client_zeta.id,
             vehicle_registration_number="KA01AB4005",
             executive_employee_id=uuid4(),
@@ -875,6 +960,7 @@ class TestPaymentServiceSort:
         payment_alpha = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-SORT-CLIENT-ALPHA",
+            case_type="RETAIL",
             client_id=client_alpha.id,
             vehicle_registration_number="KA01AB4006",
             executive_employee_id=uuid4(),
@@ -904,6 +990,7 @@ class TestPaymentServiceSort:
         payment_zeta = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-SORT-EXEC-ZETA",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB4007",
             executive_employee_id=zeta_employee.id,
@@ -915,6 +1002,7 @@ class TestPaymentServiceSort:
         payment_alpha = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-SORT-EXEC-ALPHA",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB4008",
             executive_employee_id=alpha_employee.id,
@@ -944,6 +1032,7 @@ class TestPaymentServiceSort:
         payment = Payment(
             tenant_id=test_tenant.id,
             case_reference="CASE-SORT-FALLBACK",
+            case_type="RETAIL",
             client_id=client.id,
             vehicle_registration_number="KA01AB4009",
             executive_employee_id=uuid4(),

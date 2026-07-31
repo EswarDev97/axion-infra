@@ -7,6 +7,7 @@ CREATE TABLE payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id),
     case_reference VARCHAR(100) NOT NULL,
+    case_type VARCHAR(20) NOT NULL,
     client_id UUID NOT NULL REFERENCES clients(id),
     finance_id UUID REFERENCES clients(id),
     vehicle_registration_number VARCHAR(50) NOT NULL,
@@ -56,6 +57,10 @@ class Payment(Base):
         index=True
     )
     case_reference: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    # Case type: RETAIL, YARD, PI, CI, DOC (plain String + Python constants,
+    # same pattern as case_status/billing_status below).
+    case_type: Mapped[str] = mapped_column(String(20), nullable=False)
 
     # Client reference (real FK — clients table lives in this same service)
     client_id: Mapped[UUID] = mapped_column(

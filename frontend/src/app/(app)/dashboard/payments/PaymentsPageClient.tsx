@@ -41,8 +41,17 @@ const BILLING_STATUSES = [
   { value: 'CUSTOMER_BILLING', label: 'Customer Billing' },
 ];
 
+const CASE_TYPES = [
+  { value: 'RETAIL', label: 'Retail' },
+  { value: 'YARD', label: 'Yard' },
+  { value: 'PI', label: 'PI' },
+  { value: 'CI', label: 'CI' },
+  { value: 'DOC', label: 'DOC' },
+];
+
 const emptyForm = {
   caseReference: '',
+  caseType: '',
   clientId: '',
   financeId: '',
   vehicleRegistrationNumber: '',
@@ -282,6 +291,7 @@ export function PaymentsPageClient() {
       const rows = exportRows.map((payment, index) => ({
         'S.No': index + 1,
         'Case Reference': payment.caseReference,
+        'Case Type': payment.caseType,
         Client: clientNameById.get(payment.clientId) ?? payment.clientId,
         Finance: payment.financeId ? clientNameById.get(payment.financeId) ?? payment.financeId : '',
         'Vehicle Reg No': payment.vehicleRegistrationNumber,
@@ -366,6 +376,7 @@ export function PaymentsPageClient() {
     setEditing(payment);
     setFormData({
       caseReference: payment.caseReference,
+      caseType: payment.caseType || '',
       clientId: payment.clientId,
       financeId: payment.financeId || '',
       vehicleRegistrationNumber: payment.vehicleRegistrationNumber,
@@ -412,7 +423,7 @@ export function PaymentsPageClient() {
   const showAmount = isCompanyBilling || isCash || isTransfer;
 
   const isFormValid = () => {
-    if (!formData.caseReference.trim() || !formData.clientId || !formData.vehicleRegistrationNumber.trim()) {
+    if (!formData.caseReference.trim() || !formData.caseType || !formData.clientId || !formData.vehicleRegistrationNumber.trim()) {
       return false;
     }
     if (!formData.executiveEmployeeId || !formData.billingStatus) {
@@ -429,6 +440,7 @@ export function PaymentsPageClient() {
   const buildPayload = (): PaymentCreateRequest => {
     const base: PaymentCreateRequest = {
       caseReference: formData.caseReference.trim(),
+      caseType: formData.caseType as PaymentCreateRequest['caseType'],
       clientId: formData.clientId,
       financeId: formData.financeId || undefined,
       vehicleRegistrationNumber: formData.vehicleRegistrationNumber.trim(),
@@ -649,6 +661,7 @@ export function PaymentsPageClient() {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">S.No</th>
               <SortableHeader column="caseReference" label="Case Reference" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+              <SortableHeader column="caseType" label="Case Type" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
               <SortableHeader column="client" label="Client" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
               <SortableHeader column="finance" label="Finance" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vehicle Reg. No.</th>
@@ -664,11 +677,11 @@ export function PaymentsPageClient() {
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={canWrite ? 10 : 9} className="px-6 py-8 text-center text-gray-500">Loading...</td>
+                <td colSpan={canWrite ? 11 : 10} className="px-6 py-8 text-center text-gray-500">Loading...</td>
               </tr>
             ) : payments.length === 0 ? (
               <tr>
-                <td colSpan={canWrite ? 10 : 9} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={canWrite ? 11 : 10} className="px-6 py-8 text-center text-gray-500">
                   No payments found.
                 </td>
               </tr>
@@ -677,6 +690,9 @@ export function PaymentsPageClient() {
                 <tr key={payment.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm text-gray-600">{(page - 1) * PAGE_SIZE + index + 1}</td>
                   <td className="px-6 py-4 text-sm font-mono text-gray-900">{payment.caseReference}</td>
+                  <td className="px-6 py-4">
+                    <Badge variant="neutral">{payment.caseType}</Badge>
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{clientNameById.get(payment.clientId) ?? payment.clientId}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">
                     {payment.financeId ? clientNameById.get(payment.financeId) ?? payment.financeId : '-'}
@@ -790,6 +806,19 @@ export function PaymentsPageClient() {
               onChange={(e) => handleChange('caseReference', e.target.value)}
               placeholder="e.g. CASE-1001"
             />
+          </FormField>
+
+          <FormField label="Case Type" htmlFor="caseType" required>
+            <Select
+              id="caseType"
+              value={formData.caseType}
+              onChange={(e) => handleChange('caseType', e.target.value)}
+              placeholder="Select case type"
+            >
+              {CASE_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </Select>
           </FormField>
 
           <div className="grid grid-cols-2 gap-4">

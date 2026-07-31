@@ -106,6 +106,7 @@ const mockedFieldExecutives = employeeService.fieldExecutives as unknown as Retu
 const makePayment = (overrides: Partial<Payment> = {}): Payment => ({
   id: 'pay-1',
   caseReference: 'CASE-1001',
+  caseType: 'RETAIL',
   clientId: 'client-abc-123',
   financeId: null,
   vehicleRegistrationNumber: 'KA01AB1234',
@@ -214,6 +215,7 @@ describe('PaymentsPageClient', () => {
 
       const row = screen.getByText('CASE-1001').closest('tr') as HTMLElement;
       expect(within(row).getByText('1')).toBeInTheDocument();
+      expect(within(row).getByText('RETAIL')).toBeInTheDocument();
       expect(within(row).getByText('Acme Insurance')).toBeInTheDocument();
       expect(within(row).getByText('KA01AB1234')).toBeInTheDocument();
       expect(within(row).getByText('Jane Doe')).toBeInTheDocument();
@@ -328,6 +330,23 @@ describe('PaymentsPageClient', () => {
       expect(within(table).getByRole('button', { name: /^client$/i })).toBeInTheDocument();
       expect(within(table).getByRole('button', { name: /finance/i })).toBeInTheDocument();
       expect(within(table).getByRole('button', { name: /executive/i })).toBeInTheDocument();
+    });
+
+    it('sorts by the Case Type column', async () => {
+      const user = userEvent.setup();
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalledTimes(1);
+      });
+
+      await user.click(screen.getByRole('button', { name: /case type/i }));
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenLastCalledWith(
+          expect.objectContaining({ sortBy: 'caseType', sortOrder: 'asc' })
+        );
+      });
     });
   });
 
@@ -771,6 +790,46 @@ describe('PaymentsPageClient', () => {
       await user.selectOptions(billingStatusSelect, value);
     };
 
+    it('renders a required Case Type dropdown with Retail/Yard/PI/CI/DOC options directly under Case Reference', async () => {
+      const user = userEvent.setup();
+      await openAddModal(user);
+
+      const dialog = screen.getByRole('dialog');
+      const caseTypeField = within(dialog).getByLabelText(/case type/i);
+      expect(caseTypeField).toBeInTheDocument();
+
+      const optionLabels = within(caseTypeField).getAllByRole('option').map((o) => o.textContent);
+      expect(optionLabels).toEqual(
+        expect.arrayContaining(['Retail', 'Yard', 'PI', 'CI', 'DOC'])
+      );
+
+      // Case Type sits directly after Case Reference in the DOM order.
+      const caseReferenceField = within(dialog).getByLabelText(/case reference/i);
+      const allLabels = within(dialog)
+        .getAllByText(/^Case (Reference|Type)\*?$/)
+        .map((el) => el.textContent);
+      expect(allLabels).toEqual(['Case Reference*', 'Case Type*']);
+      expect(caseReferenceField).toBeInTheDocument();
+    });
+
+    it('keeps Create disabled until a Case Type is selected', async () => {
+      const user = userEvent.setup();
+      await openAddModal(user);
+
+      const dialog = screen.getByRole('dialog');
+      await user.type(within(dialog).getByLabelText(/case reference/i), 'CASE-3001');
+      await user.selectOptions(within(dialog).getByLabelText(/^client/i), 'client-1');
+      await user.type(within(dialog).getByLabelText(/vehicle registration number/i), 'KA01AB3001');
+      await user.selectOptions(within(dialog).getByLabelText(/^executive/i), 'emp-1');
+      await user.selectOptions(within(dialog).getByLabelText(/billing status/i), 'COMPANY_BILLING');
+
+      expect(within(dialog).getByRole('button', { name: 'Create' })).toBeDisabled();
+
+      await user.selectOptions(within(dialog).getByLabelText(/case type/i), 'YARD');
+
+      expect(within(dialog).getByRole('button', { name: 'Create' })).not.toBeDisabled();
+    });
+
     it('hides Payment Mode/UTR/Transaction Date but shows an optional Amount field when Billing Status = Company Billing', async () => {
       const user = userEvent.setup();
       await openAddModal(user);
@@ -937,6 +996,7 @@ describe('PaymentsPageClient', () => {
       dialog: HTMLElement
     ) => {
       await user.type(within(dialog).getByLabelText(/case reference/i), 'CASE-2001');
+      await user.selectOptions(within(dialog).getByLabelText(/case type/i), 'RETAIL');
       await user.selectOptions(within(dialog).getByLabelText(/^client/i), 'client-1');
       await user.type(within(dialog).getByLabelText(/vehicle registration number/i), 'KA01AB9999');
       await user.selectOptions(within(dialog).getByLabelText(/^executive/i), 'emp-1');
@@ -1039,6 +1099,7 @@ describe('PaymentsPageClient', () => {
       const expectedHeaders = [
         'S.No',
         'Case Reference',
+        'Case Type',
         'Client',
         'Finance',
         'Vehicle Reg No',
@@ -1056,6 +1117,7 @@ describe('PaymentsPageClient', () => {
       expect(rows[0]).toMatchObject({
         'S.No': 1,
         'Case Reference': 'CASE-1001',
+        'Case Type': 'RETAIL',
         Client: 'Acme Insurance',
         Finance: 'Acme Insurance',
         'Vehicle Reg No': 'KA01AB1234',

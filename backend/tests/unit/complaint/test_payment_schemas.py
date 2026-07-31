@@ -25,6 +25,7 @@ def _base_kwargs(**overrides):
     conditional billing fields under test."""
     kwargs = dict(
         case_reference="CASE-001",
+        case_type="RETAIL",
         client_id=uuid4(),
         vehicle_registration_number="MH12AB1234",
         executive_employee_id=uuid4(),

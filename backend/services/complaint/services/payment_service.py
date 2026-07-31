@@ -47,6 +47,7 @@ _employees_table = table(
 # on screen — sorting by id would look arbitrary to the user.
 _SORTABLE_COLUMNS = {
     "caseReference": lambda: Payment.case_reference,
+    "caseType": lambda: Payment.case_type,
     "caseStatus": lambda: Payment.case_status,
     "billingStatus": lambda: Payment.billing_status,
     "amount": lambda: Payment.amount,
@@ -104,6 +105,7 @@ class PaymentService:
         payment = Payment(
             tenant_id=tenant_id,
             case_reference=data.case_reference,
+            case_type=data.case_type.value,
             client_id=data.client_id,
             finance_id=data.finance_id,
             vehicle_registration_number=data.vehicle_registration_number,
