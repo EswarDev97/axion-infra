@@ -136,6 +136,7 @@ export function PaymentsPageClient() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalPayments, setTotalPayments] = useState(0);
 
   // Filter bar: Client / Finance Company / Field Executive dropdowns plus a
   // Lead Created Date (created_at) From/To range — all combinable, for every
@@ -209,6 +210,7 @@ export function PaymentsPageClient() {
       });
       setPayments(res.items ?? []);
       setTotalPages(res.pages ?? 1);
+      setTotalPayments(res.total ?? 0);
     } catch (e) {
       setError((e as Error).message || 'Failed to load payments');
     } finally {
@@ -641,7 +643,7 @@ export function PaymentsPageClient() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border overflow-hidden">
+      <div className="bg-white rounded-lg border overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -715,49 +717,55 @@ export function PaymentsPageClient() {
         </table>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
+      {/* Pagination — the "Showing X-Y of Z" summary is always visible so
+          the total record count is never hidden, even on a single page;
+          the page-number/Previous/Next controls only appear once there's
+          more than one page to navigate. */}
+      {totalPayments > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-600">
-            Page {page} of {totalPages}
+            Showing {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, totalPayments)} of{' '}
+            {totalPayments} {totalPayments === 1 ? 'result' : 'results'} (Page {page} of {totalPages})
           </p>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
-            </Button>
-            {getPageNumbers().map((entry, index) =>
-              entry === 'ellipsis' ? (
-                <span key={`ellipsis-${index}`} className="px-2 text-sm text-gray-400">
-                  …
-                </span>
-              ) : (
-                <Button
-                  key={entry}
-                  variant={entry === page ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => setPage(entry)}
-                  aria-current={entry === page ? 'page' : undefined}
-                >
-                  {entry}
-                </Button>
-              )
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-            >
-              Next
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+              {getPageNumbers().map((entry, index) =>
+                entry === 'ellipsis' ? (
+                  <span key={`ellipsis-${index}`} className="px-2 text-sm text-gray-400">
+                    …
+                  </span>
+                ) : (
+                  <Button
+                    key={entry}
+                    variant={entry === page ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => setPage(entry)}
+                    aria-current={entry === page ? 'page' : undefined}
+                  >
+                    {entry}
+                  </Button>
+                )
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

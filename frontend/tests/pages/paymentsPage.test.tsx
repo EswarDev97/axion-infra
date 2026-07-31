@@ -348,7 +348,8 @@ describe('PaymentsPageClient', () => {
         expect(mockedList).toHaveBeenCalledTimes(1);
       });
 
-      expect(screen.getByText('Page 1 of 5')).toBeInTheDocument();
+      expect(screen.getByText(/showing 1-20 of 100 results/i)).toBeInTheDocument();
+      expect(screen.getByText(/page 1 of 5/i)).toBeInTheDocument();
       const page3Button = screen.getByRole('button', { name: '3' });
       await user.click(page3Button);
 
@@ -359,7 +360,7 @@ describe('PaymentsPageClient', () => {
       });
     });
 
-    it('does not render pagination controls when there is only one page', async () => {
+    it('shows the result count summary but no page-number/Previous/Next controls when there is only one page', async () => {
       mockedList.mockResolvedValue({
         items: [],
         total: 3,
@@ -374,7 +375,27 @@ describe('PaymentsPageClient', () => {
         expect(mockedList).toHaveBeenCalledTimes(1);
       });
 
-      expect(screen.queryByText(/page 1 of/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/showing 1-3 of 3 results/i)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /previous/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /next/i })).not.toBeInTheDocument();
+    });
+
+    it('hides the pagination summary entirely when there are zero results', async () => {
+      mockedList.mockResolvedValue({
+        items: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        pages: 0,
+      });
+
+      render(<PaymentsPageClient />);
+
+      await waitFor(() => {
+        expect(mockedList).toHaveBeenCalledTimes(1);
+      });
+
+      expect(screen.queryByText(/showing/i)).not.toBeInTheDocument();
     });
 
     it('marks the current page button with aria-current', async () => {
