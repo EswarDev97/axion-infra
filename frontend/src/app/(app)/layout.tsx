@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { AppHeader } from '@/components/layout/AppHeader';
+import { AppContent } from '@/components/layout/AppContent';
 
 export default async function AppLayout({
   children,
@@ -19,10 +20,10 @@ export default async function AppLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       <AppSidebar />
-      <div className="lg:pl-64">
+      <AppContent>
         <AppHeader />
         <main className="p-6">{children}</main>
-      </div>
+      </AppContent>
     </div>
   );
 }

@@ -60,57 +60,77 @@ export default function EditEmployeePage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        const [emp, deptRes, posRes, empRes, rolesRes] = await Promise.all([
+      // Fetched independently (not Promise.all) so one lookup failing —
+      // e.g. roleService.list() requiring auth:read:all, a permission a
+      // caller might lack — doesn't also blank out the rest of the form.
+      // The employee record itself is the only genuinely required piece;
+      // department/position/manager/role dropdowns degrade to empty
+      // options (still editable via other fields) rather than blocking
+      // the whole page behind one error banner.
+      const [empResult, deptResult, posResult, managersResult, rolesResult] =
+        await Promise.allSettled([
           employeeService.getById(id),
           departmentService.list({ pageSize: 100 }),
           positionService.list({ pageSize: 100 }),
           employeeService.list({ pageSize: 100, status: 'ACTIVE' }),
           roleService.list({ pageSize: 100 }),
         ]);
-        setEmployee(emp);
-        setDepartments(deptRes.items);
-        setPositions(posRes.items);
-        setManagers(empRes.items.filter((e) => e.id !== id));
-        setRoles(rolesRes.items);
 
-        const empRole = emp.role || 'EMPLOYEE';
-        setCurrentRole(empRole);
-
-        // Fetch leave balances for this employee
-        let clBalance = '0', slBalance = '0', elBalance = '0';
-        try {
-          const balances = await leaveBalanceService.getByEmployee(id, new Date().getFullYear());
-          for (const b of balances) {
-            if (b.leaveTypeName === 'Casual Leave') clBalance = String(b.totalDays);
-            else if (b.leaveTypeName === 'Sick Leave') slBalance = String(b.totalDays);
-            else if (b.leaveTypeName === 'Earned Leave') elBalance = String(b.totalDays);
-          }
-        } catch {
-          // Balances may not exist yet
-        }
-
-        setFormData({
-          firstName: emp.firstName,
-          lastName: emp.lastName,
-          email: emp.email,
-          phone: emp.phone || '',
-          role: empRole,
-          departmentId: emp.departmentId || '',
-          positionId: emp.positionId || '',
-          managerId: emp.managerId || '',
-          employmentStatus: emp.status || 'ACTIVE',
-          employmentType: emp.employmentType || 'FULL_TIME',
-          salary: emp.salary != null ? String(emp.salary) : '',
-          casualLeave: clBalance,
-          sickLeave: slBalance,
-          earnedLeave: elBalance,
-        });
-      } catch (err) {
-        setError((err as Error).message || 'Failed to load employee');
-      } finally {
+      if (empResult.status === 'rejected') {
+        setError((empResult.reason as Error)?.message || 'Failed to load employee');
         setLoading(false);
+        return;
       }
+      const emp = empResult.value;
+      setEmployee(emp);
+
+      if (deptResult.status === 'fulfilled') setDepartments(deptResult.value.items);
+      if (posResult.status === 'fulfilled') setPositions(posResult.value.items);
+      if (managersResult.status === 'fulfilled') {
+        setManagers(managersResult.value.items.filter((e) => e.id !== id));
+      }
+      if (rolesResult.status === 'fulfilled') setRoles(rolesResult.value.items);
+
+      const firstRejection = [deptResult, posResult, managersResult, rolesResult].find(
+        (r) => r.status === 'rejected'
+      ) as PromiseRejectedResult | undefined;
+      if (firstRejection) {
+        setError((firstRejection.reason as Error)?.message || 'Some form data failed to load');
+      }
+
+      const empRole = emp.role || 'EMPLOYEE';
+      setCurrentRole(empRole);
+
+      // Fetch leave balances for this employee
+      let clBalance = '0', slBalance = '0', elBalance = '0';
+      try {
+        const balances = await leaveBalanceService.getByEmployee(id, new Date().getFullYear());
+        for (const b of balances) {
+          if (b.leaveTypeName === 'Casual Leave') clBalance = String(b.totalDays);
+          else if (b.leaveTypeName === 'Sick Leave') slBalance = String(b.totalDays);
+          else if (b.leaveTypeName === 'Earned Leave') elBalance = String(b.totalDays);
+        }
+      } catch {
+        // Balances may not exist yet
+      }
+
+      setFormData({
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        email: emp.email,
+        phone: emp.phone || '',
+        role: empRole,
+        departmentId: emp.departmentId || '',
+        positionId: emp.positionId || '',
+        managerId: emp.managerId || '',
+        employmentStatus: emp.status || 'ACTIVE',
+        employmentType: emp.employmentType || 'FULL_TIME',
+        salary: emp.salary != null ? String(emp.salary) : '',
+        casualLeave: clBalance,
+        sickLeave: slBalance,
+        earnedLeave: elBalance,
+      });
+      setLoading(false);
     };
     fetchData();
   }, [id]);

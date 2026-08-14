@@ -5,7 +5,7 @@ import { PermissionMatrix } from '@/components/roles/PermissionMatrix';
 import { TableSkeleton } from '@/components/ui/TableSkeleton';
 
 export const metadata: Metadata = {
-  title: 'Roles & Permissions - AxionPCS HRMS',
+  title: 'Roles & Permissions - Wings Associates HRMS',
 };
 
 interface RolesPageProps {

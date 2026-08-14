@@ -7,12 +7,17 @@ SOFT delete (sets is_deleted/deleted_at) rather than a row removal, and
 list() always excludes soft-deleted rows.
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, asc, desc, table, column, String
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.orm import aliased
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from services.complaint.models.client import Client
+from shared.exceptions import ResourceAlreadyExistsException
 
 from ..models.payment import Payment
 from ..schemas.payment import (
@@ -22,17 +27,74 @@ from ..schemas.payment import (
     PaymentListResponse,
 )
 
+# Sorting by the assigned Field Executive's name requires joining against
+# the `employees` table, which belongs to the hr service. complaint-service
+# only ships its own service/shared code (see services/complaint/Dockerfile
+# — COPY services/complaint only), so an ORM import of
+# services.hr.models.employee.Employee would crash this service at startup.
+# Both services share the same physical database, so a lightweight SQLAlchemy
+# Core table() reference (no ORM import) lets us join the real table safely.
+_employees_table = table(
+    "employees",
+    column("id", PGUUID(as_uuid=True)),
+    column("first_name", String),
+    column("last_name", String),
+)
+
+# Columns the Payment Management list screen allows sorting by. The three
+# name-resolved columns (client/finance/executive) sort by the joined
+# entity's display name rather than the raw FK id, matching what's shown
+# on screen — sorting by id would look arbitrary to the user.
+_SORTABLE_COLUMNS = {
+    "caseReference": lambda: Payment.case_reference,
+    "caseType": lambda: Payment.case_type,
+    "caseStatus": lambda: Payment.case_status,
+    "billingStatus": lambda: Payment.billing_status,
+    "amount": lambda: Payment.amount,
+    "createdAt": lambda: Payment.created_at,
+}
+
 
 class PaymentService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def _check_utr_unique(
+        self,
+        tenant_id: UUID,
+        utr_number: Optional[str],
+        exclude_payment_id: Optional[UUID] = None,
+    ) -> None:
+        """UTR Number must be unique among this tenant's active (non-deleted)
+        payments — a soft-deleted payment's value is free to reuse.
+        exclude_payment_id lets update() skip a payment matching its own
+        current, unchanged value.
+
+        Vehicle Registration Number is intentionally NOT checked here —
+        duplicates are allowed (the frontend shows a non-blocking warning
+        instead); see 20260814_010000 which drops its DB unique index."""
+        if utr_number:
+            query = select(Payment.id).where(
+                Payment.tenant_id == tenant_id,
+                Payment.is_deleted.is_(False),
+                Payment.utr_number == utr_number,
+            )
+            if exclude_payment_id:
+                query = query.where(Payment.id != exclude_payment_id)
+            if (await self.db.execute(query)).scalar_one_or_none():
+                raise ResourceAlreadyExistsException(
+                    "Payment", f"utrNumber={utr_number}"
+                )
+
     async def create(
         self, data: PaymentCreateRequest, tenant_id: UUID, user_id: UUID
     ) -> Payment:
+        await self._check_utr_unique(tenant_id, data.utr_number)
         payment = Payment(
             tenant_id=tenant_id,
             case_reference=data.case_reference,
+            case_type=data.case_type.value,
+            vehicle_type=data.vehicle_type.value,
             client_id=data.client_id,
             finance_id=data.finance_id,
             vehicle_registration_number=data.vehicle_registration_number,
@@ -65,6 +127,11 @@ class PaymentService:
         self, payment: Payment, data: PaymentUpdateRequest, user_id: UUID
     ) -> Payment:
         update_data = data.model_dump(exclude_unset=True, by_alias=False)
+        await self._check_utr_unique(
+            payment.tenant_id,
+            update_data.get("utr_number"),
+            exclude_payment_id=payment.id,
+        )
         for field, value in update_data.items():
             # Enum fields need their raw value stored on the plain-String columns
             if hasattr(value, "value"):
@@ -88,14 +155,53 @@ class PaymentService:
         page: int = 1,
         limit: int = 50,
         search: Optional[str] = None,
+        case_type: Optional[str] = None,
         case_status: Optional[str] = None,
         billing_status: Optional[str] = None,
+        payment_mode: Optional[str] = None,
+        vehicle_type: Optional[str] = None,
         client_id: Optional[UUID] = None,
+        executive_employee_id: Optional[UUID] = None,
+        finance_id: Optional[UUID] = None,
+        date_from: Optional[date] = None,
+        date_to: Optional[date] = None,
+        sort_by: Optional[str] = None,
+        sort_order: str = "asc",
     ) -> PaymentListResponse:
-        query = select(Payment).where(
-            Payment.tenant_id == tenant_id,
-            Payment.is_deleted.is_(False),
+        """
+        executive_employee_id does double duty: it's both the user-facing
+        "Field Executive" filter (Payment Management's filter bar) AND the
+        payments:read:own server-side scoping mechanism (see api/payments.py)
+        — the caller passes whichever value applies; when payments:read:own
+        scoping is active it's forced to the caller's own employee id and a
+        user-supplied filter value is ignored (see the route).
+        date_from/date_to filter on created_at (the "Lead Created Date"
+        already surfaced in the Excel export), inclusive of both endpoints.
+
+        sort_by is one of _SORTABLE_COLUMNS' keys, or "client"/"finance"/
+        "executive" — the latter three sort by the joined entity's display
+        name (clients.name / employees.first_name+last_name) rather than
+        the raw FK id, since that's what's actually shown in the table.
+        Unrecognized/omitted sort_by falls back to created_at desc (the
+        original default ordering).
+        """
+        client_alias = aliased(Client)
+        financer_alias = aliased(Client)
+        executive_alias = _employees_table.alias("payment_executive")
+
+        query = (
+            select(Payment)
+            .outerjoin(client_alias, Payment.client_id == client_alias.id)
+            .outerjoin(financer_alias, Payment.finance_id == financer_alias.id)
+            .outerjoin(executive_alias, Payment.executive_employee_id == executive_alias.c.id)
+            .where(
+                Payment.tenant_id == tenant_id,
+                Payment.is_deleted.is_(False),
+            )
         )
+
+        if case_type:
+            query = query.where(Payment.case_type == case_type)
 
         if case_status:
             query = query.where(Payment.case_status == case_status)
@@ -103,8 +209,32 @@ class PaymentService:
         if billing_status:
             query = query.where(Payment.billing_status == billing_status)
 
+        if payment_mode:
+            query = query.where(Payment.payment_mode == payment_mode)
+
+        if vehicle_type:
+            query = query.where(Payment.vehicle_type == vehicle_type)
+
         if client_id:
             query = query.where(Payment.client_id == client_id)
+
+        if finance_id:
+            query = query.where(Payment.finance_id == finance_id)
+
+        if executive_employee_id:
+            query = query.where(Payment.executive_employee_id == executive_employee_id)
+
+        if date_from:
+            query = query.where(
+                Payment.created_at >= datetime.combine(date_from, datetime.min.time(), tzinfo=timezone.utc)
+            )
+
+        if date_to:
+            # Inclusive of the entire "to" day.
+            query = query.where(
+                Payment.created_at < datetime.combine(date_to, datetime.min.time(), tzinfo=timezone.utc)
+                + timedelta(days=1)
+            )
 
         if search:
             term = f"%{search}%"
@@ -116,7 +246,20 @@ class PaymentService:
         count_query = select(func.count()).select_from(query.subquery())
         total = (await self.db.execute(count_query)).scalar() or 0
 
-        query = query.order_by(Payment.created_at.desc()).offset((page - 1) * limit).limit(limit)
+        direction = desc if sort_order == "desc" else asc
+        name_sort_columns = {
+            "client": client_alias.name,
+            "finance": financer_alias.name,
+            "executive": func.concat(executive_alias.c.first_name, " ", executive_alias.c.last_name),
+        }
+        if sort_by in name_sort_columns:
+            query = query.order_by(direction(name_sort_columns[sort_by]))
+        elif sort_by in _SORTABLE_COLUMNS:
+            query = query.order_by(direction(_SORTABLE_COLUMNS[sort_by]()))
+        else:
+            query = query.order_by(Payment.created_at.desc())
+
+        query = query.offset((page - 1) * limit).limit(limit)
         result = await self.db.execute(query)
         payments = result.scalars().all()
 

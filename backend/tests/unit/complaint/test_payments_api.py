@@ -19,7 +19,13 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from fastapi import FastAPI
 
-from shared.dependencies import get_current_user, get_db_session, get_tenant_id, CurrentUser
+from shared.dependencies import (
+    get_current_user,
+    get_db_session,
+    get_employee_id,
+    get_tenant_id,
+    CurrentUser,
+)
 
 pytestmark = [pytest.mark.unit, pytest.mark.asyncio]
 
@@ -41,6 +47,26 @@ async def _create_client(db_session, test_tenant, test_user):
     await db_session.commit()
     await db_session.refresh(client)
     return client
+
+
+async def _create_financer(db_session, test_tenant, test_user):
+    """Helper: create a Client row of type FINANCER so Payment.finance_id
+    FK (payments_finance_id_fkey references clients.id) is satisfiable."""
+    from services.complaint.models.client import Client
+
+    financer = Client(
+        tenant_id=test_tenant.id,
+        name="Acme Finance Co",
+        code=f"FIN-{uuid4().hex[:8]}",
+        type="FINANCER",
+        is_active=True,
+        created_by=test_user.id,
+        updated_by=test_user.id,
+    )
+    db_session.add(financer)
+    await db_session.commit()
+    await db_session.refresh(financer)
+    return financer
 
 
 @pytest_asyncio.fixture
@@ -108,6 +134,8 @@ class TestCreatePayment:
 
         payload = {
             "caseReference": "CASE-2026-0001",
+            "caseType": "RETAIL",
+            "vehicleType": "FOUR_WHEELER",
             "clientId": str(client.id),
             "vehicleRegistrationNumber": "KA01AB1234",
             "executiveEmployeeId": str(uuid4()),
@@ -130,6 +158,8 @@ class TestCreatePayment:
         data = body["data"]
         assert data["id"] is not None
         assert data["caseReference"] == "CASE-2026-0001"
+        assert data["caseType"] == "RETAIL"
+        assert data["vehicleType"] == "FOUR_WHEELER"
         assert data["clientId"] == str(client.id)
         assert data["financeId"] is None
         assert data["vehicleRegistrationNumber"] == "KA01AB1234"
@@ -141,6 +171,490 @@ class TestCreatePayment:
         assert data["amount"] is None
         assert "createdAt" in data
         assert "updatedAt" in data
+
+    async def test_create_payment_allows_duplicate_vehicle_registration_number(
+        self, payments_client, db_session, test_tenant, test_user
+    ):
+        """A second payment for the same tenant reusing an already-active
+        vehicle registration number succeeds — only UTR Number is unique;
+        duplicate vehicle numbers are allowed (flagged as a non-blocking
+        warning in the UI, not enforced server-side)."""
+        client = await _create_client(db_session, test_tenant, test_user)
+
+        payload = {
+            "caseReference": "CASE-API-DUP-VEH-001",
+            "caseType": "RETAIL",
+            "vehicleType": "FOUR_WHEELER",
+            "clientId": str(client.id),
+            "vehicleRegistrationNumber": "KA01AB1999",
+            "executiveEmployeeId": str(uuid4()),
+            "caseStatus": "ASSIGNED",
+            "billingStatus": "COMPANY_BILLING",
+        }
+        first = await payments_client.post("/api/v1/complaints/payments", json=payload)
+        assert first.status_code == 201
+
+        duplicate_payload = {**payload, "caseReference": "CASE-API-DUP-VEH-002"}
+        response = await payments_client.post(
+            "/api/v1/complaints/payments", json=duplicate_payload
+        )
+
+        assert response.status_code == 201
+        body = response.json()
+        assert body["success"] is True
+        assert body["data"]["vehicleRegistrationNumber"] == "KA01AB1999"
+        assert body["data"]["caseReference"] == "CASE-API-DUP-VEH-002"
+
+
+@pytest_asyncio.fixture
+async def own_scoped_payments_client(db_session, test_tenant, test_user):
+    """
+    Variant of `payments_client` for an EMPLOYEE with ONLY `payments:read:own`
+    (no `payments:read`). `get_employee_id` is overridden to a fixed UUID
+    (rather than querying a real `employees` row, per the pattern already
+    used for `get_db_session`/`get_tenant_id` in this file) so list/get
+    scoping can be asserted deterministically. Returns (client, employee_id).
+    """
+    from services.complaint.api.payments import router as payments_router
+    from shared.middleware import setup_exception_handlers
+
+    app = FastAPI()
+    app.include_router(payments_router, prefix="/api/v1/complaints")
+    setup_exception_handlers(app)
+
+    own_employee_id = uuid4()
+
+    scoped_user = CurrentUser(
+        user_id=test_user.id,
+        tenant_id=test_tenant.id,
+        email=test_user.email,
+        roles=["EMPLOYEE"],
+        permissions=["payments:read:own"],
+        jti="test-jti",
+    )
+
+    async def override_get_db_session():
+        yield db_session
+
+    async def override_get_current_user():
+        return scoped_user
+
+    async def override_get_tenant_id():
+        return test_tenant.id
+
+    async def override_get_employee_id():
+        return own_employee_id
+
+    app.dependency_overrides[get_db_session] = override_get_db_session
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_tenant_id] = override_get_tenant_id
+    app.dependency_overrides[get_employee_id] = override_get_employee_id
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        yield client, own_employee_id
+
+    app.dependency_overrides.clear()
+
+
+class TestPaymentListFilters:
+    """Tests for the Payment Management filter bar query params:
+    clientId, financeId, executiveEmployeeId, dateFrom, dateTo."""
+
+    async def test_list_filters_by_finance_id_query_param(
+        self, payments_client, db_session, test_tenant, test_user
+    ):
+        from services.complaint.models.payment import Payment
+
+        client_obj = await _create_client(db_session, test_tenant, test_user)
+        matching_financer = await _create_financer(db_session, test_tenant, test_user)
+        other_financer = await _create_financer(db_session, test_tenant, test_user)
+
+        matching = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-API-FIN-MATCH",
+            case_type="RETAIL",
+            client_id=client_obj.id,
+            finance_id=matching_financer.id,
+            vehicle_registration_number="KA01AB3001",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        other = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-API-FIN-OTHER",
+            case_type="RETAIL",
+            client_id=client_obj.id,
+            finance_id=other_financer.id,
+            vehicle_registration_number="KA01AB3002",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add_all([matching, other])
+        await db_session.commit()
+
+        response = await payments_client.get(
+            "/api/v1/complaints/payments",
+            params={"financeId": str(matching_financer.id)},
+        )
+
+        assert response.status_code == 200
+        items = response.json()["data"]["items"]
+        assert len(items) == 1
+        assert items[0]["caseReference"] == "CASE-API-FIN-MATCH"
+
+    async def test_list_filters_by_date_range_query_params(
+        self, payments_client, db_session, test_tenant, test_user
+    ):
+        from datetime import datetime, timezone
+
+        from services.complaint.models.payment import Payment
+
+        client_obj = await _create_client(db_session, test_tenant, test_user)
+
+        in_range = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-API-DATE-IN",
+            case_type="RETAIL",
+            client_id=client_obj.id,
+            vehicle_registration_number="KA01AB3003",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_at=datetime(2026, 4, 10, tzinfo=timezone.utc),
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        out_of_range = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-API-DATE-OUT",
+            case_type="RETAIL",
+            client_id=client_obj.id,
+            vehicle_registration_number="KA01AB3004",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_at=datetime(2026, 5, 1, tzinfo=timezone.utc),
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add_all([in_range, out_of_range])
+        await db_session.commit()
+
+        response = await payments_client.get(
+            "/api/v1/complaints/payments",
+            params={"dateFrom": "2026-04-01", "dateTo": "2026-04-30"},
+        )
+
+        assert response.status_code == 200
+        items = response.json()["data"]["items"]
+        assert len(items) == 1
+        assert items[0]["caseReference"] == "CASE-API-DATE-IN"
+
+    async def test_list_combines_client_finance_executive_and_date_filters(
+        self, payments_client, db_session, test_tenant, test_user
+    ):
+        from datetime import datetime, timezone
+
+        from services.complaint.models.payment import Payment
+
+        client_obj = await _create_client(db_session, test_tenant, test_user)
+        target_financer = await _create_financer(db_session, test_tenant, test_user)
+        target_executive_id = uuid4()
+
+        exact_match = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-API-COMBINED-MATCH",
+            case_type="RETAIL",
+            client_id=client_obj.id,
+            finance_id=target_financer.id,
+            vehicle_registration_number="KA01AB3005",
+            executive_employee_id=target_executive_id,
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_at=datetime(2026, 6, 15, tzinfo=timezone.utc),
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        wrong_executive = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-API-COMBINED-WRONG-EXEC",
+            case_type="RETAIL",
+            client_id=client_obj.id,
+            finance_id=target_financer.id,
+            vehicle_registration_number="KA01AB3006",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_at=datetime(2026, 6, 15, tzinfo=timezone.utc),
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add_all([exact_match, wrong_executive])
+        await db_session.commit()
+
+        response = await payments_client.get(
+            "/api/v1/complaints/payments",
+            params={
+                "clientId": str(client_obj.id),
+                "financeId": str(target_financer.id),
+                "executiveEmployeeId": str(target_executive_id),
+                "dateFrom": "2026-06-01",
+                "dateTo": "2026-06-30",
+            },
+        )
+
+        assert response.status_code == 200
+        items = response.json()["data"]["items"]
+        assert len(items) == 1
+        assert items[0]["caseReference"] == "CASE-API-COMBINED-MATCH"
+
+
+class TestPaymentListSort:
+    """Tests for the sortBy/sortOrder query params on GET /payments."""
+
+    async def test_sorts_by_amount_query_param(
+        self, payments_client, db_session, test_tenant, test_user
+    ):
+        from decimal import Decimal
+
+        from services.complaint.models.payment import Payment
+
+        client_obj = await _create_client(db_session, test_tenant, test_user)
+
+        low = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-API-SORT-LOW",
+            case_type="RETAIL",
+            client_id=client_obj.id,
+            vehicle_registration_number="KA01AB5001",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            amount=Decimal("50.00"),
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        high = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-API-SORT-HIGH",
+            case_type="RETAIL",
+            client_id=client_obj.id,
+            vehicle_registration_number="KA01AB5002",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            amount=Decimal("500.00"),
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add_all([low, high])
+        await db_session.commit()
+
+        response = await payments_client.get(
+            "/api/v1/complaints/payments",
+            params={"sortBy": "amount", "sortOrder": "asc"},
+        )
+
+        assert response.status_code == 200
+        refs = [item["caseReference"] for item in response.json()["data"]["items"]]
+        assert refs.index("CASE-API-SORT-LOW") < refs.index("CASE-API-SORT-HIGH")
+
+    async def test_rejects_unrecognized_sort_by_value(self, payments_client):
+        """sortBy is pattern-validated by FastAPI — an unknown column name
+        is a 422, not silently ignored or a 500."""
+        response = await payments_client.get(
+            "/api/v1/complaints/payments",
+            params={"sortBy": "notARealColumn"},
+        )
+
+        assert response.status_code == 422
+
+
+class TestPaymentReadOwnScoping:
+    """Tests for `payments:read:own` (EMPLOYEE role) list/get scoping."""
+
+    async def test_list_payments_scoped_to_own_executive_id(
+        self, own_scoped_payments_client, db_session, test_tenant, test_user
+    ):
+        """A user with only payments:read:own must see just the payments
+        where they are the assigned executive, not other executives'."""
+        from services.complaint.models.payment import Payment
+
+        client_obj = await _create_client(db_session, test_tenant, test_user)
+        scoped_client, own_employee_id = own_scoped_payments_client
+
+        own_payment = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-OWN-API-001",
+            case_type="RETAIL",
+            client_id=client_obj.id,
+            vehicle_registration_number="KA01AB2001",
+            executive_employee_id=own_employee_id,
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        other_payment = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-OTHER-API-001",
+            case_type="RETAIL",
+            client_id=client_obj.id,
+            vehicle_registration_number="KA01AB2002",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add_all([own_payment, other_payment])
+        await db_session.commit()
+
+        response = await scoped_client.get("/api/v1/complaints/payments")
+
+        assert response.status_code == 200
+        body = response.json()
+        items = body["data"]["items"]
+        assert len(items) == 1
+        assert items[0]["caseReference"] == "CASE-OWN-API-001"
+
+    async def test_list_payments_scoped_ignores_supplied_executive_filter(
+        self, own_scoped_payments_client, db_session, test_tenant, test_user
+    ):
+        """A payments:read:own caller who passes ?executiveEmployeeId=<someone
+        else> must NOT see that other executive's payments — the caller's own
+        employee id always wins over a user-supplied filter value."""
+        from services.complaint.models.payment import Payment
+
+        client_obj = await _create_client(db_session, test_tenant, test_user)
+        scoped_client, own_employee_id = own_scoped_payments_client
+        other_executive_id = uuid4()
+
+        own_payment = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-OWN-API-SCOPE-OVERRIDE",
+            case_type="RETAIL",
+            client_id=client_obj.id,
+            vehicle_registration_number="KA01AB2006",
+            executive_employee_id=own_employee_id,
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        other_payment = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-OTHER-API-SCOPE-OVERRIDE",
+            case_type="RETAIL",
+            client_id=client_obj.id,
+            vehicle_registration_number="KA01AB2007",
+            executive_employee_id=other_executive_id,
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add_all([own_payment, other_payment])
+        await db_session.commit()
+
+        response = await scoped_client.get(
+            "/api/v1/complaints/payments",
+            params={"executiveEmployeeId": str(other_executive_id)},
+        )
+
+        assert response.status_code == 200
+        items = response.json()["data"]["items"]
+        assert len(items) == 1
+        assert items[0]["caseReference"] == "CASE-OWN-API-SCOPE-OVERRIDE"
+
+    async def test_get_payment_scoped_denies_other_executives_payment(
+        self, own_scoped_payments_client, db_session, test_tenant, test_user
+    ):
+        """GET /payments/{id} for a payment NOT assigned to the caller must
+        return 404 (not 403 — avoids confirming the record's existence)."""
+        from services.complaint.models.payment import Payment
+
+        client_obj = await _create_client(db_session, test_tenant, test_user)
+        scoped_client, _own_employee_id = own_scoped_payments_client
+
+        other_payment = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-OTHER-API-002",
+            case_type="RETAIL",
+            client_id=client_obj.id,
+            vehicle_registration_number="KA01AB2003",
+            executive_employee_id=uuid4(),
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add(other_payment)
+        await db_session.commit()
+        await db_session.refresh(other_payment)
+
+        response = await scoped_client.get(f"/api/v1/complaints/payments/{other_payment.id}")
+
+        assert response.status_code == 404
+
+    async def test_get_payment_scoped_allows_own_payment(
+        self, own_scoped_payments_client, db_session, test_tenant, test_user
+    ):
+        """GET /payments/{id} for a payment assigned to the caller succeeds."""
+        from services.complaint.models.payment import Payment
+
+        client_obj = await _create_client(db_session, test_tenant, test_user)
+        scoped_client, own_employee_id = own_scoped_payments_client
+
+        own_payment = Payment(
+            tenant_id=test_tenant.id,
+            case_reference="CASE-OWN-API-002",
+            case_type="RETAIL",
+            client_id=client_obj.id,
+            vehicle_registration_number="KA01AB2004",
+            executive_employee_id=own_employee_id,
+            case_status="ASSIGNED",
+            billing_status="COMPANY_BILLING",
+            created_by=test_user.id,
+            updated_by=test_user.id,
+        )
+        db_session.add(own_payment)
+        await db_session.commit()
+        await db_session.refresh(own_payment)
+
+        response = await scoped_client.get(f"/api/v1/complaints/payments/{own_payment.id}")
+
+        assert response.status_code == 200
+        assert response.json()["data"]["caseReference"] == "CASE-OWN-API-002"
+
+    async def test_create_payment_forbidden_with_only_read_own_permission(
+        self, own_scoped_payments_client
+    ):
+        """payments:read:own does not grant payments:create."""
+        scoped_client, _own_employee_id = own_scoped_payments_client
+        payload = {
+            "caseReference": "CASE-DENIED-001",
+            "caseType": "RETAIL",
+            "vehicleType": "FOUR_WHEELER",
+            "clientId": str(uuid4()),
+            "vehicleRegistrationNumber": "KA01AB2005",
+            "executiveEmployeeId": str(uuid4()),
+            "caseStatus": "ASSIGNED",
+            "billingStatus": "COMPANY_BILLING",
+        }
+
+        response = await scoped_client.post("/api/v1/complaints/payments", json=payload)
+
+        assert response.status_code == 403
 
 
 @pytest_asyncio.fixture
@@ -224,6 +738,8 @@ class TestPaymentAuthorization:
         permissions=[]) must be rejected with 403 before any route logic runs."""
         payload = {
             "caseReference": "CASE-2026-0002",
+            "caseType": "RETAIL",
+            "vehicleType": "FOUR_WHEELER",
             "clientId": str(uuid4()),
             "vehicleRegistrationNumber": "KA01AB1234",
             "executiveEmployeeId": str(uuid4()),
@@ -249,6 +765,8 @@ class TestPaymentAuthorization:
         route body."""
         payload = {
             "caseReference": "CASE-2026-0003",
+            "caseType": "RETAIL",
+            "vehicleType": "FOUR_WHEELER",
             "clientId": str(uuid4()),
             "vehicleRegistrationNumber": "KA01AB1234",
             "executiveEmployeeId": str(uuid4()),

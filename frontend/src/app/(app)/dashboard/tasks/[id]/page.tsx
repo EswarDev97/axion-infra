@@ -7,7 +7,7 @@ import { Metadata } from 'next';
 import { TaskDetailPageClient } from './TaskDetailPageClient';
 
 export const metadata: Metadata = {
-  title: 'Task Details - AxionPCS HRMS',
+  title: 'Task Details - Wings Associates HRMS',
 };
 
 interface TaskDetailPageProps {

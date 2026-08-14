@@ -27,7 +27,7 @@ export function PublicFooter() {
           {/* Brand */}
           <div className="md:col-span-1">
             <Link href="/" className="text-2xl font-bold text-white">
-              AxionPCS
+              Wings Associates
             </Link>
             <p className="mt-4 text-sm text-gray-400">
               Transforming Human Resource Management with modern, intuitive solutions.
@@ -124,7 +124,7 @@ export function PublicFooter() {
         {/* Bottom */}
         <div className="mt-12 pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center">
           <p className="text-sm text-gray-400">
-            &copy; {currentYear} AxionPCS. All rights reserved.
+            &copy; {currentYear} Wings Associates. All rights reserved.
           </p>
           <p className="text-sm text-gray-400 mt-2 md:mt-0">
             Made with care for HR professionals

@@ -126,10 +126,10 @@ async def seed_admin():
 
         # Assign role to user
         await conn.execute("""
-            INSERT INTO user_tenant_roles (id, user_id, tenant_id, role_id, assigned_at, is_active, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO user_tenant_roles (id, user_id, tenant_id, role_id, assigned_at, assigned_by, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             ON CONFLICT DO NOTHING
-        """, uuid4(), user_id, tenant_id, role_id, now, True, now)
+        """, uuid4(), user_id, tenant_id, role_id, now, user_id, now, now)
 
         print(f"Assigned SUPER_ADMIN role to user")
 

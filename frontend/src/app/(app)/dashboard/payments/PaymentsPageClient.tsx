@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, Download, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { Alert } from '@/components/feedback/Alert';
 import { Modal, ModalFooter } from '@/components/feedback/Modal';
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog';
@@ -15,10 +16,14 @@ import {
   type Payment,
   type PaymentCreateRequest,
   type PaymentUpdateRequest,
+  type PaymentSortColumn,
+  type PaymentSortOrder,
 } from '@/services/complaint/paymentService';
 import { clientService, type Client } from '@/services/complaint/clientService';
 import { employeeService } from '@/services/hr/hrService';
 import type { Employee } from '@/services/hr/types';
+import { useAuthStore } from '@/stores/authStore';
+import { useDebounce } from '@/hooks';
 
 const PAGE_SIZE = 20;
 
@@ -38,8 +43,29 @@ const BILLING_STATUSES = [
   { value: 'CUSTOMER_BILLING', label: 'Customer Billing' },
 ];
 
+const CASE_TYPES = [
+  { value: 'RETAIL', label: 'Valuation - Retail' },
+  { value: 'YARD', label: 'Valuation - Yard' },
+  { value: 'PI', label: 'Preinspection' },
+  { value: 'CI', label: 'Claim Inspection' },
+  { value: 'DOC', label: 'Document Collection' },
+];
+
+const VEHICLE_TYPES = [
+  { value: 'TWO_WHEELER', label: '2 Wheeler' },
+  { value: 'FOUR_WHEELER', label: '4 Wheeler' },
+  { value: 'COMMERCIAL', label: 'Commercial' },
+];
+
+const PAYMENT_MODES = [
+  { value: 'CASH', label: 'Cash' },
+  { value: 'TRANSFER', label: 'Transfer' },
+];
+
 const emptyForm = {
   caseReference: '',
+  caseType: '',
+  vehicleType: '',
   clientId: '',
   financeId: '',
   vehicleRegistrationNumber: '',
@@ -54,13 +80,115 @@ const emptyForm = {
 
 type FormState = typeof emptyForm;
 
+// Backend returns RESOURCE_ALREADY_EXISTS with a technical identifier
+// string (e.g. "Payment with identifier 'utrNumber=UTR123' already exists")
+// — translate that into a clear, field-specific message for the create/edit
+// form rather than showing the raw backend text. Vehicle Registration
+// Number is no longer enforced unique server-side (duplicates are allowed;
+// see the inline warning next to that field instead), so only utrNumber
+// can appear here now.
+function describeSaveError(e: unknown): string {
+  const apiError = e as { code?: string; message?: string };
+  if (apiError.code === 'RESOURCE_ALREADY_EXISTS') {
+    if (apiError.message?.includes('utrNumber')) {
+      return 'This UTR Number is already used by another payment.';
+    }
+  }
+  return apiError.message || 'Failed to save payment';
+}
+
+// Defined at module scope (not inside PaymentsPageClient) so it keeps a
+// stable component identity across renders — defining it inline in the
+// parent's body would make React remount the <th>/<button> subtree on
+// every render (new function = new component type), which breaks click
+// handling on the just-clicked button and loses focus for real users.
+function SortableHeader({
+  column,
+  label,
+  align = 'left',
+  sortBy,
+  sortOrder,
+  onSort,
+}: {
+  column: PaymentSortColumn;
+  label: string;
+  align?: 'left' | 'right';
+  sortBy: PaymentSortColumn | undefined;
+  sortOrder: PaymentSortOrder;
+  onSort: (column: PaymentSortColumn) => void;
+}) {
+  const isActive = sortBy === column;
+  const Icon = isActive ? (sortOrder === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <th className={`px-6 py-3 text-${align} text-xs font-medium text-gray-500 uppercase whitespace-nowrap`}>
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={`inline-flex items-center gap-1 hover:text-gray-700 ${
+          isActive ? 'text-gray-900' : ''
+        }`}
+      >
+        {label}
+        <Icon className="h-3 w-3" />
+      </button>
+    </th>
+  );
+}
+
 export function PaymentsPageClient() {
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission);
+  const hasAnyRole = useAuthStore((state) => state.hasAnyRole);
+  // authStore persists to sessionStorage, which is unavailable during SSR —
+  // the server always renders with no user/permissions. Gate on isMounted so
+  // the client's first paint matches that (permission-gated buttons hidden)
+  // before rehydration fills in the real values, avoiding a hydration
+  // mismatch.
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  // EMPLOYEE has full payments:create/update/delete (same as MANAGER/
+  // HR_ADMIN) — canWrite is true for every role that reaches this page.
+  const canWrite = isMounted && hasPermission('payments:create');
+  // Export to Excel is restricted to SUPER_ADMIN/HR_ADMIN/MANAGER — hidden
+  // specifically for EMPLOYEE, per explicit request, independent of the
+  // payments:read permission itself (which EMPLOYEE does have).
+  const canExport = isMounted && !hasAnyRole(['EMPLOYEE']);
+  // employeeService.list() (GET /employees) requires hr:read:all/hr:read:
+  // subordinates. A payments:read:own user typically has neither — resolve
+  // just their own name via employeeService.getMe() instead (see
+  // fetchDropdownData below).
+  const canListEmployees = isMounted && hasAnyPermission(['hr:read:all', 'hr:read:subordinates']);
+
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalPayments, setTotalPayments] = useState(0);
+
+  // Filter bar: Client / Finance Company / Field Executive / Case Type /
+  // Status / Vehicle Type / Payment Mode dropdowns plus a Lead Created Date
+  // (created_at) From/To range — all combinable, for every role that can
+  // reach this page.
+  const [filterClientId, setFilterClientId] = useState('');
+  const [filterFinanceId, setFilterFinanceId] = useState('');
+  const [filterExecutiveId, setFilterExecutiveId] = useState('');
+  const [filterCaseType, setFilterCaseType] = useState('');
+  const [filterCaseStatus, setFilterCaseStatus] = useState('');
+  const [filterVehicleType, setFilterVehicleType] = useState('');
+  const [filterPaymentMode, setFilterPaymentMode] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+
+  // Column sort: click a column header to sort by it; clicking the same
+  // column again flips asc/desc. Defaults to unsorted (backend falls back
+  // to createdAt desc), matching the original default ordering.
+  const [sortBy, setSortBy] = useState<PaymentSortColumn | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<PaymentSortOrder>('asc');
 
   // Dropdown data
   const [clients, setClients] = useState<Client[]>([]);
@@ -81,6 +209,16 @@ export function PaymentsPageClient() {
     return map;
   }, [employees]);
 
+  // The Executive dropdown only offers Field Executive employees (per the
+  // Payment Management design). employeeNameById above stays unfiltered so
+  // existing payments assigned to any employee — including one whose
+  // position later changed away from Field Executive — still resolve to a
+  // name in the table/export rather than falling back to the raw id.
+  const fieldExecutives = useMemo(
+    () => employees.filter((e) => e.positionTitle === 'Field Executive'),
+    [employees]
+  );
+
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<Payment | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -92,6 +230,33 @@ export function PaymentsPageClient() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Vehicle Registration Number duplicates are allowed (create/update never
+  // block on them — see payment_service.py), but the user should still see
+  // a heads-up. This is advisory only: it never disables Create/Update.
+  const [duplicateVehicleWarning, setDuplicateVehicleWarning] = useState(false);
+  const checkDuplicateVehicleNumber = useDebounce(
+    async (value: string, currentPaymentId: string | null) => {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        setDuplicateVehicleWarning(false);
+        return;
+      }
+      try {
+        const res = await paymentService.list({ search: trimmed, limit: 5 });
+        const hasDuplicate = (res.items ?? []).some(
+          (p) =>
+            p.vehicleRegistrationNumber.toUpperCase() === trimmed.toUpperCase() &&
+            p.id !== currentPaymentId
+        );
+        setDuplicateVehicleWarning(hasDuplicate);
+      } catch {
+        // Advisory check only — a failed lookup shouldn't block or alarm the user.
+        setDuplicateVehicleWarning(false);
+      }
+    },
+    400
+  );
+
   const fetchPayments = useCallback(async () => {
     setLoading(true);
     try {
@@ -99,15 +264,27 @@ export function PaymentsPageClient() {
         page,
         limit: PAGE_SIZE,
         search: search || undefined,
+        clientId: filterClientId || undefined,
+        financeId: filterFinanceId || undefined,
+        executiveEmployeeId: filterExecutiveId || undefined,
+        caseType: filterCaseType || undefined,
+        caseStatus: filterCaseStatus || undefined,
+        vehicleType: filterVehicleType || undefined,
+        paymentMode: filterPaymentMode || undefined,
+        dateFrom: filterDateFrom || undefined,
+        dateTo: filterDateTo || undefined,
+        sortBy,
+        sortOrder,
       });
       setPayments(res.items ?? []);
       setTotalPages(res.pages ?? 1);
+      setTotalPayments(res.total ?? 0);
     } catch (e) {
       setError((e as Error).message || 'Failed to load payments');
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, search, filterClientId, filterFinanceId, filterExecutiveId, filterCaseType, filterCaseStatus, filterVehicleType, filterPaymentMode, filterDateFrom, filterDateTo, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchPayments();
@@ -118,47 +295,146 @@ export function PaymentsPageClient() {
     fetchPayments();
   };
 
+  const handleFilterChange = (
+    setter: (value: string) => void
+  ) => (value: string) => {
+    setter(value);
+    setPage(1);
+  };
+
+  const handleSort = (column: PaymentSortColumn) => {
+    setSortOrder((prevOrder) => (sortBy === column && prevOrder === 'asc' ? 'desc' : 'asc'));
+    setSortBy(column);
+    setPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setFilterClientId('');
+    setFilterFinanceId('');
+    setFilterExecutiveId('');
+    setFilterCaseType('');
+    setFilterCaseStatus('');
+    setFilterVehicleType('');
+    setFilterPaymentMode('');
+    setFilterDateFrom('');
+    setFilterDateTo('');
+    setPage(1);
+  };
+
+  const hasActiveFilters =
+    !!filterClientId ||
+    !!filterFinanceId ||
+    !!filterExecutiveId ||
+    !!filterCaseType ||
+    !!filterCaseStatus ||
+    !!filterVehicleType ||
+    !!filterPaymentMode ||
+    !!filterDateFrom ||
+    !!filterDateTo;
+
   const handleExport = async () => {
-    // Dynamically imported so the (fairly large) SheetJS library is only
-    // pulled into a separate chunk when the user actually exports, rather
-    // than bloating the main payments page bundle.
-    const XLSX = await import('xlsx');
+    setExporting(true);
+    setError(null);
+    try {
+      // Export reflects the currently active filters and sort, but covers
+      // every matching row — not just the ~20 on screen — so the download
+      // is a complete report rather than a snapshot of one page.
+      const EXPORT_LIMIT = 5000;
+      const res = await paymentService.list({
+        page: 1,
+        limit: EXPORT_LIMIT,
+        search: search || undefined,
+        clientId: filterClientId || undefined,
+        financeId: filterFinanceId || undefined,
+        executiveEmployeeId: filterExecutiveId || undefined,
+        caseType: filterCaseType || undefined,
+        caseStatus: filterCaseStatus || undefined,
+        vehicleType: filterVehicleType || undefined,
+        paymentMode: filterPaymentMode || undefined,
+        dateFrom: filterDateFrom || undefined,
+        dateTo: filterDateTo || undefined,
+        sortBy,
+        sortOrder,
+      });
+      const exportRows = res.items ?? [];
 
-    const rows = payments.map((payment, index) => ({
-      'S.No': index + 1,
-      'Case Reference': payment.caseReference,
-      Client: clientNameById.get(payment.clientId) ?? payment.clientId,
-      'Vehicle Reg No': payment.vehicleRegistrationNumber,
-      Executive: employeeNameById.get(payment.executiveEmployeeId) ?? payment.executiveEmployeeId,
-      'Case Status': payment.caseStatus,
-      'Billing Status': payment.billingStatus,
-      'Payment Mode': payment.paymentMode ?? '',
-      'UTR Number': payment.utrNumber ?? '',
-      'Transaction Date': payment.transactionDatetime ?? '',
-      Amount: payment.amount ?? '',
-      'Lead Created Date': payment.createdAt,
-    }));
+      // Dynamically imported so the (fairly large) SheetJS library is only
+      // pulled into a separate chunk when the user actually exports, rather
+      // than bloating the main payments page bundle.
+      const XLSX = await import('xlsx');
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Payments');
-    XLSX.writeFile(workbook, 'payments.xlsx');
+      const rows = exportRows.map((payment, index) => ({
+        'S.No': index + 1,
+        'Case Reference': payment.caseReference,
+        'Case Type': payment.caseType,
+        'Vehicle Type': payment.vehicleType,
+        Client: clientNameById.get(payment.clientId) ?? payment.clientId,
+        Finance: payment.financeId ? clientNameById.get(payment.financeId) ?? payment.financeId : '',
+        'Vehicle Reg No': payment.vehicleRegistrationNumber,
+        Executive: employeeNameById.get(payment.executiveEmployeeId) ?? payment.executiveEmployeeId,
+        'Case Status': payment.caseStatus,
+        'Billing Status': payment.billingStatus,
+        'Payment Mode': payment.paymentMode ?? '',
+        'UTR Number': payment.utrNumber ?? '',
+        'Transaction Date': payment.transactionDatetime ?? '',
+        Amount: payment.amount ?? '',
+        'Lead Created Date': payment.createdAt,
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Payments');
+
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+      XLSX.writeFile(workbook, `payments_${timestamp}.xlsx`);
+    } catch (e) {
+      setError((e as Error).message || 'Failed to export payments');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const fetchDropdownData = useCallback(async () => {
-    try {
-      const [clientRes, financerRes, employeeRes] = await Promise.all([
-        clientService.list({ type: 'CLIENT', limit: 200 }),
-        clientService.list({ type: 'FINANCER', limit: 200 }),
-        employeeService.list({ pageSize: 200 }),
-      ]);
-      setClients(clientRes.items ?? []);
-      setFinancers(financerRes.items ?? []);
-      setEmployees(employeeRes.items ?? []);
-    } catch (e) {
-      setFormError((e as Error).message || 'Failed to load form reference data');
+    // Fetched independently (not Promise.all) so a permission failure on
+    // one lookup — e.g. a payments-only user lacking employeeService.list's
+    // hr:read:all — doesn't also blank out the client/finance name lookups,
+    // which use an unrestricted endpoint and should still resolve.
+    //
+    // A caller without hr:read:all/hr:read:subordinates can't call
+    // employeeService.list() (the general directory), so we fall back to
+    // fieldExecutives() — gated on payments:create/payments:read, which
+    // this role does have — returning every active Field Executive rather
+    // than just the caller's own record. Good enough for both the
+    // Executive dropdown (only Field Executives are selectable anyway,
+    // see fieldExecutives memo below) and name resolution of existing
+    // payments assigned to any Field Executive.
+    const fetchEmployees = (): Promise<Employee[]> =>
+      canListEmployees
+        ? employeeService.list({ pageSize: 200 }).then((res) => res.items ?? [])
+        : employeeService.fieldExecutives();
+
+    const results = await Promise.allSettled([
+      clientService.list({ type: 'CLIENT', limit: 200 }),
+      clientService.list({ type: 'FINANCER', limit: 200 }),
+      fetchEmployees(),
+    ]);
+
+    const [clientRes, financerRes, employeeRes] = results;
+    if (clientRes.status === 'fulfilled') setClients(clientRes.value.items ?? []);
+    if (financerRes.status === 'fulfilled') setFinancers(financerRes.value.items ?? []);
+    if (employeeRes.status === 'fulfilled') setEmployees(employeeRes.value);
+
+    const firstRejection = results.find((r) => r.status === 'rejected') as
+      | PromiseRejectedResult
+      | undefined;
+    if (firstRejection) {
+      setFormError(
+        (firstRejection.reason as Error)?.message || 'Failed to load form reference data'
+      );
     }
-  }, []);
+  }, [canListEmployees]);
 
   useEffect(() => {
     fetchDropdownData();
@@ -168,6 +444,7 @@ export function PaymentsPageClient() {
     setEditing(null);
     setFormData({ ...emptyForm });
     setFormError(null);
+    setDuplicateVehicleWarning(false);
     setShowForm(true);
     fetchDropdownData();
   };
@@ -176,6 +453,8 @@ export function PaymentsPageClient() {
     setEditing(payment);
     setFormData({
       caseReference: payment.caseReference,
+      caseType: payment.caseType || '',
+      vehicleType: payment.vehicleType || '',
       clientId: payment.clientId,
       financeId: payment.financeId || '',
       vehicleRegistrationNumber: payment.vehicleRegistrationNumber,
@@ -188,11 +467,15 @@ export function PaymentsPageClient() {
       amount: payment.amount != null ? String(payment.amount) : '',
     });
     setFormError(null);
+    setDuplicateVehicleWarning(false);
     setShowForm(true);
     fetchDropdownData();
   };
 
   const handleChange = (field: keyof FormState, value: string) => {
+    if (field === 'vehicleRegistrationNumber') {
+      checkDuplicateVehicleNumber(value, editing?.id ?? null);
+    }
     setFormData((prev) => {
       const next = { ...prev, [field]: value };
       // Clear dependent fields when a parent selection changes, so hidden
@@ -222,7 +505,7 @@ export function PaymentsPageClient() {
   const showAmount = isCompanyBilling || isCash || isTransfer;
 
   const isFormValid = () => {
-    if (!formData.caseReference.trim() || !formData.clientId || !formData.vehicleRegistrationNumber.trim()) {
+    if (!formData.caseReference.trim() || !formData.caseType || !formData.vehicleType || !formData.clientId || !formData.vehicleRegistrationNumber.trim()) {
       return false;
     }
     if (!formData.executiveEmployeeId || !formData.billingStatus) {
@@ -239,6 +522,8 @@ export function PaymentsPageClient() {
   const buildPayload = (): PaymentCreateRequest => {
     const base: PaymentCreateRequest = {
       caseReference: formData.caseReference.trim(),
+      caseType: formData.caseType as PaymentCreateRequest['caseType'],
+      vehicleType: formData.vehicleType as PaymentCreateRequest['vehicleType'],
       clientId: formData.clientId,
       financeId: formData.financeId || undefined,
       vehicleRegistrationNumber: formData.vehicleRegistrationNumber.trim(),
@@ -294,7 +579,7 @@ export function PaymentsPageClient() {
       setShowForm(false);
       fetchPayments();
     } catch (e) {
-      setFormError((e as Error).message || 'Failed to save payment');
+      setFormError(describeSaveError(e));
     } finally {
       setSaving(false);
     }
@@ -314,23 +599,44 @@ export function PaymentsPageClient() {
     }
   };
 
+  // Windowed page-number list: always shows first/last page, up to 2
+  // neighbors of the current page, and 'ellipsis' markers for gaps —
+  // keeps the pager compact even with hundreds of pages.
+  const getPageNumbers = (): (number | 'ellipsis')[] => {
+    const pages: (number | 'ellipsis')[] = [];
+    const windowStart = Math.max(2, page - 2);
+    const windowEnd = Math.min(totalPages - 1, page + 2);
+
+    pages.push(1);
+    if (windowStart > 2) pages.push('ellipsis');
+    for (let p = windowStart; p <= windowEnd; p++) pages.push(p);
+    if (windowEnd < totalPages - 1) pages.push('ellipsis');
+    if (totalPages > 1) pages.push(totalPages);
+
+    return pages;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Payment Management</h1>
+          <h1 className="text-2xl font-bold">Work</h1>
           <p className="text-gray-600">Track case-level payments, billing and finance references</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Export to Excel
-          </Button>
-          <Button onClick={openCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Payment
-          </Button>
+          {canExport && (
+            <Button variant="outline" onClick={handleExport} loading={exporting} disabled={exporting}>
+              <Download className="h-4 w-4 mr-2" />
+              Export to Excel
+            </Button>
+          )}
+          {canWrite && (
+            <Button onClick={openCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Work
+            </Button>
+          )}
         </div>
       </div>
 
@@ -340,8 +646,8 @@ export function PaymentsPageClient() {
         </Alert>
       )}
 
-      {/* Search */}
-      <div className="bg-white rounded-lg border p-4">
+      {/* Search + Filters */}
+      <div className="bg-white rounded-lg border p-4 space-y-3">
         <div className="flex gap-3">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -350,72 +656,229 @@ export function PaymentsPageClient() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="pl-10"
+              className="pl-10 h-8 py-1 text-xs"
             />
           </div>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="w-40">
+            <label htmlFor="filterClientId" className="block text-[11px] font-medium text-gray-500 mb-0.5">
+              Client
+            </label>
+            <Select
+              id="filterClientId"
+              value={filterClientId}
+              onChange={(e) => handleFilterChange(setFilterClientId)(e.target.value)}
+              placeholder="All clients"
+              className="h-8 py-1 text-xs"
+            >
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-40">
+            <label htmlFor="filterFinanceId" className="block text-[11px] font-medium text-gray-500 mb-0.5">
+              Finance Company
+            </label>
+            <Select
+              id="filterFinanceId"
+              value={filterFinanceId}
+              onChange={(e) => handleFilterChange(setFilterFinanceId)(e.target.value)}
+              placeholder="All finance companies"
+              className="h-8 py-1 text-xs"
+            >
+              {financers.map((f) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-40">
+            <label htmlFor="filterExecutiveId" className="block text-[11px] font-medium text-gray-500 mb-0.5">
+              Field Executive
+            </label>
+            <Select
+              id="filterExecutiveId"
+              value={filterExecutiveId}
+              onChange={(e) => handleFilterChange(setFilterExecutiveId)(e.target.value)}
+              placeholder="All executives"
+              className="h-8 py-1 text-xs"
+            >
+              {fieldExecutives.map((emp) => (
+                <option key={emp.id} value={emp.id}>{emp.fullName}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-40">
+            <label htmlFor="filterCaseType" className="block text-[11px] font-medium text-gray-500 mb-0.5">
+              Case Type
+            </label>
+            <Select
+              id="filterCaseType"
+              value={filterCaseType}
+              onChange={(e) => handleFilterChange(setFilterCaseType)(e.target.value)}
+              placeholder="All case types"
+              className="h-8 py-1 text-xs"
+            >
+              {CASE_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-40">
+            <label htmlFor="filterCaseStatus" className="block text-[11px] font-medium text-gray-500 mb-0.5">
+              Status
+            </label>
+            <Select
+              id="filterCaseStatus"
+              value={filterCaseStatus}
+              onChange={(e) => handleFilterChange(setFilterCaseStatus)(e.target.value)}
+              placeholder="All statuses"
+              className="h-8 py-1 text-xs"
+            >
+              {CASE_STATUSES.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-40">
+            <label htmlFor="filterVehicleType" className="block text-[11px] font-medium text-gray-500 mb-0.5">
+              Vehicle Type
+            </label>
+            <Select
+              id="filterVehicleType"
+              value={filterVehicleType}
+              onChange={(e) => handleFilterChange(setFilterVehicleType)(e.target.value)}
+              placeholder="All vehicle types"
+              className="h-8 py-1 text-xs"
+            >
+              {VEHICLE_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-40">
+            <label htmlFor="filterPaymentMode" className="block text-[11px] font-medium text-gray-500 mb-0.5">
+              Payment Mode
+            </label>
+            <Select
+              id="filterPaymentMode"
+              value={filterPaymentMode}
+              onChange={(e) => handleFilterChange(setFilterPaymentMode)(e.target.value)}
+              placeholder="All payment modes"
+              className="h-8 py-1 text-xs"
+            >
+              {PAYMENT_MODES.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-56">
+            <label htmlFor="filterDateRange" className="block text-[11px] font-medium text-gray-500 mb-0.5">
+              Lead Created Date
+            </label>
+            <DateRangePicker
+              id="filterDateRange"
+              from={filterDateFrom}
+              to={filterDateTo}
+              onChange={(nextFrom, nextTo) => {
+                setFilterDateFrom(nextFrom);
+                setFilterDateTo(nextTo);
+                setPage(1);
+              }}
+              placeholder="All dates"
+              triggerClassName="h-8 py-1 text-xs"
+            />
+          </div>
+          {hasActiveFilters && (
+            <Button variant="outline" size="sm" onClick={handleClearFilters}>
+              Clear Filters
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border overflow-hidden">
+      <div className="bg-white rounded-lg border overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">S.No</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Case Reference</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vehicle Reg. No.</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Executive</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Case Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Billing Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">S.No</th>
+              <SortableHeader column="caseReference" label="Case Reference" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+              <SortableHeader column="caseType" label="Case Type" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Vehicle Type</th>
+              <SortableHeader column="client" label="Client" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+              <SortableHeader column="finance" label="Finance" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Vehicle Reg. No.</th>
+              <SortableHeader column="executive" label="Executive" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+              <SortableHeader column="caseStatus" label="Case Status" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+              <SortableHeader column="billingStatus" label="Billing Status" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Payment Mode</th>
+              <SortableHeader column="amount" label="Amount" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+              {canWrite && (
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Actions</th>
+              )}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={9} className="px-6 py-8 text-center text-gray-500">Loading...</td>
+                <td colSpan={canWrite ? 13 : 12} className="px-6 py-8 text-center text-gray-500">Loading...</td>
               </tr>
             ) : payments.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={canWrite ? 13 : 12} className="px-6 py-8 text-center text-gray-500">
                   No payments found.
                 </td>
               </tr>
             ) : (
               payments.map((payment, index) => (
                 <tr key={payment.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-600">{(page - 1) * PAGE_SIZE + index + 1}</td>
-                  <td className="px-6 py-4 text-sm font-mono text-gray-900">{payment.caseReference}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{clientNameById.get(payment.clientId) ?? payment.clientId}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{payment.vehicleRegistrationNumber}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{employeeNameById.get(payment.executiveEmployeeId) ?? payment.executiveEmployeeId}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{(page - 1) * PAGE_SIZE + index + 1}</td>
+                  <td className="px-6 py-4 text-sm font-mono text-gray-900 whitespace-nowrap">{payment.caseReference}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <Badge variant="neutral">{payment.caseType}</Badge>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <Badge variant="neutral">{payment.vehicleType}</Badge>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{clientNameById.get(payment.clientId) ?? payment.clientId}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                    {payment.financeId ? clientNameById.get(payment.financeId) ?? payment.financeId : '-'}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{payment.vehicleRegistrationNumber}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{employeeNameById.get(payment.executiveEmployeeId) ?? payment.executiveEmployeeId}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <Badge variant="neutral">{payment.caseStatus}</Badge>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <Badge variant="neutral">{payment.billingStatus}</Badge>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                    {payment.paymentMode || '-'}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
                     {payment.amount != null ? payment.amount : '-'}
                   </td>
-                  <td className="px-6 py-4 text-right space-x-2">
-                    <button
-                      onClick={() => openEdit(payment)}
-                      className="text-blue-600 hover:text-blue-800"
-                      title="Edit"
-                    >
-                      <Edit className="h-4 w-4 inline" />
-                    </button>
-                    <button
-                      onClick={() => setDeleteTarget(payment)}
-                      className="text-red-600 hover:text-red-800"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-4 w-4 inline" />
-                    </button>
-                  </td>
+                  {canWrite && (
+                    <td className="px-6 py-4 text-right space-x-2">
+                      <button
+                        onClick={() => openEdit(payment)}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="Edit"
+                      >
+                        <Edit className="h-4 w-4 inline" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget(payment)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4 inline" />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))
             )}
@@ -423,32 +886,55 @@ export function PaymentsPageClient() {
         </table>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
+      {/* Pagination — the "Showing X-Y of Z" summary is always visible so
+          the total record count is never hidden, even on a single page;
+          the page-number/Previous/Next controls only appear once there's
+          more than one page to navigate. */}
+      {totalPayments > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-600">
-            Page {page} of {totalPages}
+            Showing {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, totalPayments)} of{' '}
+            {totalPayments} {totalPayments === 1 ? 'result' : 'results'} (Page {page} of {totalPages})
           </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-            >
-              Next
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+              {getPageNumbers().map((entry, index) =>
+                entry === 'ellipsis' ? (
+                  <span key={`ellipsis-${index}`} className="px-2 text-sm text-gray-400">
+                    …
+                  </span>
+                ) : (
+                  <Button
+                    key={entry}
+                    variant={entry === page ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => setPage(entry)}
+                    aria-current={entry === page ? 'page' : undefined}
+                  >
+                    {entry}
+                  </Button>
+                )
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -456,7 +942,7 @@ export function PaymentsPageClient() {
       <Modal
         isOpen={showForm}
         onClose={() => setShowForm(false)}
-        title={editing ? 'Edit Payment' : 'Add Payment'}
+        title={editing ? 'Edit Payment' : 'Add Work'}
         size="lg"
       >
         <form onSubmit={handleSave} className="space-y-4">
@@ -474,6 +960,33 @@ export function PaymentsPageClient() {
               placeholder="e.g. CASE-1001"
             />
           </FormField>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Case Type" htmlFor="caseType" required>
+              <Select
+                id="caseType"
+                value={formData.caseType}
+                onChange={(e) => handleChange('caseType', e.target.value)}
+                placeholder="Select case type"
+              >
+                {CASE_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField label="Vehicle Type" htmlFor="vehicleType" required>
+              <Select
+                id="vehicleType"
+                value={formData.vehicleType}
+                onChange={(e) => handleChange('vehicleType', e.target.value)}
+                placeholder="Select vehicle type"
+              >
+                {VEHICLE_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </Select>
+            </FormField>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Client" htmlFor="clientId" required>
@@ -510,6 +1023,12 @@ export function PaymentsPageClient() {
                 onChange={(e) => handleChange('vehicleRegistrationNumber', e.target.value.toUpperCase())}
                 placeholder="e.g. KA01AB1234"
               />
+              {duplicateVehicleWarning && (
+                <p className="text-sm text-amber-600 flex items-center gap-1">
+                  <span aria-hidden="true">⚠</span>
+                  This vehicle number already has an existing work record. You can still proceed.
+                </p>
+              )}
             </FormField>
             <FormField label="Executive" htmlFor="executiveEmployeeId" required>
               <Select
@@ -518,7 +1037,7 @@ export function PaymentsPageClient() {
                 onChange={(e) => handleChange('executiveEmployeeId', e.target.value)}
                 placeholder="Select executive"
               >
-                {employees.map((emp) => (
+                {fieldExecutives.map((emp) => (
                   <option key={emp.id} value={emp.id}>{emp.fullName}</option>
                 ))}
               </Select>
@@ -585,7 +1104,7 @@ export function PaymentsPageClient() {
                 <Input
                   id="utrNumber"
                   value={formData.utrNumber}
-                  onChange={(e) => handleChange('utrNumber', e.target.value)}
+                  onChange={(e) => handleChange('utrNumber', e.target.value.toUpperCase())}
                   placeholder="UTR reference number"
                 />
               </FormField>

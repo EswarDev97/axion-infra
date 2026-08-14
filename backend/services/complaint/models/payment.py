@@ -7,6 +7,8 @@ CREATE TABLE payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id),
     case_reference VARCHAR(100) NOT NULL,
+    case_type VARCHAR(20) NOT NULL,
+    vehicle_type VARCHAR(20) NOT NULL,
     client_id UUID NOT NULL REFERENCES clients(id),
     finance_id UUID REFERENCES clients(id),
     vehicle_registration_number VARCHAR(50) NOT NULL,
@@ -57,6 +59,14 @@ class Payment(Base):
     )
     case_reference: Mapped[str] = mapped_column(String(100), nullable=False)
 
+    # Case type: RETAIL, YARD, PI, CI, DOC (plain String + Python constants,
+    # same pattern as case_status/billing_status below).
+    case_type: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    # Vehicle type: TWO_WHEELER, FOUR_WHEELER, COMMERCIAL (plain String +
+    # Python constants, same pattern as case_type above).
+    vehicle_type: Mapped[str] = mapped_column(String(20), nullable=False)
+
     # Client reference (real FK — clients table lives in this same service)
     client_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True),
@@ -100,10 +110,12 @@ class Payment(Base):
 
     # Audit columns
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         nullable=False,
         server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
         onupdate=func.now()

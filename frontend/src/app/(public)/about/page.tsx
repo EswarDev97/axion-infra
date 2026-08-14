@@ -1,8 +1,8 @@
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'About Us - AxionPCS',
-  description: 'Learn about AxionPCS and our mission to transform HR management',
+  title: 'About Us - Wings Associates',
+  description: 'Learn about Wings Associates and our mission to transform HR management',
 };
 
 export default function AboutPage() {
@@ -11,7 +11,7 @@ export default function AboutPage() {
       {/* Hero */}
       <section className="bg-gray-50 py-20">
         <div className="container mx-auto px-4">
-          <h1 className="text-4xl font-bold mb-4">About AxionPCS</h1>
+          <h1 className="text-4xl font-bold mb-4">About Wings Associates</h1>
           <p className="text-xl text-gray-600 max-w-3xl">
             We&apos;re on a mission to transform how organizations manage their
             most valuable asset - their people.
@@ -26,7 +26,7 @@ export default function AboutPage() {
             <div>
               <h2 className="text-3xl font-bold mb-6">Our Story</h2>
               <p className="text-gray-600 mb-4">
-                Founded in 2020, AxionPCS was born from a simple observation:
+                Founded in 2020, Wings Associates was born from a simple observation:
                 HR teams were spending too much time on administrative tasks
                 and not enough time on what matters most - their people.
               </p>
@@ -36,7 +36,7 @@ export default function AboutPage() {
                 professionals to focus on strategic initiatives.
               </p>
               <p className="text-gray-600">
-                Today, AxionPCS serves hundreds of companies across various
+                Today, Wings Associates serves hundreds of companies across various
                 industries, helping them streamline their HR operations and
                 build better workplaces.
               </p>

@@ -6,7 +6,7 @@ import { Providers } from '@/contexts/Providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'AxionPCS - Human Resource Management System',
+  title: 'Wings Associates - Human Resource Management System',
   description: 'Complete HRMS solution for modern organizations',
 };
 

@@ -112,7 +112,7 @@ echo -e "  ${GREEN}✓${NC} Created nginx/logs and nginx/ssl directories"
 # Pull Docker images
 echo ""
 echo -e "${YELLOW}Pulling Docker images...${NC}"
-docker-compose pull postgres redis minio
+docker compose pull postgres redis minio
 
 echo ""
 echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════╗${NC}"

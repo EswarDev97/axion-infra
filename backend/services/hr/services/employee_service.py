@@ -214,6 +214,33 @@ class EmployeeService:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def list_by_position_title(
+        self,
+        tenant_id: UUID,
+        position_title: str,
+    ) -> List[Employee]:
+        """
+        Active employees whose position title matches exactly (e.g.
+        'Field Executive'). Used by the self-service-safe
+        GET /employees/field-executives endpoint so a caller without
+        general employee-directory read access can still populate a
+        dropdown scoped to one specific position.
+        """
+        stmt = (
+            select(Employee)
+            .join(Position, Employee.position_id == Position.id)
+            .where(
+                Employee.tenant_id == tenant_id,
+                Employee.is_deleted == False,
+                Employee.status == "ACTIVE",
+                Position.title == position_title,
+            )
+            .options(selectinload(Employee.position))
+            .order_by(Employee.first_name, Employee.last_name)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
     async def list_employees(
         self,
         tenant_id: UUID,

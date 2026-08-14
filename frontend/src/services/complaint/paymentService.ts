@@ -18,10 +18,14 @@ export type PaymentCaseStatus =
   | 'CANCELLED';
 export type PaymentBillingStatus = 'COMPANY_BILLING' | 'CUSTOMER_BILLING';
 export type PaymentMode = 'CASH' | 'TRANSFER';
+export type PaymentCaseType = 'RETAIL' | 'YARD' | 'PI' | 'CI' | 'DOC';
+export type PaymentVehicleType = 'TWO_WHEELER' | 'FOUR_WHEELER' | 'COMMERCIAL';
 
 export interface Payment {
   id: string;
   caseReference: string;
+  caseType: string;
+  vehicleType: string;
   clientId: string;
   financeId?: string | null;
   vehicleRegistrationNumber: string;
@@ -38,6 +42,8 @@ export interface Payment {
 
 export interface PaymentCreateRequest {
   caseReference: string;
+  caseType: PaymentCaseType;
+  vehicleType: PaymentVehicleType;
   clientId: string;
   financeId?: string;
   vehicleRegistrationNumber: string;
@@ -52,6 +58,8 @@ export interface PaymentCreateRequest {
 
 export interface PaymentUpdateRequest {
   caseReference?: string;
+  caseType?: PaymentCaseType;
+  vehicleType?: PaymentVehicleType;
   clientId?: string;
   financeId?: string | null;
   vehicleRegistrationNumber?: string;
@@ -72,14 +80,35 @@ export interface PaymentListResponse {
   pages: number;
 }
 
+export type PaymentSortColumn =
+  | 'caseReference'
+  | 'caseType'
+  | 'client'
+  | 'finance'
+  | 'executive'
+  | 'caseStatus'
+  | 'billingStatus'
+  | 'amount'
+  | 'createdAt';
+export type PaymentSortOrder = 'asc' | 'desc';
+
 export const paymentService = {
   async list(params?: {
     page?: number;
     limit?: number;
     search?: string;
+    caseType?: string;
     caseStatus?: string;
     billingStatus?: string;
+    paymentMode?: string;
+    vehicleType?: string;
     clientId?: string;
+    financeId?: string;
+    executiveEmployeeId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    sortBy?: PaymentSortColumn;
+    sortOrder?: PaymentSortOrder;
   }): Promise<PaymentListResponse> {
     return get<PaymentListResponse>(BASE, params);
   },
