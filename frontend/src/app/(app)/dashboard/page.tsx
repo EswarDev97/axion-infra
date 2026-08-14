@@ -6,7 +6,7 @@ import { AnnouncementsWidget } from '@/components/dashboard/AnnouncementsWidget'
 import { QuickActions } from '@/components/dashboard/QuickActions';
 
 export const metadata: Metadata = {
-  title: 'Dashboard - AxionPCS HRMS',
+  title: 'Dashboard - Wings Associates HRMS',
 };
 
 export default async function DashboardPage() {

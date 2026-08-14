@@ -26,6 +26,7 @@ def _base_kwargs(**overrides):
     kwargs = dict(
         case_reference="CASE-001",
         case_type="RETAIL",
+        vehicle_type="FOUR_WHEELER",
         client_id=uuid4(),
         vehicle_registration_number="MH12AB1234",
         executive_employee_id=uuid4(),

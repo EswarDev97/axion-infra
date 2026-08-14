@@ -59,30 +59,20 @@ class PaymentService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def _check_unique_fields(
+    async def _check_utr_unique(
         self,
         tenant_id: UUID,
-        vehicle_registration_number: Optional[str],
         utr_number: Optional[str],
         exclude_payment_id: Optional[UUID] = None,
     ) -> None:
-        """Vehicle Registration Number and UTR Number must be unique among
-        this tenant's active (non-deleted) payments — a soft-deleted
-        payment's values are free to reuse. exclude_payment_id lets update()
-        skip a payment matching its own current, unchanged values."""
-        if vehicle_registration_number:
-            query = select(Payment.id).where(
-                Payment.tenant_id == tenant_id,
-                Payment.is_deleted.is_(False),
-                Payment.vehicle_registration_number == vehicle_registration_number,
-            )
-            if exclude_payment_id:
-                query = query.where(Payment.id != exclude_payment_id)
-            if (await self.db.execute(query)).scalar_one_or_none():
-                raise ResourceAlreadyExistsException(
-                    "Payment", f"vehicleRegistrationNumber={vehicle_registration_number}"
-                )
+        """UTR Number must be unique among this tenant's active (non-deleted)
+        payments — a soft-deleted payment's value is free to reuse.
+        exclude_payment_id lets update() skip a payment matching its own
+        current, unchanged value.
 
+        Vehicle Registration Number is intentionally NOT checked here —
+        duplicates are allowed (the frontend shows a non-blocking warning
+        instead); see 20260814_010000 which drops its DB unique index."""
         if utr_number:
             query = select(Payment.id).where(
                 Payment.tenant_id == tenant_id,
@@ -99,13 +89,12 @@ class PaymentService:
     async def create(
         self, data: PaymentCreateRequest, tenant_id: UUID, user_id: UUID
     ) -> Payment:
-        await self._check_unique_fields(
-            tenant_id, data.vehicle_registration_number, data.utr_number
-        )
+        await self._check_utr_unique(tenant_id, data.utr_number)
         payment = Payment(
             tenant_id=tenant_id,
             case_reference=data.case_reference,
             case_type=data.case_type.value,
+            vehicle_type=data.vehicle_type.value,
             client_id=data.client_id,
             finance_id=data.finance_id,
             vehicle_registration_number=data.vehicle_registration_number,
@@ -138,9 +127,8 @@ class PaymentService:
         self, payment: Payment, data: PaymentUpdateRequest, user_id: UUID
     ) -> Payment:
         update_data = data.model_dump(exclude_unset=True, by_alias=False)
-        await self._check_unique_fields(
+        await self._check_utr_unique(
             payment.tenant_id,
-            update_data.get("vehicle_registration_number"),
             update_data.get("utr_number"),
             exclude_payment_id=payment.id,
         )
@@ -167,8 +155,11 @@ class PaymentService:
         page: int = 1,
         limit: int = 50,
         search: Optional[str] = None,
+        case_type: Optional[str] = None,
         case_status: Optional[str] = None,
         billing_status: Optional[str] = None,
+        payment_mode: Optional[str] = None,
+        vehicle_type: Optional[str] = None,
         client_id: Optional[UUID] = None,
         executive_employee_id: Optional[UUID] = None,
         finance_id: Optional[UUID] = None,
@@ -209,11 +200,20 @@ class PaymentService:
             )
         )
 
+        if case_type:
+            query = query.where(Payment.case_type == case_type)
+
         if case_status:
             query = query.where(Payment.case_status == case_status)
 
         if billing_status:
             query = query.where(Payment.billing_status == billing_status)
+
+        if payment_mode:
+            query = query.where(Payment.payment_mode == payment_mode)
+
+        if vehicle_type:
+            query = query.where(Payment.vehicle_type == vehicle_type)
 
         if client_id:
             query = query.where(Payment.client_id == client_id)

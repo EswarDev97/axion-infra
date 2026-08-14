@@ -117,7 +117,7 @@ app.use(errorHandler);
 // Start server
 const PORT = config.port;
 app.listen(PORT, () => {
-  console.log(`[server] AxionPCS API Gateway running on port ${PORT}`);
+  console.log(`[server] Wings Associates API Gateway running on port ${PORT}`);
   console.log(`[server] Environment: ${config.nodeEnv}`);
 });
 

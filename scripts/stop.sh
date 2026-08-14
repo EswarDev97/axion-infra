@@ -51,7 +51,7 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Options:"
             echo "  -v, --volumes   Remove named volumes (DATABASE DATA WILL BE LOST!)"
-            echo "  --rmi           Remove images built by docker-compose"
+            echo "  --rmi           Remove images built by docker compose"
             echo "  --clean         Remove both volumes and images (FULL CLEANUP)"
             echo "  -h, --help      Show this help message"
             echo ""
@@ -69,8 +69,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Build command
-COMPOSE_CMD="docker-compose"
+COMPOSE_CMD="docker compose"
 COMPOSE_FILES="-f docker-compose.yml -f docker-compose.dev.yml"
+if [ -f "docker-compose.override.yml" ]; then
+    COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.override.yml"
+fi
 
 # Build down arguments
 DOWN_ARGS="down"

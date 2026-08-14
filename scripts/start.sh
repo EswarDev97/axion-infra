@@ -96,7 +96,7 @@ fi
 echo -e "${GREEN}Environment files ready.${NC}"
 
 # Build command
-COMPOSE_CMD="docker-compose"
+COMPOSE_CMD="docker compose"
 COMPOSE_FILES="-f docker-compose.yml"
 
 if [ "$MODE" == "dev" ]; then
@@ -104,6 +104,10 @@ if [ "$MODE" == "dev" ]; then
     echo -e "${BLUE}Mode: Development${NC}"
 else
     echo -e "${BLUE}Mode: Production${NC}"
+fi
+
+if [ -f "docker-compose.override.yml" ]; then
+    COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.override.yml"
 fi
 
 # Build arguments
@@ -183,6 +187,6 @@ if [ "$DETACHED" = true ]; then
         echo -e "  Nginx:                 ${GREEN}http://localhost:80${NC}"
     fi
     echo ""
-    echo -e "${YELLOW}To view logs:${NC} docker-compose logs -f [service_name]"
+    echo -e "${YELLOW}To view logs:${NC} docker compose logs -f [service_name]"
     echo -e "${YELLOW}To stop:${NC} ./scripts/stop.sh"
 fi

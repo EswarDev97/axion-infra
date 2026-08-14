@@ -84,7 +84,11 @@ done
 if ! docker ps --format '{{.Names}}' | grep -q "^axionpcs-api-gateway$"; then
     echo -e "${YELLOW}API Gateway container is not running.${NC}"
     echo -e "${YELLOW}Starting infrastructure services...${NC}"
-    docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres redis
+    MIGRATE_COMPOSE_FILES="-f docker-compose.yml -f docker-compose.dev.yml"
+    if [ -f "docker-compose.override.yml" ]; then
+        MIGRATE_COMPOSE_FILES="$MIGRATE_COMPOSE_FILES -f docker-compose.override.yml"
+    fi
+    docker compose $MIGRATE_COMPOSE_FILES up -d postgres redis
     sleep 5
 fi
 

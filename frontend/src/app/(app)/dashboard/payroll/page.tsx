@@ -7,7 +7,7 @@ import { PayrollActions } from '@/components/payroll/PayrollActions';
 import { TableSkeleton } from '@/components/ui/TableSkeleton';
 
 export const metadata: Metadata = {
-  title: 'Payroll - AxionPCS HRMS',
+  title: 'Payroll - Wings Associates HRMS',
 };
 
 interface PayrollPageProps {

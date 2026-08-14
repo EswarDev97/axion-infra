@@ -6,7 +6,7 @@ import { DocumentUpload } from '@/components/documents/DocumentUpload';
 import { TableSkeleton } from '@/components/ui/TableSkeleton';
 
 export const metadata: Metadata = {
-  title: 'Documents - AxionPCS HRMS',
+  title: 'Documents - Wings Associates HRMS',
 };
 
 interface DocumentsPageProps {

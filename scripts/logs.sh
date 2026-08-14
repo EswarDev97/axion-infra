@@ -84,7 +84,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Build command
-COMPOSE_CMD="docker-compose -f docker-compose.yml -f docker-compose.dev.yml"
+COMPOSE_CMD="docker compose -f docker-compose.yml -f docker-compose.dev.yml"
+if [ -f "docker-compose.override.yml" ]; then
+    COMPOSE_CMD="$COMPOSE_CMD -f docker-compose.override.yml"
+fi
 LOG_ARGS="logs --tail=$TAIL"
 
 if [ "$FOLLOW" = true ]; then

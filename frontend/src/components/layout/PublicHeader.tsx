@@ -19,7 +19,7 @@ export function PublicHeader() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="text-2xl font-bold text-primary-600">
-            AxionPCS
+            Wings Associates
           </Link>
 
           {/* Desktop Navigation */}

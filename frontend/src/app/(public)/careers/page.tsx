@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { getJobPostings } from '@/lib/api/careers';
 
 export const metadata: Metadata = {
-  title: 'Careers - AxionPCS',
+  title: 'Careers - Wings Associates',
   description: 'Join our team and help transform HR management',
 };
 
@@ -28,7 +28,7 @@ export default async function CareersPage() {
       <section className="py-16">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-12">
-            Why Work at AxionPCS?
+            Why Work at Wings Associates?
           </h2>
           <div className="grid md:grid-cols-4 gap-6">
             {benefits.map((benefit, index) => (

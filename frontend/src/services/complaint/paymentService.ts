@@ -19,11 +19,13 @@ export type PaymentCaseStatus =
 export type PaymentBillingStatus = 'COMPANY_BILLING' | 'CUSTOMER_BILLING';
 export type PaymentMode = 'CASH' | 'TRANSFER';
 export type PaymentCaseType = 'RETAIL' | 'YARD' | 'PI' | 'CI' | 'DOC';
+export type PaymentVehicleType = 'TWO_WHEELER' | 'FOUR_WHEELER' | 'COMMERCIAL';
 
 export interface Payment {
   id: string;
   caseReference: string;
   caseType: string;
+  vehicleType: string;
   clientId: string;
   financeId?: string | null;
   vehicleRegistrationNumber: string;
@@ -41,6 +43,7 @@ export interface Payment {
 export interface PaymentCreateRequest {
   caseReference: string;
   caseType: PaymentCaseType;
+  vehicleType: PaymentVehicleType;
   clientId: string;
   financeId?: string;
   vehicleRegistrationNumber: string;
@@ -56,6 +59,7 @@ export interface PaymentCreateRequest {
 export interface PaymentUpdateRequest {
   caseReference?: string;
   caseType?: PaymentCaseType;
+  vehicleType?: PaymentVehicleType;
   clientId?: string;
   financeId?: string | null;
   vehicleRegistrationNumber?: string;
@@ -93,8 +97,11 @@ export const paymentService = {
     page?: number;
     limit?: number;
     search?: string;
+    caseType?: string;
     caseStatus?: string;
     billingStatus?: string;
+    paymentMode?: string;
+    vehicleType?: string;
     clientId?: string;
     financeId?: string;
     executiveEmployeeId?: string;

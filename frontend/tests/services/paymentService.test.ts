@@ -22,6 +22,7 @@ const mockPayment: Payment = {
   id: 'payment-1',
   caseReference: 'CASE-2026-001',
   caseType: 'RETAIL',
+  vehicleType: 'FOUR_WHEELER',
   clientId: 'client-1',
   financeId: 'finance-1',
   vehicleRegistrationNumber: 'MH12AB1234',
@@ -113,6 +114,7 @@ describe('paymentService', () => {
       const createRequest = {
         caseReference: 'CASE-2026-001',
         caseType: 'RETAIL' as const,
+        vehicleType: 'FOUR_WHEELER' as const,
         clientId: 'client-1',
         financeId: 'finance-1',
         vehicleRegistrationNumber: 'MH12AB1234',

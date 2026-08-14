@@ -7,7 +7,7 @@ import { Metadata } from 'next';
 import { AttendancePageClient } from './AttendancePageClient';
 
 export const metadata: Metadata = {
-  title: 'Attendance - AxionPCS HRMS',
+  title: 'Attendance - Wings Associates HRMS',
 };
 
 interface AttendancePageProps {

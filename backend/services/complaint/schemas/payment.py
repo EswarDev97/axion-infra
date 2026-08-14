@@ -25,6 +25,12 @@ class CaseType(str, Enum):
     DOC = "DOC"
 
 
+class VehicleType(str, Enum):
+    TWO_WHEELER = "TWO_WHEELER"
+    FOUR_WHEELER = "FOUR_WHEELER"
+    COMMERCIAL = "COMMERCIAL"
+
+
 class CaseStatus(str, Enum):
     ASSIGNED = "ASSIGNED"
     SCHEDULED = "SCHEDULED"
@@ -118,6 +124,7 @@ class PaymentCreateRequest(BaseModel):
 
     case_reference: str = Field(..., min_length=1, max_length=100, alias="caseReference")
     case_type: CaseType = Field(..., alias="caseType")
+    vehicle_type: VehicleType = Field(..., alias="vehicleType")
     client_id: UUID = Field(..., alias="clientId")
     finance_id: Optional[UUID] = Field(None, alias="financeId")
     vehicle_registration_number: str = Field(
@@ -150,6 +157,7 @@ class PaymentUpdateRequest(BaseModel):
         None, min_length=1, max_length=100, alias="caseReference"
     )
     case_type: Optional[CaseType] = Field(None, alias="caseType")
+    vehicle_type: Optional[VehicleType] = Field(None, alias="vehicleType")
     client_id: Optional[UUID] = Field(None, alias="clientId")
     finance_id: Optional[UUID] = Field(None, alias="financeId")
     vehicle_registration_number: Optional[str] = Field(
@@ -189,6 +197,7 @@ class PaymentResponse(BaseModel):
     id: UUID
     case_reference: str = Field(alias="caseReference")
     case_type: CaseType = Field(alias="caseType")
+    vehicle_type: VehicleType = Field(alias="vehicleType")
     client_id: UUID = Field(alias="clientId")
     finance_id: Optional[UUID] = Field(None, alias="financeId")
     vehicle_registration_number: str = Field(alias="vehicleRegistrationNumber")

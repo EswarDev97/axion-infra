@@ -7,7 +7,7 @@ import { Metadata } from 'next';
 import { LeavePageClient } from './LeavePageClient';
 
 export const metadata: Metadata = {
-  title: 'Leave Management - AxionPCS HRMS',
+  title: 'Leave Management - Wings Associates HRMS',
 };
 
 interface LeavePageProps {

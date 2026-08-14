@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { Alert } from '@/components/feedback/Alert';
 import { Modal, ModalFooter } from '@/components/feedback/Modal';
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog';
@@ -22,6 +23,7 @@ import { clientService, type Client } from '@/services/complaint/clientService';
 import { employeeService } from '@/services/hr/hrService';
 import type { Employee } from '@/services/hr/types';
 import { useAuthStore } from '@/stores/authStore';
+import { useDebounce } from '@/hooks';
 
 const PAGE_SIZE = 20;
 
@@ -42,16 +44,28 @@ const BILLING_STATUSES = [
 ];
 
 const CASE_TYPES = [
-  { value: 'RETAIL', label: 'Retail' },
-  { value: 'YARD', label: 'Yard' },
-  { value: 'PI', label: 'PI' },
-  { value: 'CI', label: 'CI' },
-  { value: 'DOC', label: 'DOC' },
+  { value: 'RETAIL', label: 'Valuation - Retail' },
+  { value: 'YARD', label: 'Valuation - Yard' },
+  { value: 'PI', label: 'Preinspection' },
+  { value: 'CI', label: 'Claim Inspection' },
+  { value: 'DOC', label: 'Document Collection' },
+];
+
+const VEHICLE_TYPES = [
+  { value: 'TWO_WHEELER', label: '2 Wheeler' },
+  { value: 'FOUR_WHEELER', label: '4 Wheeler' },
+  { value: 'COMMERCIAL', label: 'Commercial' },
+];
+
+const PAYMENT_MODES = [
+  { value: 'CASH', label: 'Cash' },
+  { value: 'TRANSFER', label: 'Transfer' },
 ];
 
 const emptyForm = {
   caseReference: '',
   caseType: '',
+  vehicleType: '',
   clientId: '',
   financeId: '',
   vehicleRegistrationNumber: '',
@@ -67,15 +81,15 @@ const emptyForm = {
 type FormState = typeof emptyForm;
 
 // Backend returns RESOURCE_ALREADY_EXISTS with a technical identifier
-// string (e.g. "Payment with identifier 'vehicleRegistrationNumber=KA01AB1234'
-// already exists") — translate that into a clear, field-specific message
-// for the create/edit form rather than showing the raw backend text.
+// string (e.g. "Payment with identifier 'utrNumber=UTR123' already exists")
+// — translate that into a clear, field-specific message for the create/edit
+// form rather than showing the raw backend text. Vehicle Registration
+// Number is no longer enforced unique server-side (duplicates are allowed;
+// see the inline warning next to that field instead), so only utrNumber
+// can appear here now.
 function describeSaveError(e: unknown): string {
   const apiError = e as { code?: string; message?: string };
   if (apiError.code === 'RESOURCE_ALREADY_EXISTS') {
-    if (apiError.message?.includes('vehicleRegistrationNumber')) {
-      return 'This Vehicle Registration Number is already used by another payment.';
-    }
     if (apiError.message?.includes('utrNumber')) {
       return 'This UTR Number is already used by another payment.';
     }
@@ -106,7 +120,7 @@ function SortableHeader({
   const isActive = sortBy === column;
   const Icon = isActive ? (sortOrder === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
   return (
-    <th className={`px-6 py-3 text-${align} text-xs font-medium text-gray-500 uppercase`}>
+    <th className={`px-6 py-3 text-${align} text-xs font-medium text-gray-500 uppercase whitespace-nowrap`}>
       <button
         type="button"
         onClick={() => onSort(column)}
@@ -125,18 +139,27 @@ export function PaymentsPageClient() {
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission);
   const hasAnyRole = useAuthStore((state) => state.hasAnyRole);
+  // authStore persists to sessionStorage, which is unavailable during SSR —
+  // the server always renders with no user/permissions. Gate on isMounted so
+  // the client's first paint matches that (permission-gated buttons hidden)
+  // before rehydration fills in the real values, avoiding a hydration
+  // mismatch.
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   // EMPLOYEE has full payments:create/update/delete (same as MANAGER/
   // HR_ADMIN) — canWrite is true for every role that reaches this page.
-  const canWrite = hasPermission('payments:create');
+  const canWrite = isMounted && hasPermission('payments:create');
   // Export to Excel is restricted to SUPER_ADMIN/HR_ADMIN/MANAGER — hidden
   // specifically for EMPLOYEE, per explicit request, independent of the
   // payments:read permission itself (which EMPLOYEE does have).
-  const canExport = !hasAnyRole(['EMPLOYEE']);
+  const canExport = isMounted && !hasAnyRole(['EMPLOYEE']);
   // employeeService.list() (GET /employees) requires hr:read:all/hr:read:
   // subordinates. A payments:read:own user typically has neither — resolve
   // just their own name via employeeService.getMe() instead (see
   // fetchDropdownData below).
-  const canListEmployees = hasAnyPermission(['hr:read:all', 'hr:read:subordinates']);
+  const canListEmployees = isMounted && hasAnyPermission(['hr:read:all', 'hr:read:subordinates']);
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,12 +170,17 @@ export function PaymentsPageClient() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalPayments, setTotalPayments] = useState(0);
 
-  // Filter bar: Client / Finance Company / Field Executive dropdowns plus a
-  // Lead Created Date (created_at) From/To range — all combinable, for every
-  // role that can reach this page.
+  // Filter bar: Client / Finance Company / Field Executive / Case Type /
+  // Status / Vehicle Type / Payment Mode dropdowns plus a Lead Created Date
+  // (created_at) From/To range — all combinable, for every role that can
+  // reach this page.
   const [filterClientId, setFilterClientId] = useState('');
   const [filterFinanceId, setFilterFinanceId] = useState('');
   const [filterExecutiveId, setFilterExecutiveId] = useState('');
+  const [filterCaseType, setFilterCaseType] = useState('');
+  const [filterCaseStatus, setFilterCaseStatus] = useState('');
+  const [filterVehicleType, setFilterVehicleType] = useState('');
+  const [filterPaymentMode, setFilterPaymentMode] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
 
@@ -202,6 +230,33 @@ export function PaymentsPageClient() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Vehicle Registration Number duplicates are allowed (create/update never
+  // block on them — see payment_service.py), but the user should still see
+  // a heads-up. This is advisory only: it never disables Create/Update.
+  const [duplicateVehicleWarning, setDuplicateVehicleWarning] = useState(false);
+  const checkDuplicateVehicleNumber = useDebounce(
+    async (value: string, currentPaymentId: string | null) => {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        setDuplicateVehicleWarning(false);
+        return;
+      }
+      try {
+        const res = await paymentService.list({ search: trimmed, limit: 5 });
+        const hasDuplicate = (res.items ?? []).some(
+          (p) =>
+            p.vehicleRegistrationNumber.toUpperCase() === trimmed.toUpperCase() &&
+            p.id !== currentPaymentId
+        );
+        setDuplicateVehicleWarning(hasDuplicate);
+      } catch {
+        // Advisory check only — a failed lookup shouldn't block or alarm the user.
+        setDuplicateVehicleWarning(false);
+      }
+    },
+    400
+  );
+
   const fetchPayments = useCallback(async () => {
     setLoading(true);
     try {
@@ -212,6 +267,10 @@ export function PaymentsPageClient() {
         clientId: filterClientId || undefined,
         financeId: filterFinanceId || undefined,
         executiveEmployeeId: filterExecutiveId || undefined,
+        caseType: filterCaseType || undefined,
+        caseStatus: filterCaseStatus || undefined,
+        vehicleType: filterVehicleType || undefined,
+        paymentMode: filterPaymentMode || undefined,
         dateFrom: filterDateFrom || undefined,
         dateTo: filterDateTo || undefined,
         sortBy,
@@ -225,7 +284,7 @@ export function PaymentsPageClient() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterClientId, filterFinanceId, filterExecutiveId, filterDateFrom, filterDateTo, sortBy, sortOrder]);
+  }, [page, search, filterClientId, filterFinanceId, filterExecutiveId, filterCaseType, filterCaseStatus, filterVehicleType, filterPaymentMode, filterDateFrom, filterDateTo, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchPayments();
@@ -253,13 +312,25 @@ export function PaymentsPageClient() {
     setFilterClientId('');
     setFilterFinanceId('');
     setFilterExecutiveId('');
+    setFilterCaseType('');
+    setFilterCaseStatus('');
+    setFilterVehicleType('');
+    setFilterPaymentMode('');
     setFilterDateFrom('');
     setFilterDateTo('');
     setPage(1);
   };
 
   const hasActiveFilters =
-    !!filterClientId || !!filterFinanceId || !!filterExecutiveId || !!filterDateFrom || !!filterDateTo;
+    !!filterClientId ||
+    !!filterFinanceId ||
+    !!filterExecutiveId ||
+    !!filterCaseType ||
+    !!filterCaseStatus ||
+    !!filterVehicleType ||
+    !!filterPaymentMode ||
+    !!filterDateFrom ||
+    !!filterDateTo;
 
   const handleExport = async () => {
     setExporting(true);
@@ -276,6 +347,10 @@ export function PaymentsPageClient() {
         clientId: filterClientId || undefined,
         financeId: filterFinanceId || undefined,
         executiveEmployeeId: filterExecutiveId || undefined,
+        caseType: filterCaseType || undefined,
+        caseStatus: filterCaseStatus || undefined,
+        vehicleType: filterVehicleType || undefined,
+        paymentMode: filterPaymentMode || undefined,
         dateFrom: filterDateFrom || undefined,
         dateTo: filterDateTo || undefined,
         sortBy,
@@ -292,6 +367,7 @@ export function PaymentsPageClient() {
         'S.No': index + 1,
         'Case Reference': payment.caseReference,
         'Case Type': payment.caseType,
+        'Vehicle Type': payment.vehicleType,
         Client: clientNameById.get(payment.clientId) ?? payment.clientId,
         Finance: payment.financeId ? clientNameById.get(payment.financeId) ?? payment.financeId : '',
         'Vehicle Reg No': payment.vehicleRegistrationNumber,
@@ -368,6 +444,7 @@ export function PaymentsPageClient() {
     setEditing(null);
     setFormData({ ...emptyForm });
     setFormError(null);
+    setDuplicateVehicleWarning(false);
     setShowForm(true);
     fetchDropdownData();
   };
@@ -377,6 +454,7 @@ export function PaymentsPageClient() {
     setFormData({
       caseReference: payment.caseReference,
       caseType: payment.caseType || '',
+      vehicleType: payment.vehicleType || '',
       clientId: payment.clientId,
       financeId: payment.financeId || '',
       vehicleRegistrationNumber: payment.vehicleRegistrationNumber,
@@ -389,11 +467,15 @@ export function PaymentsPageClient() {
       amount: payment.amount != null ? String(payment.amount) : '',
     });
     setFormError(null);
+    setDuplicateVehicleWarning(false);
     setShowForm(true);
     fetchDropdownData();
   };
 
   const handleChange = (field: keyof FormState, value: string) => {
+    if (field === 'vehicleRegistrationNumber') {
+      checkDuplicateVehicleNumber(value, editing?.id ?? null);
+    }
     setFormData((prev) => {
       const next = { ...prev, [field]: value };
       // Clear dependent fields when a parent selection changes, so hidden
@@ -423,7 +505,7 @@ export function PaymentsPageClient() {
   const showAmount = isCompanyBilling || isCash || isTransfer;
 
   const isFormValid = () => {
-    if (!formData.caseReference.trim() || !formData.caseType || !formData.clientId || !formData.vehicleRegistrationNumber.trim()) {
+    if (!formData.caseReference.trim() || !formData.caseType || !formData.vehicleType || !formData.clientId || !formData.vehicleRegistrationNumber.trim()) {
       return false;
     }
     if (!formData.executiveEmployeeId || !formData.billingStatus) {
@@ -441,6 +523,7 @@ export function PaymentsPageClient() {
     const base: PaymentCreateRequest = {
       caseReference: formData.caseReference.trim(),
       caseType: formData.caseType as PaymentCreateRequest['caseType'],
+      vehicleType: formData.vehicleType as PaymentCreateRequest['vehicleType'],
       clientId: formData.clientId,
       financeId: formData.financeId || undefined,
       vehicleRegistrationNumber: formData.vehicleRegistrationNumber.trim(),
@@ -538,7 +621,7 @@ export function PaymentsPageClient() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Payment Management</h1>
+          <h1 className="text-2xl font-bold">Work</h1>
           <p className="text-gray-600">Track case-level payments, billing and finance references</p>
         </div>
         <div className="flex gap-2">
@@ -551,7 +634,7 @@ export function PaymentsPageClient() {
           {canWrite && (
             <Button onClick={openCreate}>
               <Plus className="h-4 w-4 mr-2" />
-              Add Payment
+              Add Work
             </Button>
           )}
         </div>
@@ -573,14 +656,14 @@ export function PaymentsPageClient() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="pl-10"
+              className="pl-10 h-8 py-1 text-xs"
             />
           </div>
         </div>
 
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="w-48">
-            <label htmlFor="filterClientId" className="block text-xs font-medium text-gray-500 mb-1">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="w-40">
+            <label htmlFor="filterClientId" className="block text-[11px] font-medium text-gray-500 mb-0.5">
               Client
             </label>
             <Select
@@ -588,14 +671,15 @@ export function PaymentsPageClient() {
               value={filterClientId}
               onChange={(e) => handleFilterChange(setFilterClientId)(e.target.value)}
               placeholder="All clients"
+              className="h-8 py-1 text-xs"
             >
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </Select>
           </div>
-          <div className="w-48">
-            <label htmlFor="filterFinanceId" className="block text-xs font-medium text-gray-500 mb-1">
+          <div className="w-40">
+            <label htmlFor="filterFinanceId" className="block text-[11px] font-medium text-gray-500 mb-0.5">
               Finance Company
             </label>
             <Select
@@ -603,14 +687,15 @@ export function PaymentsPageClient() {
               value={filterFinanceId}
               onChange={(e) => handleFilterChange(setFilterFinanceId)(e.target.value)}
               placeholder="All finance companies"
+              className="h-8 py-1 text-xs"
             >
               {financers.map((f) => (
                 <option key={f.id} value={f.id}>{f.name}</option>
               ))}
             </Select>
           </div>
-          <div className="w-48">
-            <label htmlFor="filterExecutiveId" className="block text-xs font-medium text-gray-500 mb-1">
+          <div className="w-40">
+            <label htmlFor="filterExecutiveId" className="block text-[11px] font-medium text-gray-500 mb-0.5">
               Field Executive
             </label>
             <Select
@@ -618,6 +703,7 @@ export function PaymentsPageClient() {
               value={filterExecutiveId}
               onChange={(e) => handleFilterChange(setFilterExecutiveId)(e.target.value)}
               placeholder="All executives"
+              className="h-8 py-1 text-xs"
             >
               {fieldExecutives.map((emp) => (
                 <option key={emp.id} value={emp.id}>{emp.fullName}</option>
@@ -625,25 +711,84 @@ export function PaymentsPageClient() {
             </Select>
           </div>
           <div className="w-40">
-            <label htmlFor="filterDateFrom" className="block text-xs font-medium text-gray-500 mb-1">
-              From Date
+            <label htmlFor="filterCaseType" className="block text-[11px] font-medium text-gray-500 mb-0.5">
+              Case Type
             </label>
-            <Input
-              id="filterDateFrom"
-              type="date"
-              value={filterDateFrom}
-              onChange={(e) => handleFilterChange(setFilterDateFrom)(e.target.value)}
-            />
+            <Select
+              id="filterCaseType"
+              value={filterCaseType}
+              onChange={(e) => handleFilterChange(setFilterCaseType)(e.target.value)}
+              placeholder="All case types"
+              className="h-8 py-1 text-xs"
+            >
+              {CASE_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </Select>
           </div>
           <div className="w-40">
-            <label htmlFor="filterDateTo" className="block text-xs font-medium text-gray-500 mb-1">
-              To Date
+            <label htmlFor="filterCaseStatus" className="block text-[11px] font-medium text-gray-500 mb-0.5">
+              Status
             </label>
-            <Input
-              id="filterDateTo"
-              type="date"
-              value={filterDateTo}
-              onChange={(e) => handleFilterChange(setFilterDateTo)(e.target.value)}
+            <Select
+              id="filterCaseStatus"
+              value={filterCaseStatus}
+              onChange={(e) => handleFilterChange(setFilterCaseStatus)(e.target.value)}
+              placeholder="All statuses"
+              className="h-8 py-1 text-xs"
+            >
+              {CASE_STATUSES.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-40">
+            <label htmlFor="filterVehicleType" className="block text-[11px] font-medium text-gray-500 mb-0.5">
+              Vehicle Type
+            </label>
+            <Select
+              id="filterVehicleType"
+              value={filterVehicleType}
+              onChange={(e) => handleFilterChange(setFilterVehicleType)(e.target.value)}
+              placeholder="All vehicle types"
+              className="h-8 py-1 text-xs"
+            >
+              {VEHICLE_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-40">
+            <label htmlFor="filterPaymentMode" className="block text-[11px] font-medium text-gray-500 mb-0.5">
+              Payment Mode
+            </label>
+            <Select
+              id="filterPaymentMode"
+              value={filterPaymentMode}
+              onChange={(e) => handleFilterChange(setFilterPaymentMode)(e.target.value)}
+              placeholder="All payment modes"
+              className="h-8 py-1 text-xs"
+            >
+              {PAYMENT_MODES.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-56">
+            <label htmlFor="filterDateRange" className="block text-[11px] font-medium text-gray-500 mb-0.5">
+              Lead Created Date
+            </label>
+            <DateRangePicker
+              id="filterDateRange"
+              from={filterDateFrom}
+              to={filterDateTo}
+              onChange={(nextFrom, nextTo) => {
+                setFilterDateFrom(nextFrom);
+                setFilterDateTo(nextTo);
+                setPage(1);
+              }}
+              placeholder="All dates"
+              triggerClassName="h-8 py-1 text-xs"
             />
           </div>
           {hasActiveFilters && (
@@ -659,53 +804,61 @@ export function PaymentsPageClient() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">S.No</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">S.No</th>
               <SortableHeader column="caseReference" label="Case Reference" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
               <SortableHeader column="caseType" label="Case Type" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Vehicle Type</th>
               <SortableHeader column="client" label="Client" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
               <SortableHeader column="finance" label="Finance" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vehicle Reg. No.</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Vehicle Reg. No.</th>
               <SortableHeader column="executive" label="Executive" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
               <SortableHeader column="caseStatus" label="Case Status" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
               <SortableHeader column="billingStatus" label="Billing Status" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Payment Mode</th>
               <SortableHeader column="amount" label="Amount" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
               {canWrite && (
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Actions</th>
               )}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={canWrite ? 11 : 10} className="px-6 py-8 text-center text-gray-500">Loading...</td>
+                <td colSpan={canWrite ? 13 : 12} className="px-6 py-8 text-center text-gray-500">Loading...</td>
               </tr>
             ) : payments.length === 0 ? (
               <tr>
-                <td colSpan={canWrite ? 11 : 10} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={canWrite ? 13 : 12} className="px-6 py-8 text-center text-gray-500">
                   No payments found.
                 </td>
               </tr>
             ) : (
               payments.map((payment, index) => (
                 <tr key={payment.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-600">{(page - 1) * PAGE_SIZE + index + 1}</td>
-                  <td className="px-6 py-4 text-sm font-mono text-gray-900">{payment.caseReference}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{(page - 1) * PAGE_SIZE + index + 1}</td>
+                  <td className="px-6 py-4 text-sm font-mono text-gray-900 whitespace-nowrap">{payment.caseReference}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <Badge variant="neutral">{payment.caseType}</Badge>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{clientNameById.get(payment.clientId) ?? payment.clientId}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <Badge variant="neutral">{payment.vehicleType}</Badge>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{clientNameById.get(payment.clientId) ?? payment.clientId}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
                     {payment.financeId ? clientNameById.get(payment.financeId) ?? payment.financeId : '-'}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{payment.vehicleRegistrationNumber}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{employeeNameById.get(payment.executiveEmployeeId) ?? payment.executiveEmployeeId}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{payment.vehicleRegistrationNumber}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{employeeNameById.get(payment.executiveEmployeeId) ?? payment.executiveEmployeeId}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <Badge variant="neutral">{payment.caseStatus}</Badge>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <Badge variant="neutral">{payment.billingStatus}</Badge>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                    {payment.paymentMode || '-'}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
                     {payment.amount != null ? payment.amount : '-'}
                   </td>
                   {canWrite && (
@@ -789,7 +942,7 @@ export function PaymentsPageClient() {
       <Modal
         isOpen={showForm}
         onClose={() => setShowForm(false)}
-        title={editing ? 'Edit Payment' : 'Add Payment'}
+        title={editing ? 'Edit Payment' : 'Add Work'}
         size="lg"
       >
         <form onSubmit={handleSave} className="space-y-4">
@@ -808,18 +961,32 @@ export function PaymentsPageClient() {
             />
           </FormField>
 
-          <FormField label="Case Type" htmlFor="caseType" required>
-            <Select
-              id="caseType"
-              value={formData.caseType}
-              onChange={(e) => handleChange('caseType', e.target.value)}
-              placeholder="Select case type"
-            >
-              {CASE_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </Select>
-          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Case Type" htmlFor="caseType" required>
+              <Select
+                id="caseType"
+                value={formData.caseType}
+                onChange={(e) => handleChange('caseType', e.target.value)}
+                placeholder="Select case type"
+              >
+                {CASE_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField label="Vehicle Type" htmlFor="vehicleType" required>
+              <Select
+                id="vehicleType"
+                value={formData.vehicleType}
+                onChange={(e) => handleChange('vehicleType', e.target.value)}
+                placeholder="Select vehicle type"
+              >
+                {VEHICLE_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </Select>
+            </FormField>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Client" htmlFor="clientId" required>
@@ -856,6 +1023,12 @@ export function PaymentsPageClient() {
                 onChange={(e) => handleChange('vehicleRegistrationNumber', e.target.value.toUpperCase())}
                 placeholder="e.g. KA01AB1234"
               />
+              {duplicateVehicleWarning && (
+                <p className="text-sm text-amber-600 flex items-center gap-1">
+                  <span aria-hidden="true">⚠</span>
+                  This vehicle number already has an existing work record. You can still proceed.
+                </p>
+              )}
             </FormField>
             <FormField label="Executive" htmlFor="executiveEmployeeId" required>
               <Select

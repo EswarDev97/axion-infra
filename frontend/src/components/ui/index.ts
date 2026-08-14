@@ -7,6 +7,7 @@ export * from './Avatar';
 export * from './Badge';
 export * from './Button';
 export * from './Checkbox';
+export * from './DateRangePicker';
 export * from './HelperText';
 export * from './Input';
 export * from './Label';

@@ -7,7 +7,7 @@ import { Metadata } from 'next';
 import { TasksPageClient } from './TasksPageClient';
 
 export const metadata: Metadata = {
-  title: 'Tasks - AxionPCS HRMS',
+  title: 'Tasks - Wings Associates HRMS',
 };
 
 export default function TasksPage() {

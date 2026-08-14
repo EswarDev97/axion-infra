@@ -107,6 +107,7 @@ const makePayment = (overrides: Partial<Payment> = {}): Payment => ({
   id: 'pay-1',
   caseReference: 'CASE-1001',
   caseType: 'RETAIL',
+  vehicleType: 'FOUR_WHEELER',
   clientId: 'client-abc-123',
   financeId: null,
   vehicleRegistrationNumber: 'KA01AB1234',
@@ -438,7 +439,34 @@ describe('PaymentsPageClient', () => {
   });
 
   describe('filter bar (Client / Finance / Field Executive / date range)', () => {
-    it('renders Client, Finance Company, Field Executive, From Date, and To Date controls for all roles', async () => {
+    // The From Date/To Date inputs were replaced by a single "Lead Created
+    // Date" range picker (one trigger button that opens a calendar) — open
+    // it, click a day within the current month for the start, then a later
+    // day for the end. Days 5/20 are always in-month regardless of today's
+    // date, so the grid's leading/trailing days from adjacent months (which
+    // share the same visible day-of-month numbers) are never a collision.
+    const selectDateRange = async (
+      user: ReturnType<typeof userEvent.setup>,
+      startDay: string,
+      endDay: string
+    ) => {
+      const trigger = screen.getByLabelText(/lead created date/i);
+      await user.click(trigger);
+      const popover = await screen.findByRole('button', { name: /previous month/i });
+      const dialogRoot = popover.closest('div')!.parentElement!;
+      const exact = (day: string) => new RegExp(`^${day}$`);
+      // Adjacent months' leading/trailing days share the same visible
+      // day-of-month numbers but are disabled (invisible) — exclude them so
+      // the query resolves to the single in-month button.
+      const getEnabledDay = (day: string) =>
+        within(dialogRoot)
+          .getAllByRole('button', { name: exact(day) })
+          .find((btn) => !btn.hasAttribute('disabled'))!;
+      await user.click(getEnabledDay(startDay));
+      await user.click(getEnabledDay(endDay));
+    };
+
+    it('renders Client, Finance Company, Field Executive, and a Lead Created Date range control for all roles', async () => {
       render(<PaymentsPageClient />);
 
       await waitFor(() => {
@@ -448,8 +476,7 @@ describe('PaymentsPageClient', () => {
       expect(screen.getByLabelText(/^client$/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/finance company/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/field executive/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/from date/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/to date/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/lead created date/i)).toBeInTheDocument();
     });
 
     it('re-fetches with clientId when the Client filter changes', async () => {
@@ -514,15 +541,12 @@ describe('PaymentsPageClient', () => {
         expect(mockedList).toHaveBeenCalledTimes(1);
       });
 
-      const fromDate = screen.getByLabelText(/from date/i);
-      const toDate = screen.getByLabelText(/to date/i);
-      await user.type(fromDate, '2026-04-01');
-      await user.type(toDate, '2026-04-30');
+      await selectDateRange(user, '5', '20');
 
       await waitFor(() => {
-        expect(mockedList).toHaveBeenLastCalledWith(
-          expect.objectContaining({ dateFrom: '2026-04-01', dateTo: '2026-04-30' })
-        );
+        const lastCall = mockedList.mock.calls[mockedList.mock.calls.length - 1][0];
+        expect(lastCall.dateFrom).toMatch(/^\d{4}-\d{2}-05$/);
+        expect(lastCall.dateTo).toMatch(/^\d{4}-\d{2}-20$/);
       });
     });
 
@@ -537,8 +561,7 @@ describe('PaymentsPageClient', () => {
       await user.selectOptions(screen.getByLabelText(/^client$/i), 'client-1');
       await user.selectOptions(screen.getByLabelText(/finance company/i), 'financer-1');
       await user.selectOptions(screen.getByLabelText(/field executive/i), 'emp-1');
-      await user.type(screen.getByLabelText(/from date/i), '2026-04-01');
-      await user.type(screen.getByLabelText(/to date/i), '2026-04-30');
+      await selectDateRange(user, '5', '20');
 
       await waitFor(() => {
         expect(mockedList).toHaveBeenLastCalledWith(
@@ -546,8 +569,8 @@ describe('PaymentsPageClient', () => {
             clientId: 'client-1',
             financeId: 'financer-1',
             executiveEmployeeId: 'emp-1',
-            dateFrom: '2026-04-01',
-            dateTo: '2026-04-30',
+            dateFrom: expect.stringMatching(/^\d{4}-\d{2}-05$/),
+            dateTo: expect.stringMatching(/^\d{4}-\d{2}-20$/),
           })
         );
       });
@@ -584,7 +607,7 @@ describe('PaymentsPageClient', () => {
   });
 
   describe('permission-gated UI (write access, export, name resolution)', () => {
-    it('hides Add Payment and the Actions column when the user lacks payments:create', async () => {
+    it('hides Add Work and the Actions column when the user lacks payments:create', async () => {
       (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
         (
           selector: (state: {
@@ -615,7 +638,7 @@ describe('PaymentsPageClient', () => {
         expect(screen.getByText('CASE-1001')).toBeInTheDocument();
       });
 
-      expect(screen.queryByRole('button', { name: /add payment/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /add work/i })).not.toBeInTheDocument();
       expect(screen.queryByTitle('Edit')).not.toBeInTheDocument();
       expect(screen.queryByTitle('Delete')).not.toBeInTheDocument();
       expect(screen.queryByText('Actions')).not.toBeInTheDocument();
@@ -654,7 +677,7 @@ describe('PaymentsPageClient', () => {
 
       expect(screen.queryByRole('button', { name: /export to excel/i })).not.toBeInTheDocument();
       // Full write access is unaffected by the export restriction.
-      expect(screen.getByRole('button', { name: /add payment/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /add work/i })).toBeInTheDocument();
     });
 
     it('shows Export to Excel for non-EMPLOYEE roles (SUPER_ADMIN/HR_ADMIN/MANAGER)', async () => {
@@ -765,7 +788,7 @@ describe('PaymentsPageClient', () => {
       await waitFor(() => {
         expect(mockedList).toHaveBeenCalled();
       });
-      const addButton = screen.getByRole('button', { name: /add payment/i });
+      const addButton = screen.getByRole('button', { name: /add work/i });
       await user.click(addButton);
       await waitFor(() => {
         expect(mockedClientList).toHaveBeenCalled();
@@ -790,7 +813,7 @@ describe('PaymentsPageClient', () => {
       await user.selectOptions(billingStatusSelect, value);
     };
 
-    it('renders a required Case Type dropdown with Retail/Yard/PI/CI/DOC options directly under Case Reference', async () => {
+    it('renders a required Case Type dropdown with full-name options directly under Case Reference', async () => {
       const user = userEvent.setup();
       await openAddModal(user);
 
@@ -800,19 +823,40 @@ describe('PaymentsPageClient', () => {
 
       const optionLabels = within(caseTypeField).getAllByRole('option').map((o) => o.textContent);
       expect(optionLabels).toEqual(
-        expect.arrayContaining(['Retail', 'Yard', 'PI', 'CI', 'DOC'])
+        expect.arrayContaining([
+          'Valuation - Retail',
+          'Valuation - Yard',
+          'Preinspection',
+          'Claim Inspection',
+          'Document Collection',
+        ])
       );
 
-      // Case Type sits directly after Case Reference in the DOM order.
+      // Case Type sits directly after Case Reference in the DOM order,
+      // followed by Vehicle Type alongside it.
       const caseReferenceField = within(dialog).getByLabelText(/case reference/i);
       const allLabels = within(dialog)
-        .getAllByText(/^Case (Reference|Type)\*?$/)
+        .getAllByText(/^(Case (Reference|Type)|Vehicle Type)\*?$/)
         .map((el) => el.textContent);
-      expect(allLabels).toEqual(['Case Reference*', 'Case Type*']);
+      expect(allLabels).toEqual(['Case Reference*', 'Case Type*', 'Vehicle Type*']);
       expect(caseReferenceField).toBeInTheDocument();
     });
 
-    it('keeps Create disabled until a Case Type is selected', async () => {
+    it('renders a required Vehicle Type dropdown with 2 Wheeler/4 Wheeler/Commercial options', async () => {
+      const user = userEvent.setup();
+      await openAddModal(user);
+
+      const dialog = screen.getByRole('dialog');
+      const vehicleTypeField = within(dialog).getByLabelText(/vehicle type/i);
+      expect(vehicleTypeField).toBeInTheDocument();
+
+      const optionLabels = within(vehicleTypeField).getAllByRole('option').map((o) => o.textContent);
+      expect(optionLabels).toEqual(
+        expect.arrayContaining(['2 Wheeler', '4 Wheeler', 'Commercial'])
+      );
+    });
+
+    it('keeps Create disabled until a Case Type and Vehicle Type are selected', async () => {
       const user = userEvent.setup();
       await openAddModal(user);
 
@@ -827,20 +871,27 @@ describe('PaymentsPageClient', () => {
 
       await user.selectOptions(within(dialog).getByLabelText(/case type/i), 'YARD');
 
+      expect(within(dialog).getByRole('button', { name: 'Create' })).toBeDisabled();
+
+      await user.selectOptions(within(dialog).getByLabelText(/vehicle type/i), 'FOUR_WHEELER');
+
       expect(within(dialog).getByRole('button', { name: 'Create' })).not.toBeDisabled();
     });
 
     it('hides Payment Mode/UTR/Transaction Date but shows an optional Amount field when Billing Status = Company Billing', async () => {
       const user = userEvent.setup();
       await openAddModal(user);
+      const dialog = screen.getByRole('dialog');
 
       await setBillingStatus(user, 'COMPANY_BILLING');
 
-      expect(screen.queryByText(/payment mode/i)).not.toBeInTheDocument();
-      expect(screen.queryByLabelText(/utr number/i)).not.toBeInTheDocument();
-      expect(screen.queryByLabelText(/transaction date/i)).not.toBeInTheDocument();
+      // Scoped to the dialog — the page's filter bar and table also render
+      // "Payment Mode" text (a filter label and a column header).
+      expect(within(dialog).queryByText(/payment mode/i)).not.toBeInTheDocument();
+      expect(within(dialog).queryByLabelText(/utr number/i)).not.toBeInTheDocument();
+      expect(within(dialog).queryByLabelText(/transaction date/i)).not.toBeInTheDocument();
 
-      const amountField = screen.getByLabelText(/^amount/i);
+      const amountField = within(dialog).getByLabelText(/^amount/i);
       expect(amountField).toBeInTheDocument();
       expect(amountField).not.toBeRequired();
     });
@@ -848,15 +899,16 @@ describe('PaymentsPageClient', () => {
     it('reveals the Payment Mode radio when Billing Status = Customer Billing', async () => {
       const user = userEvent.setup();
       await openAddModal(user);
+      const dialog = screen.getByRole('dialog');
 
       await setBillingStatus(user, 'CUSTOMER_BILLING');
 
-      expect(screen.getByText(/payment mode/i)).toBeInTheDocument();
-      expect(screen.getByRole('radio', { name: /cash/i })).toBeInTheDocument();
-      expect(screen.getByRole('radio', { name: /transfer/i })).toBeInTheDocument();
+      expect(within(dialog).getByText(/payment mode/i)).toBeInTheDocument();
+      expect(within(dialog).getByRole('radio', { name: /cash/i })).toBeInTheDocument();
+      expect(within(dialog).getByRole('radio', { name: /transfer/i })).toBeInTheDocument();
       // Neither mode selected yet -> no amount/UTR/date fields shown
-      expect(screen.queryByLabelText(/utr number/i)).not.toBeInTheDocument();
-      expect(screen.queryByLabelText(/transaction date/i)).not.toBeInTheDocument();
+      expect(within(dialog).queryByLabelText(/utr number/i)).not.toBeInTheDocument();
+      expect(within(dialog).queryByLabelText(/transaction date/i)).not.toBeInTheDocument();
     });
 
     it('reveals only Amount (not UTR/Transaction Date) when Payment Mode = Cash', async () => {
@@ -981,7 +1033,7 @@ describe('PaymentsPageClient', () => {
       await waitFor(() => {
         expect(mockedList).toHaveBeenCalled();
       });
-      const addButton = screen.getByRole('button', { name: /add payment/i });
+      const addButton = screen.getByRole('button', { name: /add work/i });
       await user.click(addButton);
       const dialog = screen.getByRole('dialog');
       await waitFor(() => {
@@ -997,26 +1049,49 @@ describe('PaymentsPageClient', () => {
     ) => {
       await user.type(within(dialog).getByLabelText(/case reference/i), 'CASE-2001');
       await user.selectOptions(within(dialog).getByLabelText(/case type/i), 'RETAIL');
+      await user.selectOptions(within(dialog).getByLabelText(/vehicle type/i), 'FOUR_WHEELER');
       await user.selectOptions(within(dialog).getByLabelText(/^client/i), 'client-1');
       await user.type(within(dialog).getByLabelText(/vehicle registration number/i), 'KA01AB9999');
       await user.selectOptions(within(dialog).getByLabelText(/^executive/i), 'emp-1');
       await user.selectOptions(within(dialog).getByLabelText(/billing status/i), 'COMPANY_BILLING');
     };
 
-    it('shows a clear message when the Vehicle Registration Number is already used by another payment', async () => {
-      mockedCreate.mockRejectedValue({
-        code: 'RESOURCE_ALREADY_EXISTS',
-        message: "Payment with identifier 'vehicleRegistrationNumber=KA01AB9999' already exists",
-        status: 409,
+    it('shows a non-blocking warning (not an error) when the Vehicle Registration Number matches an existing payment, and still allows Create', async () => {
+      // Vehicle Registration Number is no longer unique server-side —
+      // duplicates only ever surface as an advisory warning next to the
+      // field, driven by paymentService.list(), never as a save-blocking
+      // RESOURCE_ALREADY_EXISTS error.
+      mockedList.mockImplementation((params?: { search?: string }) => {
+        if (params?.search === 'KA01AB9999') {
+          return Promise.resolve({
+            items: [
+              makePayment({ id: 'existing-pay', vehicleRegistrationNumber: 'KA01AB9999' }),
+            ],
+            total: 1,
+            page: 1,
+            limit: 5,
+            pages: 1,
+          });
+        }
+        return Promise.resolve({ items: [], total: 0, page: 1, limit: 200, pages: 0 });
       });
+      mockedCreate.mockResolvedValue(makePayment({ vehicleRegistrationNumber: 'KA01AB9999' }));
 
       const user = userEvent.setup();
       const dialog = await openAddModal(user);
       await fillMinimalRequiredFields(user, dialog);
 
-      await user.click(within(dialog).getByRole('button', { name: 'Create' }));
+      await screen.findByText(/already has an existing work record/i, {}, { timeout: 2000 });
 
-      await screen.findByText(/vehicle registration number is already used by another payment/i);
+      const createButton = within(dialog).getByRole('button', { name: 'Create' });
+      expect(createButton).not.toBeDisabled();
+      await user.click(createButton);
+
+      await waitFor(() => {
+        expect(mockedCreate).toHaveBeenCalledWith(
+          expect.objectContaining({ vehicleRegistrationNumber: 'KA01AB9999' })
+        );
+      });
     });
 
     it('shows a clear message when the UTR Number is already used by another payment', async () => {
@@ -1100,6 +1175,7 @@ describe('PaymentsPageClient', () => {
         'S.No',
         'Case Reference',
         'Case Type',
+        'Vehicle Type',
         'Client',
         'Finance',
         'Vehicle Reg No',

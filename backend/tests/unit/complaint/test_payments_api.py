@@ -135,6 +135,7 @@ class TestCreatePayment:
         payload = {
             "caseReference": "CASE-2026-0001",
             "caseType": "RETAIL",
+            "vehicleType": "FOUR_WHEELER",
             "clientId": str(client.id),
             "vehicleRegistrationNumber": "KA01AB1234",
             "executiveEmployeeId": str(uuid4()),
@@ -158,6 +159,7 @@ class TestCreatePayment:
         assert data["id"] is not None
         assert data["caseReference"] == "CASE-2026-0001"
         assert data["caseType"] == "RETAIL"
+        assert data["vehicleType"] == "FOUR_WHEELER"
         assert data["clientId"] == str(client.id)
         assert data["financeId"] is None
         assert data["vehicleRegistrationNumber"] == "KA01AB1234"
@@ -170,16 +172,19 @@ class TestCreatePayment:
         assert "createdAt" in data
         assert "updatedAt" in data
 
-    async def test_create_payment_rejects_duplicate_vehicle_registration_number(
+    async def test_create_payment_allows_duplicate_vehicle_registration_number(
         self, payments_client, db_session, test_tenant, test_user
     ):
-        """A second payment for the same tenant using an already-active
-        vehicle registration number must be rejected with 409."""
+        """A second payment for the same tenant reusing an already-active
+        vehicle registration number succeeds — only UTR Number is unique;
+        duplicate vehicle numbers are allowed (flagged as a non-blocking
+        warning in the UI, not enforced server-side)."""
         client = await _create_client(db_session, test_tenant, test_user)
 
         payload = {
             "caseReference": "CASE-API-DUP-VEH-001",
             "caseType": "RETAIL",
+            "vehicleType": "FOUR_WHEELER",
             "clientId": str(client.id),
             "vehicleRegistrationNumber": "KA01AB1999",
             "executiveEmployeeId": str(uuid4()),
@@ -194,10 +199,11 @@ class TestCreatePayment:
             "/api/v1/complaints/payments", json=duplicate_payload
         )
 
-        assert response.status_code == 409
+        assert response.status_code == 201
         body = response.json()
-        assert body["success"] is False
-        assert body["error"]["code"] == "RESOURCE_ALREADY_EXISTS"
+        assert body["success"] is True
+        assert body["data"]["vehicleRegistrationNumber"] == "KA01AB1999"
+        assert body["data"]["caseReference"] == "CASE-API-DUP-VEH-002"
 
 
 @pytest_asyncio.fixture
@@ -638,6 +644,7 @@ class TestPaymentReadOwnScoping:
         payload = {
             "caseReference": "CASE-DENIED-001",
             "caseType": "RETAIL",
+            "vehicleType": "FOUR_WHEELER",
             "clientId": str(uuid4()),
             "vehicleRegistrationNumber": "KA01AB2005",
             "executiveEmployeeId": str(uuid4()),
@@ -732,6 +739,7 @@ class TestPaymentAuthorization:
         payload = {
             "caseReference": "CASE-2026-0002",
             "caseType": "RETAIL",
+            "vehicleType": "FOUR_WHEELER",
             "clientId": str(uuid4()),
             "vehicleRegistrationNumber": "KA01AB1234",
             "executiveEmployeeId": str(uuid4()),
@@ -758,6 +766,7 @@ class TestPaymentAuthorization:
         payload = {
             "caseReference": "CASE-2026-0003",
             "caseType": "RETAIL",
+            "vehicleType": "FOUR_WHEELER",
             "clientId": str(uuid4()),
             "vehicleRegistrationNumber": "KA01AB1234",
             "executiveEmployeeId": str(uuid4()),

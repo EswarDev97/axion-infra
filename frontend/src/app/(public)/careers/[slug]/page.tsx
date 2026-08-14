@@ -13,11 +13,11 @@ export async function generateMetadata({
   const job = await getJobPosting(params.slug);
 
   if (!job) {
-    return { title: 'Job Not Found - AxionPCS' };
+    return { title: 'Job Not Found - Wings Associates' };
   }
 
   return {
-    title: `${job.title} - Careers - AxionPCS`,
+    title: `${job.title} - Careers - Wings Associates`,
     description: job.description?.substring(0, 160),
   };
 }

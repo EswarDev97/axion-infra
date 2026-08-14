@@ -4,6 +4,7 @@ import { ReactNode, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
+import { useUIStore } from '@/stores/uiStore';
 
 interface MenuChildItem {
   label: string;
@@ -107,7 +108,7 @@ const menuItems: MenuItem[] = [
     ),
   },
   {
-    label: 'Payroll',
+    label: 'Work List',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -115,7 +116,7 @@ const menuItems: MenuItem[] = [
     ),
     children: [
       {
-        label: 'Payment Management',
+        label: 'Work',
         href: '/dashboard/payments',
         anyPermission: ['payments:read', 'payments:read:own'],
       },
@@ -247,6 +248,8 @@ export function AppSidebar() {
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission);
   const hasAnyRole = useAuthStore((state) => state.hasAnyRole);
+  const sidebarCollapsed = useUIStore((state) => state.sidebarCollapsed);
+  const toggleSidebar = useUIStore((state) => state.toggleSidebar);
   const [isMounted, setIsMounted] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
@@ -254,9 +257,14 @@ export function AppSidebar() {
     setIsMounted(true);
   }, []);
 
+  // sidebarCollapsed persists to localStorage (unavailable during SSR), same
+  // hydration-mismatch hazard as isMounted below — force expanded until
+  // mounted so the client's first paint matches the server's fixed w-64.
+  const collapsed = isMounted && sidebarCollapsed;
+
   // Auto-expand any parent whose child href matches the current pathname,
   // so navigating directly to a nested route (e.g. /dashboard/payments)
-  // shows its parent (e.g. Payroll) already expanded.
+  // shows its parent (e.g. Work List) already expanded.
   useEffect(() => {
     const parentsToExpand = menuItems
       .filter((item) =>
@@ -320,23 +328,44 @@ export function AppSidebar() {
   );
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-gray-900 text-white hidden lg:block">
+    <aside
+      className={`fixed left-0 top-0 z-40 h-screen bg-gray-900 text-white hidden lg:block transition-all duration-200 ${
+        collapsed ? 'w-20' : 'w-64'
+      }`}
+    >
       <div className="flex flex-col h-full">
         {/* Logo */}
-        <div className="flex items-center h-16 px-6 border-b border-gray-800">
-          <Link href="/dashboard" className="text-xl font-bold text-white">
-            AxionPCS
-          </Link>
+        <div className={`flex items-center h-16 border-b border-gray-800 ${collapsed ? 'justify-center px-2' : 'justify-between px-6'}`}>
+          {!collapsed && (
+            <Link href="/dashboard" className="text-xl font-bold text-white">
+              Wings Associates
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition"
+          >
+            <svg
+              className={`w-5 h-5 transition-transform ${collapsed ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+          </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3">
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3">
           <ul className="space-y-1">
             {filteredMenuItems.map((item) => {
               // Items with children render as an expandable button + nested
               // submenu instead of a direct Link (they have no href of their own).
               if (item.children) {
-                const isExpanded = expandedItems.has(item.label);
+                const isExpanded = !collapsed && expandedItems.has(item.label);
                 const isChildActive = item.children.some(
                   (child) => pathname === child.href || pathname.startsWith(child.href + '/')
                 );
@@ -346,22 +375,29 @@ export function AppSidebar() {
                       type="button"
                       onClick={() => toggleExpanded(item.label)}
                       aria-expanded={isExpanded}
+                      title={collapsed ? item.label : undefined}
                       className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition ${
+                        collapsed ? 'justify-center' : ''
+                      } ${
                         isChildActive
                           ? 'bg-primary-600 text-white'
                           : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                       }`}
                     >
                       {item.icon}
-                      <span className="flex-1 text-left">{item.label}</span>
-                      <svg
-                        className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+                      {!collapsed && (
+                        <>
+                          <span className="flex-1 text-left">{item.label}</span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </>
+                      )}
                     </button>
                     {isExpanded && (
                       <ul className="mt-1 ml-4 space-y-1 border-l border-gray-800 pl-3">
@@ -397,14 +433,17 @@ export function AppSidebar() {
                 <li key={item.href}>
                   <Link
                     href={item.href}
+                    title={collapsed ? item.label : undefined}
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg transition ${
+                      collapsed ? 'justify-center' : ''
+                    } ${
                       isActive
                         ? 'bg-primary-600 text-white'
                         : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                     }`}
                   >
                     {item.icon}
-                    <span>{item.label}</span>
+                    {!collapsed && <span>{item.label}</span>}
                   </Link>
                 </li>
               );
@@ -413,15 +452,16 @@ export function AppSidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-800">
+        <div className={`p-4 border-t border-gray-800 ${collapsed ? 'flex justify-center' : ''}`}>
           <Link
             href="/"
+            title={collapsed ? 'Back to Website' : undefined}
             className="flex items-center gap-2 text-gray-400 hover:text-white transition text-sm"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back to Website
+            {!collapsed && 'Back to Website'}
           </Link>
         </div>
       </div>

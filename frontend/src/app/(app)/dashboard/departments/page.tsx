@@ -5,7 +5,7 @@ import { DepartmentTree } from '@/components/departments/DepartmentTree';
 import { TableSkeleton } from '@/components/ui/TableSkeleton';
 
 export const metadata: Metadata = {
-  title: 'Departments - AxionPCS HRMS',
+  title: 'Departments - Wings Associates HRMS',
 };
 
 interface DepartmentsPageProps {

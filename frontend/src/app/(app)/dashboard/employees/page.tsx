@@ -5,7 +5,7 @@ import { EmployeeFilters } from '@/components/employees/EmployeeFilters';
 import { TableSkeleton } from '@/components/ui/TableSkeleton';
 
 export const metadata: Metadata = {
-  title: 'Employees - AxionPCS HRMS',
+  title: 'Employees - Wings Associates HRMS',
 };
 
 interface EmployeesPageProps {
