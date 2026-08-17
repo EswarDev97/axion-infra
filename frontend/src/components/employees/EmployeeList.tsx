@@ -40,6 +40,17 @@ const statusColors: Record<string, 'neutral' | 'success' | 'warning' | 'error' |
   INACTIVE: 'error',
 };
 
+// Display-only override for the role code shown in the Role column —
+// the underlying code (e.g. 'MANAGER') still drives permission checks
+// everywhere else; this only changes what the badge text reads.
+const roleDisplayLabels: Record<string, string> = {
+  MANAGER: 'Wings Manager',
+};
+
+function formatRoleLabel(code: string): string {
+  return roleDisplayLabels[code] ?? code.replace(/_/g, ' ');
+}
+
 export function EmployeeList({ searchParams }: EmployeeListProps) {
   const router = useRouter();
   const { hasRole } = useAuthStore();
@@ -223,7 +234,7 @@ export function EmployeeList({ searchParams }: EmployeeListProps) {
       render: (value) => (
         value ? (
           <Badge variant="purple" size="sm">
-            {String(value).replace(/_/g, ' ')}
+            {formatRoleLabel(String(value))}
           </Badge>
         ) : (
           <span className="text-gray-400">-</span>

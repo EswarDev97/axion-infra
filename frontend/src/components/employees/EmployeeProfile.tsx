@@ -22,6 +22,17 @@ const statusColors: Record<string, 'success' | 'warning' | 'error' | 'info' | 'n
   INACTIVE: 'error',
 };
 
+// Display-only override for the role code — the underlying code (e.g.
+// 'MANAGER') still drives permission checks everywhere else; this only
+// changes what's shown on this profile page.
+const roleDisplayLabels: Record<string, string> = {
+  MANAGER: 'Wings Manager',
+};
+
+function formatRoleLabel(code: string): string {
+  return roleDisplayLabels[code] ?? code.replace(/_/g, ' ');
+}
+
 export function EmployeeProfile({ employeeId }: EmployeeProfileProps) {
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,7 +75,7 @@ export function EmployeeProfile({ employeeId }: EmployeeProfileProps) {
     { label: 'Phone', value: employee.phone || 'Not provided' },
     { label: 'Position', value: employee.positionTitle },
     { label: 'Department', value: employee.departmentName || 'Not assigned' },
-    { label: 'Role', value: employee.role ? employee.role.replace(/_/g, ' ') : 'Not assigned' },
+    { label: 'Role', value: employee.role ? formatRoleLabel(employee.role) : 'Not assigned' },
     { label: 'Reports To', value: employee.managerName || 'Not assigned' },
     { label: 'Date of Joining', value: employee.dateOfJoining ? new Date(employee.dateOfJoining).toLocaleDateString() : '-' },
     { label: 'Date of Exit', value: employee.dateOfExit ? new Date(employee.dateOfExit).toLocaleDateString() : '-' },
