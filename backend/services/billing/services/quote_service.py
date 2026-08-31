@@ -19,7 +19,13 @@ from shared.exceptions import (
 from shared.schemas import PaginationParams
 
 from ..models import Quote, QuoteItem
-from ..schemas.quote import QuoteCreateRequest, QuoteUpdateRequest, QuoteFilters, QuoteItemCreateRequest
+from ..schemas.quote import (
+    QuoteCreateRequest,
+    QuoteUpdateRequest,
+    QuoteFilters,
+    QuoteItemCreateRequest,
+    QuoteItemUpdateRequest,
+)
 from ..schemas.currency import VALID_CURRENCY_CODES
 
 
@@ -271,6 +277,40 @@ class QuoteService:
             updated_by=user_id,
         )
         self.db.add(item)
+        await self.db.flush()
+
+        await self.db.refresh(quote, ["items"])
+        quote.calculate_totals()
+        await self.db.commit()
+        await self.db.refresh(quote)
+        return quote
+
+    async def update_item(
+        self,
+        quote_id: UUID,
+        item_id: UUID,
+        tenant_id: UUID,
+        user_id: UUID,
+        data: QuoteItemUpdateRequest,
+    ) -> Quote:
+        """Update a line item on a quote."""
+        quote = await self.get_quote(quote_id, tenant_id)
+
+        if quote.status != "DRAFT":
+            raise ResourceStateConflictException(
+                "Quote", str(quote_id),
+                "Cannot update items on a non-DRAFT quote."
+            )
+
+        item = next((i for i in quote.items if i.id == item_id), None)
+        if not item:
+            raise ResourceNotFoundException("QuoteItem", str(item_id))
+
+        update_fields = data.model_dump(exclude_unset=True)
+        for field, value in update_fields.items():
+            setattr(item, field, value)
+        item.updated_by = user_id
+        item.calculate_amount()
         await self.db.flush()
 
         await self.db.refresh(quote, ["items"])

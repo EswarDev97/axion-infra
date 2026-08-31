@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import type { QuoteStatus, CurrencyCode, QuoteUpdateRequest, QuoteItemCreateRequest, InvoiceCreateRequest } from '@/services/billing/types';
+import type { QuoteStatus, CurrencyCode, QuoteUpdateRequest, QuoteItemCreateRequest, QuoteItemUpdateRequest, InvoiceCreateRequest } from '@/services/billing/types';
 
 const statusColors: Record<QuoteStatus, 'gray' | 'blue' | 'green' | 'yellow' | 'red' | 'purple'> = {
   DRAFT: 'gray', SENT: 'blue', ACCEPTED: 'green', REJECTED: 'red', EXPIRED: 'yellow', CONVERTED: 'purple',
@@ -27,6 +27,7 @@ interface EditableItem {
   description: string;
   quantity: number;
   rate: number;
+  dirty?: boolean;
 }
 
 export default function QuoteDetailPage() {
@@ -109,6 +110,12 @@ export default function QuoteDetailPage() {
 
   const addItemMutation = useMutation({
     mutationFn: (data: QuoteItemCreateRequest) => quoteService.addItem(quoteId, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['quote', quoteId] }); },
+  });
+
+  const updateItemMutation = useMutation({
+    mutationFn: ({ itemId, data }: { itemId: string; data: QuoteItemUpdateRequest }) =>
+      quoteService.updateItem(quoteId, itemId, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['quote', quoteId] }); },
   });
 
@@ -202,9 +209,30 @@ export default function QuoteDetailPage() {
 
   const updateItem = (idx: number, field: keyof EditableItem, value: string | number) => {
     const updated = [...items];
-    updated[idx] = { ...updated[idx], [field]: value };
+    updated[idx] = { ...updated[idx], [field]: value, ...(updated[idx].id ? { dirty: true } : {}) };
     setItems(updated);
     markChanged();
+  };
+
+  const handleSaveExistingItem = (idx: number) => {
+    const item = items[idx];
+    if (!item.id || !item.itemName || !item.rate) return;
+    updateItemMutation.mutate(
+      {
+        itemId: item.id,
+        data: {
+          itemName: item.itemName,
+          description: item.description || undefined,
+          quantity: item.quantity,
+          rate: item.rate,
+        },
+      },
+      {
+        onSuccess: () => {
+          setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, dirty: false } : it)));
+        },
+      }
+    );
   };
 
   const handleConvertToInvoice = () => {
@@ -447,6 +475,12 @@ export default function QuoteDetailPage() {
                     <div className="flex flex-col gap-1 mt-6">
                       {isNew && (
                         <button type="button" onClick={() => handleSaveNewItem(idx)}
+                          className="text-green-600 hover:text-green-800 text-xs font-medium px-2 py-1 border border-green-300 rounded">
+                          Save
+                        </button>
+                      )}
+                      {!isNew && item.dirty && (
+                        <button type="button" onClick={() => handleSaveExistingItem(idx)}
                           className="text-green-600 hover:text-green-800 text-xs font-medium px-2 py-1 border border-green-300 rounded">
                           Save
                         </button>

@@ -27,6 +27,7 @@ from ..schemas.quote import (
     QuoteResponse,
     QuoteFilters,
     QuoteItemCreateRequest,
+    QuoteItemUpdateRequest,
 )
 from ..schemas.currency import get_currency_symbol
 from ..services.quote_service import QuoteService
@@ -265,6 +266,25 @@ async def add_quote_item(
         success=True,
         data=_quote_to_response(quote),
         message="Item added to quote",
+        request_id=uuid4(),
+    )
+
+
+@router.put("/{quote_id}/items/{item_id}", response_model=ApiResponse)
+async def update_quote_item(
+    quote_id: UUID,
+    item_id: UUID,
+    data: QuoteItemUpdateRequest,
+    user: CurrentUser = Depends(require_any_permission(BILLING_WRITE_PERMISSIONS)),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Update a line item on a quote."""
+    service = QuoteService(db)
+    quote = await service.update_item(quote_id, item_id, user.tenant_id, user.user_id, data)
+    return ApiResponse(
+        success=True,
+        data=_quote_to_response(quote),
+        message="Item updated",
         request_id=uuid4(),
     )
 

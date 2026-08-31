@@ -5,7 +5,7 @@ CREATE TABLE quote_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL,
     quote_id UUID NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
-    description VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
     quantity DECIMAL(10,2) NOT NULL DEFAULT 1,
     rate DECIMAL(15,2) NOT NULL,
     amount DECIMAL(15,2) NOT NULL,
@@ -22,7 +22,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, func
+from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -54,7 +54,7 @@ class QuoteItem(Base):
 
     # Core fields
     item_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    description: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
     quantity: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False, default=Decimal("1.00")
     )

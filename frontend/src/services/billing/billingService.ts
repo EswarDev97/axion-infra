@@ -12,6 +12,7 @@ import type {
   QuoteUpdateRequest,
   QuoteFilters,
   QuoteItemCreateRequest,
+  QuoteItemUpdateRequest,
   Invoice,
   InvoiceCreateRequest,
   InvoiceUpdateRequest,
@@ -69,6 +70,10 @@ export const quoteService = {
   // Items
   async addItem(quoteId: string, data: QuoteItemCreateRequest): Promise<Quote> {
     return post<Quote>(`${BILLING_BASE}/quotes/${quoteId}/items`, data);
+  },
+
+  async updateItem(quoteId: string, itemId: string, data: QuoteItemUpdateRequest): Promise<Quote> {
+    return put<Quote>(`${BILLING_BASE}/quotes/${quoteId}/items/${itemId}`, data);
   },
 
   async removeItem(quoteId: string, itemId: string): Promise<Quote> {
