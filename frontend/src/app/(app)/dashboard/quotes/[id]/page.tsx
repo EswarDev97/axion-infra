@@ -163,7 +163,31 @@ export default function QuoteDetailPage() {
   const taxAmt = subtotal * (parseFloat(taxPercentage) || 0) / 100;
   const total = subtotal + taxAmt;
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    const dirtyItems = items
+      .map((item, idx) => ({ item, idx }))
+      .filter(({ item }) => item.id && item.dirty);
+
+    await Promise.all(
+      dirtyItems.map(({ item }) =>
+        updateItemMutation.mutateAsync({
+          itemId: item.id as string,
+          data: {
+            itemName: item.itemName,
+            description: item.description || undefined,
+            quantity: item.quantity,
+            rate: item.rate,
+          },
+        })
+      )
+    );
+
+    if (dirtyItems.length > 0) {
+      setItems((prev) =>
+        prev.map((it) => (it.id && it.dirty ? { ...it, dirty: false } : it))
+      );
+    }
+
     updateMutation.mutate({
       quoteNumber,
       clientId,
